@@ -91,6 +91,15 @@ crafted inputs above inside `Record.Exception` and assert it is `null`.
 **`refusal-classification`** — Is each non-answer the right one of refused, unresolved and outside
 scope, with the right reason and locator?
 
+**A decline is as narrow as the open question.** A rule can be read more than one way and still have
+one answer in the state at hand: every open reading gives the same result, or the case the readings
+disagree on cannot arise there. Then answer, and decline only where the open readings give different
+answers. A decline that fires wherever the question is merely *present* stops states the corpus
+already settles, and no test of the reading will notice, because each test asks about the reading
+and not about how often it is asked. When you attack this class, find a state where the readings
+converge and assert that the engine answers it; find one where they diverge and assert that it
+declines, citing where.
+
 **`missing-content-masking`** — Can missing or unavailable content hide a refusal already settled by
 what is present? Remove the optional content and assert the settled refusal still comes back first.
 

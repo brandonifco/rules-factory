@@ -113,9 +113,9 @@ TABLE = (
         "what a review covered and what a repair invalidates of it: the lifecycle, what can be reused, when a "
         "full review is mandatory, the final acceptance review, clean reviewer sessions, reading an "
         "attestation, and migrating an engine produced before it (0071); only a semantic-implementation or a semantic-ruling owes any of this evidence (0076)"),
-    Row("docs/adversarial-self-review.md", MANAGED, 2,
+    Row("docs/adversarial-self-review.md", MANAGED, 3,
         "the twenty classes an implementer attacks before a reviewer is paid, each with a test template, and "
-        "the record a semantic packet requires per entry (0071); only a semantic-implementation owes the self-review; a semantic-ruling owes the review of the ruling, `reviews/rulings/<decision>.json`, six classes bound to the decision record's bytes (0076)"),
+        "the record a semantic packet requires per entry (0071); only a semantic-implementation owes the self-review; a semantic-ruling owes the review of the ruling, `reviews/rulings/<decision>.json`, six classes bound to the decision record's bytes (0076); a decline is as narrow as the open question, said under `refusal-classification` and not as a twenty-first class (#628)"),
     Row(".claude/agents/engine-dev.md", MANAGED, 12,
         "the implementer's charter (0029); it ends with the attempt, and says what a repair attempt "
         "reads and what it may not reconstruct (#465); it attacks its own work before review and commits the attestation a repair answers (0071); say what the change is before asking for review, and a ruling's own review record in place of a self-review (0076)"),
@@ -331,6 +331,7 @@ RECIPE_SHA256 = {
     "docs/adversarial-self-review.md": {
         1: "9faff906492d809a701516c2a741fb89d5563e646b7a759e0d27bb64f08c3b06",
         2: "38a3904e97c80e28ccfda7a2511aadd0f475a12e4e65f6db3d8b521d59a6e6a2",
+        3: "8e1c359f8aaabc70720116819fe8870ca0ddbc7e34c2235f7314e68d93810964",
     },
     "tools/review-scope.py": {
         1: "84a69642db7a30efe6729d9557725794567462354072655ff4c223c7f6cbccf4",
