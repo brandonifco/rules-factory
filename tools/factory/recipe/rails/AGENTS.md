@@ -556,7 +556,9 @@ Each run starts from one configuration and one seed and, at each step, applies *
 action and then advances by one chosen from the seed. Each invariant is its own test over the same
 runs, played once and in parallel:
 
-1. every offered action is accepted: applying it resolves, or declines on the allowlist;
+1. every offered action is accepted: applying it resolves, or declines on the allowlist; and neither
+   `LegalActions` nor `Apply` changes the state it is given (checked on each configuration's first
+   seed and its replay, by a dump before and after each call);
 2. nothing throws, and a failure names the exception's type and first frame;
 3. a state that is not over offers an action or says why, never nothing in silence;
 4. a run ends within `stepCap`;
@@ -565,17 +567,24 @@ runs, played once and in parallel:
    still open;
 6. at least `leastCompleted` of each configuration's seeds reach a natural end, and a configuration
    that produced no runs fails;
-7. replaying each configuration's first seed gives the same history and, by a structural dump of
-   public and private fields, the same final state: record equality is not used, because a record
-   compares its collections by reference.
+7. replaying each configuration's first seed gives the same history (the step a run ends on
+   included), the same state at the start of every step, the last being the final one, and the same
+   ending: completed, stopped on a decline (reason, locator, attempted operation), or the invariant
+   that stopped it. States are compared by a structural dump of public and private fields, taken when
+   each was reached; record equality is not used, because a record compares its collections by
+   reference. `Render` must give unequal actions unequal lines, which the harness checks at every
+   step, because the history comparison relies on it.
 
 A last test fails an allowlisted entry whose locator another entry also cites, since one documented
 decline would then excuse another.
 
-**The allowlist is built only from what the engine actually declined**, each item an entry id and
-where the engine documents that reading. A reading no run reaches stays off it. A decline is as
-narrow as the open question: where the open readings give the same answer for the state at hand, the
-engine answers and does not decline (`docs/adversarial-self-review.md`, `refusal-classification`).
+**The allowlist is built only from what the engine actually declined**, in runs of the surface, in the
+gate or in a longer probe, each item an entry id and a sentence saying where the engine documents
+that reading. The harness names to the test output each item its own runs did not reach, so a stale
+item is visible; it is not a failure, since the gate's seeds may not reach what a longer probe did.
+A decline is as narrow as the open question: where the open readings give the same answer for the
+state at hand, the engine answers and does not decline (`docs/adversarial-self-review.md`,
+`refusal-classification`).
 
 **Cost is reduced by making the engine faster, not by checking less.** The three numbers are the only
 knobs, and visible. The harness has no parameter that applies a subset of the offered actions, because

@@ -14,6 +14,7 @@ using System.Text;
 using RulesKernel.Provenance;
 using RulesKernel.Resolution;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace @NAME@.Tests;
 
@@ -60,19 +61,19 @@ public sealed partial class ActionSurfaceAcceptance
     internal static partial bool IsOver(ActionSurfaceState state);
 
     /// <summary>The actions legal in a state.</summary>
-    /// <param name="state">A state that is not over.</param>
+    /// <param name="state">A state that is not over. The call must not change it.</param>
     /// <returns>The offered actions, or an unresolved resolution saying why there are none.</returns>
     internal static partial Resolution<ImmutableArray<ActionSurfaceAction>> LegalActions(ActionSurfaceState state);
 
     /// <summary>Applies an action to a state.</summary>
-    /// <param name="state">The state.</param>
+    /// <param name="state">The state. The call must not change it.</param>
     /// <param name="action">An action <see cref="LegalActions"/> offered in it.</param>
     /// <returns>The new state, or an unresolved resolution for a refusal or a decline.</returns>
     internal static partial Resolution<ActionSurfaceState> Apply(ActionSurfaceState state, ActionSurfaceAction action);
 
     /// <summary>Renders an action as one line of a run's history.</summary>
     /// <param name="action">An action.</param>
-    /// <returns>A line that is equal for equal actions.</returns>
+    /// <returns>A line that is equal for equal actions and different for unequal ones.</returns>
     internal static partial string Render(ActionSurfaceAction action);
 
     private static readonly Lazy<HashSet<SourceLocator>> AllowedLocators =
@@ -80,10 +81,14 @@ public sealed partial class ActionSurfaceAcceptance
 
     private static readonly Lazy<Played> Everything = new(PlayEverything, LazyThreadSafetyMode.ExecutionAndPublication);
 
+    private readonly ITestOutputHelper output;
+
+    public ActionSurfaceAcceptance(ITestOutputHelper output) => this.output = output;
+
     // 1
     [Fact]
     public void Every_offered_action_is_accepted() =>
-        Hold(1, "an offered action is refused or declined outside the allowlist");
+        Hold(1, "an offered action is refused or declined outside the allowlist, or a call changed the state it was given");
 
     // 2
     [Fact]
@@ -142,33 +147,39 @@ public sealed partial class ActionSurfaceAcceptance
         var problems = new List<string>(Everything.Value.Findings(7));
         foreach (var (first, again) in Everything.Value.Replays)
         {
+            var name = $"{first.Configuration} seed {first.Seed}";
             var at = Enumerable.Range(0, Math.Min(first.History.Count, again.History.Count))
                 .Where(i => first.History[i] != again.History[i]).Select(i => (int?)i).FirstOrDefault();
             if (at is not null)
             {
-                problems.Add($"{first.Configuration} seed {first.Seed}: the histories first differ at step {at}: '{first.History[at.Value]}' then '{again.History[at.Value]}'");
+                problems.Add($"{name}: the histories first differ at step {at}: '{first.History[at.Value]}' then '{again.History[at.Value]}'");
             }
             else if (first.History.Count != again.History.Count)
             {
-                problems.Add($"{first.Configuration} seed {first.Seed}: the histories have {first.History.Count} and {again.History.Count} steps");
+                problems.Add($"{name}: the histories have {first.History.Count} and {again.History.Count} steps");
             }
 
-            try
+            // The state at the start of every step, the last of them the state the run ended in, each
+            // dumped when it was reached: a later call cannot have changed what is compared.
+            var states = Enumerable.Range(0, Math.Min(first.Dumps.Count, again.Dumps.Count))
+                .Where(i => first.Dumps[i] != again.Dumps[i]).Select(i => (int?)i).FirstOrDefault();
+            if (states is not null)
             {
-                var left = StructuralDump.Of(first.Final);
-                var right = StructuralDump.Of(again.Final);
-                if (left != right)
-                {
-                    problems.Add($"{first.Configuration} seed {first.Seed}: the final states differ structurally, from offset {StructuralDump.FirstDifference(left, right)}: {StructuralDump.Around(left, right)}");
-                }
+                var (left, right) = (first.Dumps[states.Value], again.Dumps[states.Value]);
+                problems.Add($"{name}: the states first differ structurally at step {states}, from offset {StructuralDump.FirstDifference(left, right)}: {StructuralDump.Around(left, right)}");
             }
-            catch (Exception error)
+            else if (first.Dumps.Count != again.Dumps.Count)
             {
-                problems.Add($"{first.Configuration} seed {first.Seed}: the final state cannot be dumped ({error.GetType().Name}: {error.Message})");
+                problems.Add($"{name}: the runs dumped {first.Dumps.Count} and {again.Dumps.Count} states");
+            }
+
+            if (first.Ending != again.Ending)
+            {
+                problems.Add($"{name}: the runs ended differently: '{first.Ending}' then '{again.Ending}'");
             }
         }
 
-        Assert.True(problems.Count == 0, Describe("a replay did not reproduce", problems));
+        Assert.True(problems.Count == 0, Describe("a replay did not reproduce, or two unequal actions render alike", problems));
     }
 
     // The locator a decline names is the item's, so a locator another entry cites would let one
@@ -186,6 +197,14 @@ public sealed partial class ActionSurfaceAcceptance
             {
                 problems.Add($"{entryId} ({documented}): its locator is also cited by {string.Join(", ", citing)}");
             }
+        }
+
+        // Not a failure: the seeds of the gate may not reach a reading that a longer probe did. But the
+        // list is built from declines that were observed, so an item no run reached is named.
+        var reached = Everything.Value.Reached();
+        foreach (var (entryId, documented) in Allowlist.Where(item => !reached.Contains(Registry.Entry(item.EntryId).Locator)))
+        {
+            output.WriteLine($"{entryId} ({documented}): no run declined at this reading, in {Everything.Value.Runs.Count + Everything.Value.Replays.Count} runs");
         }
 
         Assert.True(problems.Count == 0, Describe("an allowlisted locator is shared", problems));
@@ -226,19 +245,22 @@ public sealed partial class ActionSurfaceAcceptance
         var plan = played.Configurations.Distinct().Where(c => !string.IsNullOrWhiteSpace(c))
             .SelectMany(c => Enumerable.Range(0, SeedsPerConfiguration).Select(seed => (Configuration: c, Seed: seed))).ToList();
         var runs = new Run[plan.Count];
-        Parallel.For(0, plan.Count, i => runs[i] = Play(plan[i].Configuration, plan[i].Seed));
+        Parallel.For(0, plan.Count, i => runs[i] = Play(plan[i].Configuration, plan[i].Seed, plan[i].Seed == 0));
         played.Runs = runs;
 
         var firsts = runs.Where(run => run.Seed == 0).ToList();
         var again = new Run[firsts.Count];
-        Parallel.For(0, firsts.Count, i => again[i] = Play(firsts[i].Configuration, firsts[i].Seed));
+        Parallel.For(0, firsts.Count, i => again[i] = Play(firsts[i].Configuration, firsts[i].Seed, true));
         played.Replays = firsts.Zip(again).ToList();
         return played;
     }
 
-    private static Run Play(string configuration, int seed)
+    // A capturing run dumps the state at the start of every step, and again after each call that must
+    // not change it. It is on for each configuration's first seed and its replay, which bounds the
+    // cost: a dump walks the whole state.
+    private static Run Play(string configuration, int seed, bool capture)
     {
-        var run = new Run(configuration, seed);
+        var run = new Run(configuration, seed, capture);
         ActionSurfaceState state;
         try
         {
@@ -247,12 +269,23 @@ public sealed partial class ActionSurfaceAcceptance
         catch (Exception error)
         {
             run.Threw("Start", error);
-            return run;
+            return run.Stop("invariant 2 (Start threw)");
         }
 
-        run.Final = state;
+        string? returned = null;
         for (var step = 0; ; step++)
         {
+            var before = run.Dump(state);
+            if (before is not null)
+            {
+                if (returned is not null && returned != before)
+                {
+                    run.Find(1, $"{run.Name} step {step}: the state the chosen action returned was changed by a later call on the step before: {StructuralDump.Around(returned, before)}");
+                }
+
+                run.Begin(before);
+            }
+
             bool over;
             try
             {
@@ -261,19 +294,19 @@ public sealed partial class ActionSurfaceAcceptance
             catch (Exception error)
             {
                 run.Threw($"IsOver at step {step}", error);
-                return run;
+                return run.Stop("invariant 2 (IsOver threw)");
             }
 
             if (over)
             {
                 run.Completed = true;
-                return run;
+                return run.Stop("completed");
             }
 
             if (step >= StepCap)
             {
                 run.Find(4, $"{run.Name}: not over after {StepCap} steps");
-                return run;
+                return run.Stop("invariant 4 (not over within the step cap)");
             }
 
             Resolution<ImmutableArray<ActionSurfaceAction>> legal;
@@ -284,30 +317,37 @@ public sealed partial class ActionSurfaceAcceptance
             catch (Exception error)
             {
                 run.Threw($"LegalActions at step {step}", error);
-                return run;
+                return run.Stop("invariant 2 (LegalActions threw)");
             }
 
+            run.After(state, step, "LegalActions");
             var (offered, declined) = legal.Match(
                 actions => (Offered: actions, Declined: (UnresolvedResult?)null),
                 result => (Offered: default(ImmutableArray<ActionSurfaceAction>), Declined: (UnresolvedResult?)result));
             if (declined is not null)
             {
-                if (!Allowed(declined))
+                if (run.Allowed(declined))
                 {
-                    run.Find(5, $"{run.Name} step {step}: stopped on {Name(declined)}, which is not an allowlisted reading");
+                    return run.Stop($"stopped: {Name(declined)}");
                 }
 
-                return run;
+                run.Find(5, $"{run.Name} step {step}: stopped on {Name(declined)}, which is not an allowlisted reading");
+                return run.Stop($"invariant 5 ({Name(declined)})");
             }
 
             if (offered.IsDefaultOrEmpty)
             {
                 run.Find(3, $"{run.Name} step {step}: the state is not over, offers no action and gives no reason");
-                return run;
+                return run.Stop("invariant 3 (offers nothing and says nothing)");
             }
 
+            var lines = run.Lines(step, offered);
             var chosen = (int)(Mix(seed, step) % (ulong)offered.Length);
+
+            // Before any outcome is resolved, so the step a run ends on is in its history.
+            run.History.Add(lines[chosen]);
             Resolution<ActionSurfaceState>? advance = null;
+            string? kept = null;
             for (var i = 0; i < offered.Length; i++)
             {
                 Resolution<ActionSurfaceState> applied;
@@ -318,35 +358,35 @@ public sealed partial class ActionSurfaceAcceptance
                 catch (Exception error)
                 {
                     run.Threw($"Apply of offered action {i} at step {step}", error);
-                    return run;
+                    return run.Stop("invariant 2 (Apply threw)");
                 }
 
                 if (i == chosen)
                 {
+                    // Exactly as returned: the probes that follow are applied to the same state, and
+                    // must not reach this one.
                     advance = applied;
+                    kept = applied.Match<string?>(value => run.Dump(value), _ => null);
                 }
 
-                var refusal = applied.Match<UnresolvedResult?>(_ => null, result => result);
-                if (refusal is not null && !Allowed(refusal))
+                run.After(state, step, $"Apply of offered action {i}");
+                var refusal = applied.Match<UnresolvedResult?>(_ => null, unresolved => unresolved);
+                if (refusal is not null && !run.Allowed(refusal))
                 {
-                    run.Find(1, $"{run.Name} step {step}: offered action {i} '{run.Line(offered[i])}' was answered with {Name(refusal)}");
+                    run.Find(1, $"{run.Name} step {step}: offered action {i} '{lines[i]}' was answered with {Name(refusal)}");
                 }
             }
 
-            if (!advance!.IsResolved)
+            var stopped = advance!.Match<UnresolvedResult?>(_ => null, unresolved => unresolved);
+            if (stopped is not null)
             {
-                return run;
+                return run.Stop(run.Allowed(stopped) ? $"stopped: {Name(stopped)}" : $"invariant 1 ({Name(stopped)})");
             }
 
-            var next = advance.Match(value => value, _ => throw new InvalidOperationException("unreachable"));
-            run.History.Add(run.Line(offered[chosen]));
-            state = next;
-            run.Final = state;
+            state = advance.Match(value => value, _ => throw new InvalidOperationException("unreachable"));
+            returned = kept;
         }
     }
-
-    private static bool Allowed(UnresolvedResult result) =>
-        result.Reason == UnresolvedReason.RequiresInterpretation && AllowedLocators.Value.Contains(result.Locator);
 
     private static string Name(UnresolvedResult result) =>
         $"{result.Reason} at {result.Locator} ({result.Attempted})";
@@ -370,9 +410,10 @@ public sealed partial class ActionSurfaceAcceptance
         }
     }
 
-    private sealed class Run(string configuration, int seed)
+    private sealed class Run(string configuration, int seed, bool capturing)
     {
         private readonly Dictionary<int, List<string>> findings = new();
+        private string? seen;
 
         public string Configuration { get; } = configuration;
 
@@ -382,9 +423,23 @@ public sealed partial class ActionSurfaceAcceptance
 
         public bool Completed { get; set; }
 
-        public object? Final { get; set; }
+        /// <summary>How the run ended: completed; stopped on an allowlisted decline; or the invariant a finding stopped it under.</summary>
+        public string Ending { get; private set; } = "";
 
+        /// <summary>The rendered line of each action the run chose, the one it ended on included.</summary>
         public List<string> History { get; } = [];
+
+        /// <summary>The dump of the state at the start of each step, taken then (capturing runs only).</summary>
+        public List<string> Dumps { get; } = [];
+
+        /// <summary>The locators of the allowlisted declines the run met.</summary>
+        public HashSet<SourceLocator> Reached { get; } = [];
+
+        public Run Stop(string ending)
+        {
+            Ending = ending;
+            return this;
+        }
 
         public IReadOnlyList<string> Of(int invariant) =>
             findings.TryGetValue(invariant, out var list) ? list : [];
@@ -401,7 +456,74 @@ public sealed partial class ActionSurfaceAcceptance
 
         public void Threw(string call, Exception error) => Find(2, $"{Name}: {call} threw {Where(error)}");
 
-        public string Line(ActionSurfaceAction action)
+        public bool Allowed(UnresolvedResult result)
+        {
+            var allowed = result.Reason == UnresolvedReason.RequiresInterpretation && AllowedLocators.Value.Contains(result.Locator);
+            if (allowed)
+            {
+                Reached.Add(result.Locator);
+            }
+
+            return allowed;
+        }
+
+        /// <summary>The dump of a state, as it is now; null when the run does not capture, or the state cannot be dumped.</summary>
+        public string? Dump(object? state)
+        {
+            if (!capturing)
+            {
+                return null;
+            }
+
+            try
+            {
+                return StructuralDump.Of(state);
+            }
+            catch (Exception error)
+            {
+                capturing = false;
+                Find(7, $"{Name}: a state cannot be dumped ({error.GetType().Name}: {error.Message})");
+                return null;
+            }
+        }
+
+        public void Begin(string dump)
+        {
+            seen = dump;
+            Dumps.Add(dump);
+        }
+
+        /// <summary>Invariant 1: a call on the surface must leave the state it was given as it was.</summary>
+        public void After(ActionSurfaceState state, int step, string call)
+        {
+            var now = seen is null ? null : Dump(state);
+            if (seen is not null && now is not null && now != seen)
+            {
+                Find(1, $"{Name} step {step}: {call} changed the state it was given: {StructuralDump.Around(seen, now)}");
+                seen = now;
+            }
+        }
+
+        /// <summary>Renders every offered action; two unequal ones with one line are a finding under invariant 7.</summary>
+        public string[] Lines(int step, ImmutableArray<ActionSurfaceAction> offered)
+        {
+            var lines = new string[offered.Length];
+            var first = new Dictionary<string, int>();
+            var reported = false;
+            for (var i = 0; i < offered.Length; i++)
+            {
+                lines[i] = Line(offered[i]);
+                if (!first.TryAdd(lines[i], i) && !reported && !Equals(offered[first[lines[i]]], offered[i]))
+                {
+                    reported = true;
+                    Find(7, $"{Name} step {step}: offered actions {first[lines[i]]} and {i} are not equal and both render as '{lines[i]}'");
+                }
+            }
+
+            return lines;
+        }
+
+        private string Line(ActionSurfaceAction action)
         {
             try
             {
@@ -440,6 +562,9 @@ public sealed partial class ActionSurfaceAcceptance
             .Concat(Runs.SelectMany(run => run.Of(invariant)))
             .Concat(Replays.SelectMany(pair => pair.Again.Of(invariant).Select(text => "(replay) " + text)))
             .ToList();
+
+        public HashSet<SourceLocator> Reached() =>
+            Runs.Concat(Replays.Select(pair => pair.Again)).SelectMany(run => run.Reached).ToHashSet();
     }
 
 @DUMP@

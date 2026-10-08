@@ -58,7 +58,7 @@ REGISTRY = f"src/{NAME}/Generated/Registry.g.cs"
 RECIPE = ("scripts/validate.sh", "scripts/map-overlay.py", "scripts/engine-gate.py",
           "scripts/factory/generate.py", "scripts/factory/intake.py", "scripts/factory/ownership.py",
           "scripts/factory/provenance.py", "scripts/factory/rulings.py",
-          # The generator is nine modules since #171, and an engine that received only some of
+          # The generator is several modules since #171, and an engine that received only some of
           # them could not regenerate at all.
           "scripts/factory/acceptance.py", "scripts/factory/acceptancecs.py",
           "scripts/factory/agentrails.py", "scripts/factory/contracts.py", "scripts/factory/correspondence.py",

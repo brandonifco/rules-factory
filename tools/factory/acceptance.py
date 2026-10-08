@@ -27,6 +27,8 @@ and the locator a decline carries are the ones every other part of the engine me
 When the file is absent nothing is emitted, and `produce` removes a harness emitted earlier, as it
 removes any generated file whose source is gone.
 """
+import decimal
+import importlib.util
 import json
 import os
 import re
@@ -39,13 +41,15 @@ FILE = "acceptance.json"
 ADAPTER = "ActionSurface.cs"
 
 #: The declared fields, each with the sentence a refusal says about it.
+#: The largest count a declaration may hold: the harness declares them as C# `int` constants.
+MAXIMUM = 2147483647
+
 FIELDS = {
-    "seedsPerConfiguration": "an integer of at least 1: how many seeds each configuration plays",
-    "stepCap": "an integer of at least 1: the most steps a run may take before it is over",
+    "seedsPerConfiguration": f"an integer from 1 to {MAXIMUM}: how many seeds each configuration plays",
+    "stepCap": f"an integer from 1 to {MAXIMUM}: the most steps a run may take before it is over",
     "leastCompleted": "a number above 0 and at most 1: the fraction of a configuration's seeds that must reach "
                       "a natural end",
-    "allowlist": "an object mapping an entry id to a non-empty string saying where the engine documents that "
-                 "reading",
+    "allowlist": "an object mapping an entry id to a sentence saying where the engine documents that reading",
 }
 
 
@@ -73,6 +77,34 @@ def _integer(value):
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def _shown(value):
+    """A declared value as it was written: a number is held exactly (a Decimal), and says so as written."""
+    return str(value) if isinstance(value, decimal.Decimal) else repr(value)
+
+
+_PLACEHOLDER_RULE = []
+
+
+def _placeholder_problem(text):
+    """Why `text` is not a sentence, or None: the floor the overlay's mutations are held to (#239).
+
+    It is `placeholder_problem` of the gate recipe (`map-overlay.py`), loaded from where this module
+    sits: `scripts/` in an engine, `recipe/` in the factory. Not a copy of it, so the two cannot drift.
+    """
+    if not _PLACEHOLDER_RULE:
+        here = os.path.dirname(os.path.abspath(__file__))
+        for candidate in (os.path.join(here, os.pardir, "map-overlay.py"), os.path.join(here, "recipe", "map-overlay.py")):
+            if os.path.isfile(candidate):
+                spec = importlib.util.spec_from_file_location("map_overlay_recipe", candidate)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                _PLACEHOLDER_RULE.append(module.placeholder_problem)
+                break
+        else:
+            raise _refuse("cannot check an allowlist item for a placeholder: map-overlay.py is not where this module expects it")
+    return _PLACEHOLDER_RULE[0](text)
+
+
 def load(root, model):
     """The validated declaration in `root`, or None when the engine declares no action surface.
 
@@ -82,11 +114,15 @@ def load(root, model):
     path = os.path.join(root, FILE)
     if not os.path.lexists(path):
         return None
+    if os.path.islink(path):
+        raise _refuse("is a symbolic link; the declaration is the engine's own file, and a link would read "
+                      "whatever it points to")
     if not os.path.isfile(path):
         raise _refuse("is not a file")
     try:
         with open(path, encoding="utf-8") as handle:
-            declared = json.load(handle, object_pairs_hook=_no_duplicates, parse_constant=_no_constants)
+            declared = json.load(handle, object_pairs_hook=_no_duplicates, parse_constant=_no_constants,
+                                 parse_float=decimal.Decimal)
     except (OSError, UnicodeDecodeError, ValueError) as error:
         raise _refuse(f"cannot be read as JSON ({error})")
     if not isinstance(declared, dict):
@@ -99,18 +135,25 @@ def load(root, model):
         if field not in declared:
             raise _refuse(f"`{field}` is missing; it is {FIELDS[field]}")
     for field in ("seedsPerConfiguration", "stepCap"):
-        if not _integer(declared[field]) or declared[field] < 1:
-            raise _refuse(f"`{field}` is {declared[field]!r}; it must be {FIELDS[field]}")
+        if not _integer(declared[field]) or not 1 <= declared[field] <= MAXIMUM:
+            raise _refuse(f"`{field}` is {_shown(declared[field])}; it must be {FIELDS[field]}")
+    # Read exactly (a Decimal), so 1.00000000000000001 is above 1 and is not rounded into it; and the
+    # constant the harness holds, a double, must still be above 0.
     least = declared["leastCompleted"]
-    if isinstance(least, bool) or not isinstance(least, (int, float)) or not 0 < least <= 1:
-        raise _refuse(f"`leastCompleted` is {least!r}; it must be {FIELDS['leastCompleted']}")
+    if (isinstance(least, bool) or not isinstance(least, (int, decimal.Decimal)) or not 0 < least <= 1
+            or not 0 < float(least) <= 1):
+        raise _refuse(f"`leastCompleted` is {_shown(least)}; it must be {FIELDS['leastCompleted']}")
     allowlist = declared["allowlist"]
     if not isinstance(allowlist, dict):
         raise _refuse(f"`allowlist` is {allowlist!r}; it must be {FIELDS['allowlist']}")
     for entry_id, documented in allowlist.items():
-        if not isinstance(documented, str) or not documented.strip():
-            raise _refuse(f"`allowlist` item {entry_id!r} is {documented!r}; it must say, in a non-empty "
-                          f"string, where the engine documents that reading")
+        if not isinstance(documented, str):
+            raise _refuse(f"`allowlist` item {entry_id!r} is {documented!r}; it must say, in a string, where "
+                          f"the engine documents that reading")
+        why = _placeholder_problem(documented)
+        if why:
+            raise _refuse(f"`allowlist` item {entry_id!r} is below the floor an overlay's mutations are held to, "
+                          f"{why}; it must be a sentence saying where the engine documents that reading")
         if entry_id not in model.by_id:
             raise _refuse(f"`allowlist` item {entry_id!r} is not an entry of this engine's map; an item is an "
                           f"entry id, in the form the registry uses")
@@ -136,13 +179,18 @@ def tests_cs(model):
 
 
 #: The nested `StructuralDump` class: a reflective walk, written apart so the harness reads as the invariants.
-DUMP = """    // A reflective walk over every instance field, public and private, sorted by name; sequences
-    // item by item; dictionaries and sets by the sorted dump of each key or item. It depends on
-    // no hash code, culture or clock, and a record's own equality, which compares its collections
-    // by reference, is not used.
-    private static class StructuralDump
+DUMP = """    // A reflective walk over every instance field, public and private, sorted by name. A map (a type
+    // that implements IDictionary, IDictionary<,> or IReadOnlyDictionary<,>, and nothing else) and a
+    // set are sorted by the dump of each entry; every other sequence keeps its order, a sequence of
+    // KeyValuePair included. Every scalar carries its runtime type's full name, and its value in a
+    // format that round-trips. It depends on no hash code, culture or clock, and a record's own
+    // equality, which compares its collections by reference, is not used. Not compared: object
+    // identity and aliasing, a collection's comparer, NaN payloads, array lower bounds.
+    internal static class StructuralDump
     {
         private const int DepthLimit = 64;
+
+        private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
         public static string Of(object? value)
         {
@@ -170,6 +218,13 @@ DUMP = """    // A reflective walk over every instance field, public and private
             return $"'{Cut(left)}' then '{Cut(right)}'";
         }
 
+        // The engine's own type: not System and not inside it. An array of an engine type is not one.
+        private static bool Owned(Type type)
+        {
+            var space = type.Namespace ?? "";
+            return !type.IsArray && space != "System" && !space.StartsWith("System.", StringComparison.Ordinal);
+        }
+
         private static void Write(StringBuilder text, object? value, int depth, string path)
         {
             if (depth > DepthLimit)
@@ -181,9 +236,6 @@ DUMP = """    // A reflective walk over every instance field, public and private
             {
                 case null:
                     text.Append("null");
-                    return;
-                case string s:
-                    Quote(text, s);
                     return;
                 case Delegate or Pointer:
                     text.Append("<skipped>");
@@ -202,18 +254,32 @@ DUMP = """    // A reflective walk over every instance field, public and private
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ImmutableArray<>)
                 && (bool)type.GetProperty("IsDefault")!.GetValue(value)!)
             {
-                text.Append("default");
+                text.Append("default<").Append(type.GetGenericArguments()[0].FullName).Append('>');
                 return;
             }
 
-            if (value is IEnumerable sequence)
+            if (value is IEnumerable sequence && !Owned(type))
             {
                 WriteSequence(text, sequence, type, depth, path);
                 return;
             }
 
+            // The engine's own enumerable is its fields and its items; the fields of a System base
+            // class it derives from are that class's bookkeeping, which its items already stand for.
             text.Append(type.FullName).Append('{');
-            for (var t = type; t is not null && t != typeof(object) && t != typeof(ValueType); t = t.BaseType)
+            WriteFields(text, value, type, depth, path, value is IEnumerable);
+            if (value is IEnumerable items)
+            {
+                text.Append("items=");
+                WriteSequence(text, items, type, depth, path);
+            }
+
+            text.Append('}');
+        }
+
+        private static void WriteFields(StringBuilder text, object value, Type type, int depth, string path, bool ownedOnly)
+        {
+            for (var t = type; t is not null && t != typeof(object) && t != typeof(ValueType) && (!ownedOnly || Owned(t)); t = t.BaseType)
             {
                 var fields = t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
                     .Where(f => !f.FieldType.IsPointer && !typeof(Delegate).IsAssignableFrom(f.FieldType))
@@ -225,96 +291,118 @@ DUMP = """    // A reflective walk over every instance field, public and private
                     text.Append(';');
                 }
             }
-
-            text.Append('}');
         }
 
         private static void WriteSequence(StringBuilder text, IEnumerable sequence, Type type, int depth, string path)
         {
             var interfaces = type.GetInterfaces();
-            var pairs = sequence is IDictionary
-                || interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)
-                    && i.GetGenericArguments()[0].IsGenericType
-                    && i.GetGenericArguments()[0].GetGenericTypeDefinition() == typeof(KeyValuePair<,>));
+            var map = sequence is IDictionary
+                || interfaces.Any(i => i.IsGenericType && (i.GetGenericTypeDefinition() == typeof(IDictionary<,>)
+                    || i.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>)));
             var set = interfaces.Any(i => i.IsGenericType && (i.GetGenericTypeDefinition() == typeof(ISet<>)
                 || i.GetGenericTypeDefinition() == typeof(IReadOnlySet<>)
                 || i.GetGenericTypeDefinition() == typeof(System.Collections.Immutable.IImmutableSet<>)));
             var items = new List<string>();
-            var index = 0;
-            foreach (var item in sequence)
+            if (map)
             {
-                var one = new StringBuilder();
-                if (pairs)
+                foreach (var (key, entry) in Entries(sequence))
                 {
-                    var (key, entry) = item is DictionaryEntry de
-                        ? (de.Key, de.Value)
-                        : (item!.GetType().GetProperty("Key")!.GetValue(item), item.GetType().GetProperty("Value")!.GetValue(item));
+                    var one = new StringBuilder();
                     Write(one, key, depth + 1, path + "[key]");
                     one.Append("=>");
-                    Write(one, entry, depth + 1, path + "[" + one + "]");
+                    Write(one, entry, depth + 1, path + "[value]");
+                    items.Add(one.ToString());
                 }
-                else
+            }
+            else
+            {
+                var index = 0;
+                foreach (var item in sequence)
                 {
+                    var one = new StringBuilder();
                     Write(one, item, depth + 1, path + "[" + index + "]");
+                    items.Add(one.ToString());
+                    index++;
                 }
-
-                items.Add(one.ToString());
-                index++;
             }
 
-            if (pairs || set)
+            if (map || set)
             {
                 items.Sort(StringComparer.Ordinal);
             }
 
-            text.Append(pairs ? "map" : set ? "set" : "seq").Append(type.IsArray ? "[" + string.Join(",", Enumerable.Range(0, type.GetArrayRank()).Select(d => ((Array)sequence).GetLength(d))) + "]" : "")
+            text.Append(map ? "map" : set ? "set" : "seq").Append(type.IsArray ? "[" + string.Join(",", Enumerable.Range(0, type.GetArrayRank()).Select(d => ((Array)sequence).GetLength(d))) + "]" : "")
                 .Append('(').Append(items.Count).Append("){").Append(string.Join(", ", items)).Append('}');
+        }
+
+        private static IEnumerable<(object? Key, object? Value)> Entries(IEnumerable sequence)
+        {
+            if (sequence is IDictionary dictionary)
+            {
+                var entries = dictionary.GetEnumerator();
+                while (entries.MoveNext())
+                {
+                    yield return (entries.Key, entries.Value);
+                }
+
+                yield break;
+            }
+
+            foreach (var item in sequence)
+            {
+                var itemType = item?.GetType();
+                if (itemType is { IsGenericType: true } && itemType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
+                {
+                    yield return (itemType.GetProperty("Key")!.GetValue(item), itemType.GetProperty("Value")!.GetValue(item));
+                }
+                else
+                {
+                    throw new InvalidOperationException($"a map enumerates {itemType?.FullName ?? "null"}, which is not a key/value pair");
+                }
+            }
         }
 
         private static bool Scalar(StringBuilder text, object value, Type type)
         {
-            switch (value)
+            // An exact format where the type has one; the fallback is only for a type that has none:
+            // the integers, decimal, Guid, Half, BigInteger and the rest of System and System.Numerics,
+            // whose default format under the invariant culture is exact.
+            var shown = value switch
             {
-                case Enum:
-                    text.Append(type.Name).Append('.').Append(value.ToString());
-                    return true;
-                case float or double:
-                    text.Append(((IFormattable)value).ToString("R", CultureInfo.InvariantCulture));
-                    return true;
-                case DateTime d:
-                    text.Append(d.ToString("O", CultureInfo.InvariantCulture));
-                    return true;
-                case DateTimeOffset o:
-                    text.Append(o.ToString("O", CultureInfo.InvariantCulture));
-                    return true;
-                case TimeSpan s:
-                    text.Append(s.ToString("c", CultureInfo.InvariantCulture));
-                    return true;
-                case bool b:
-                    text.Append(b ? "true" : "false");
-                    return true;
-                case char c:
-                    text.Append('\\'').Append(c).Append('\\'');
-                    return true;
+                string s => Quoted(s),
+                char c => Quoted(c.ToString()),
+                bool b => b ? "true" : "false",
+                Enum => value.ToString(),
+                float or double => ((IFormattable)value).ToString("R", Inv),
+                DateTime d => d.ToString("O", Inv),
+                DateTimeOffset o => o.ToString("O", Inv),
+                DateOnly o => o.ToString("O", Inv),
+                TimeOnly o => o.ToString("O", Inv),
+                TimeSpan s => s.ToString("c", Inv),
+                _ => null,
+            };
+            if (shown is null && (type.IsPrimitive || (value is IFormattable && type.Namespace is "System" or "System.Numerics" && value is not IEnumerable)))
+            {
+                shown = value is IFormattable formattable ? formattable.ToString(null, Inv) : value.ToString();
             }
 
-            if (type.IsPrimitive || (value is IFormattable && type.Namespace is "System" or "System.Numerics" && value is not IEnumerable))
+            if (shown is null)
             {
-                text.Append(value is IFormattable formattable ? formattable.ToString(null, CultureInfo.InvariantCulture) : value.ToString());
-                return true;
+                return false;
             }
 
-            return false;
+            text.Append(type.FullName).Append(':').Append(shown);
+            return true;
         }
 
-        private static void Quote(StringBuilder text, string value)
+        private static string Quoted(string value)
         {
-            text.Append('"');
+            var text = new StringBuilder("\\"");
             foreach (var c in value)
             {
                 if (c is '\\\\' or '"' || c < ' ')
                 {
-                    text.Append("\\\\u").Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));
+                    text.Append("\\\\u").Append(((int)c).ToString("x4", Inv));
                 }
                 else
                 {
@@ -322,7 +410,7 @@ DUMP = """    // A reflective walk over every instance field, public and private
                 }
             }
 
-            text.Append('"');
+            return text.Append('"').ToString();
         }
     }
 """

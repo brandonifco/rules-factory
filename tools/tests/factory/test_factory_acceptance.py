@@ -318,17 +318,76 @@ class TestTheDeclarationIsValidated(Case):
 
     def test_an_allowlist_id_that_is_not_an_entry_of_the_map_is_refused(self):
         self.refused("`allowlist` item 'no-such-rule' is not an entry of this engine's map",
-                     declaration=dict(DECLARATION, allowlist={"no-such-rule": "docs/x.md"}))
+                     declaration=dict(DECLARATION, allowlist={"no-such-rule": "docs/x.md, the reading of a rule"}))
 
     def test_the_id_form_is_the_one_the_registry_uses_which_for_a_composed_engine_is_qualified(self):
         model = types.SimpleNamespace(by_id={"Srd52Combat.round-down": {}, "Srd52Rules.round-down": {}})
         root = os.path.join(self.tmp, "composed")
-        write_declaration(root, dict(DECLARATION, allowlist={"Srd52Combat.round-down": "docs/x.md"}))
+        write_declaration(root, dict(DECLARATION, allowlist={"Srd52Combat.round-down": "docs/x.md, the reading of a rule"}))
         self.assertEqual(list(acceptance.load(root, model)["allowlist"]), ["Srd52Combat.round-down"])
-        write_declaration(root, dict(DECLARATION, allowlist={"round-down": "docs/x.md"}))
+        write_declaration(root, dict(DECLARATION, allowlist={"round-down": "docs/x.md, the reading of a rule"}))
         with self.assertRaises(acceptance.semantics.GenerationError) as raised:
             acceptance.load(root, model)
         self.assertIn("'round-down' is not an entry", str(raised.exception))
+
+    def load(self, declaration=None, raw=None):
+        root = tempfile.mkdtemp(dir=self.tmp)
+        write_declaration(root, declaration, raw)
+        return acceptance.load(root, types.SimpleNamespace(by_id={"rubber-scoring": {}}))
+
+    def refused_by_load(self, *needles, declaration=None, raw=None):
+        with self.assertRaises(acceptance.semantics.GenerationError) as raised:
+            self.load(declaration, raw)
+        for needle in needles:
+            self.assertIn(needle, str(raised.exception))
+
+    def test_an_allowlist_sentence_is_held_to_the_floor_an_overlays_mutations_are(self):
+        # Finding 8 of the review of 354edd7: "TODO" said where a reading is documented.
+        for bad in ("TODO", "pending", "n/a", "docs", "see docs", "docs docs docs"):
+            with self.subTest(value=bad):
+                self.refused_by_load("`allowlist` item 'rubber-scoring'", "below the floor an overlay's mutations",
+                                     declaration=dict(DECLARATION, allowlist={"rubber-scoring": bad}))
+        self.assertEqual(self.load()["allowlist"], DECLARATION["allowlist"])
+
+    def test_the_floor_is_the_overlays_own_function_and_not_a_copy_of_it(self):
+        recipe = os.path.join(FACTORY, "recipe", "map-overlay.py")
+        spec = importlib.util.spec_from_file_location("map_overlay_the_floor", recipe)
+        overlay = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(overlay)
+        with open(acceptance.__file__, encoding="utf-8") as handle:
+            self.assertNotIn("PLACEHOLDERS", handle.read(), "a second copy of the set")
+        for text in ("TODO", "docs/rubber.md, the reading of a rubber", "docs docs docs", "a b", "", "wip wip"):
+            self.assertEqual(acceptance._placeholder_problem(text), overlay.placeholder_problem(text), text)
+
+    def test_a_count_above_what_a_csharp_int_holds_is_refused_and_the_largest_is_admitted(self):
+        for field in ("seedsPerConfiguration", "stepCap"):
+            with self.subTest(field=field):
+                self.refused_by_load(f"`{field}` is 2147483648", "1 to 2147483647",
+                                     declaration=dict(DECLARATION, **{field: 2147483648}))
+                self.assertEqual(self.load(dict(DECLARATION, **{field: 2147483647}))[field], 2147483647)
+
+    def test_a_completion_fraction_is_read_exactly(self):
+        # A float would round this into 1, and the harness would hold a number the declaration is not.
+        self.refused_by_load("`leastCompleted` is 1.00000000000000001",
+                             raw=json.dumps(DECLARATION).replace("0.5", "1.00000000000000001"))
+        # And one a double cannot tell from 0 holds nothing at all.
+        self.refused_by_load("`leastCompleted` is 1E-400", raw=json.dumps(DECLARATION).replace("0.5", "1E-400"))
+        self.assertEqual(self.load(raw=json.dumps(DECLARATION).replace("0.5", "0.25"))["leastCompleted"], 0.25)
+        self.assertEqual(self.load(dict(DECLARATION, leastCompleted=1))["leastCompleted"], 1.0)
+
+    def test_a_symlinked_declaration_is_refused(self):
+        root = tempfile.mkdtemp(dir=self.tmp)
+        elsewhere = tempfile.mkdtemp(dir=self.tmp)
+        write_declaration(elsewhere)
+        os.symlink(os.path.join(elsewhere, "acceptance.json"), os.path.join(root, "acceptance.json"))
+        with self.assertRaises(acceptance.semantics.GenerationError) as raised:
+            acceptance.load(root, types.SimpleNamespace(by_id={"rubber-scoring": {}}))
+        self.assertIn("acceptance.json: is a symbolic link", str(raised.exception))
+        dangling = tempfile.mkdtemp(dir=self.tmp)
+        os.symlink(os.path.join(dangling, "nowhere.json"), os.path.join(dangling, "acceptance.json"))
+        with self.assertRaises(acceptance.semantics.GenerationError) as raised:
+            acceptance.load(dangling, types.SimpleNamespace(by_id={}))
+        self.assertIn("is a symbolic link", str(raised.exception))
 
     def test_no_file_is_no_declaration(self):
         self.assertIsNone(acceptance.load(self.tmp, types.SimpleNamespace(by_id={})))
@@ -359,8 +418,19 @@ VIOLATIONS = {
     "decline-outside": ("Runs_stop_early_only_on_the_allowlist", "which is not an allowlisted reading"),
     "decline-reason": ("Runs_stop_early_only_on_the_allowlist", "stopped on OutsideCurrentScope"),
     "slow": ("Enough_runs_complete", "beta: 0 of 20 seeds reached a natural end, below the declared 0.5"),
-    "drift": ("Replay_is_deterministic_compared_structurally", "the final states differ structurally"),
+    "drift": ("Replay_is_deterministic_compared_structurally", "the states first differ structurally at step 0"),
     "history-drift": ("Replay_is_deterministic_compared_structurally", "the histories first differ at step 0"),
+    # Review of 354edd7, finding 1: a call that changes the state it was given.
+    "mutate": ("Every_offered_action_is_accepted", "Apply of offered action 0 changed the state it was given"),
+    "mutate-legal": ("Every_offered_action_is_accepted", "LegalActions changed the state it was given"),
+    # Finding 2: a Start that hands out one object, whose private stamp every Start moves on.
+    "singleton": ("Replay_is_deterministic_compared_structurally", "the states first differ structurally at step 0"),
+    # Findings 3 and 6: the whole run is compared, the step it ends on and how it ended included.
+    "decline-history": ("Replay_is_deterministic_compared_structurally", "the histories first differ at step"),
+    "ending-drift": ("Replay_is_deterministic_compared_structurally", "the runs ended differently: 'stopped: RequiresInterpretation"),
+    "transient": ("Replay_is_deterministic_compared_structurally", "the states first differ structurally at step"),
+    # Finding 5: unequal actions with one line.
+    "render-constant": ("Replay_is_deterministic_compared_structurally", "are not equal and both render as '+'"),
 }
 
 
@@ -404,9 +474,13 @@ class TestHarnessRunsInDotnet(Case):
                                    "--no-build", "--filter", f"FullyQualifiedName~{filter_}",
                                    "--logger", f"trx;LogFileName={results}", variant=variant)
         outcomes = {}
+        self.written = {}  # what each test wrote to its ITestOutputHelper
         if os.path.isfile(results):
-            for result in ET.parse(results).getroot().iter("{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}UnitTestResult"):
-                outcomes[result.get("testName").rsplit(".", 1)[-1]] = result.get("outcome")
+            ns = "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}"
+            for result in ET.parse(results).getroot().iter(ns + "UnitTestResult"):
+                name = result.get("testName").rsplit(".", 1)[-1]
+                outcomes[name] = result.get("outcome")
+                self.written[name] = "".join(node.text or "" for node in result.iter(ns + "StdOut"))
         return outcomes, output, code
 
     def test_the_harness_passes_on_a_correct_adapter_and_runs_every_fact(self):
@@ -435,11 +509,31 @@ class TestHarnessRunsInDotnet(Case):
         outcomes, _, _ = self.run_variant("drift")
         self.assertEqual(outcomes["Replay_is_deterministic_compared_structurally"], "Failed")
 
+    def test_the_dump_tells_apart_what_it_must_and_equates_what_it_must(self):
+        # Review of 354edd7, finding 4: paired values, run through the real dump, in four facts.
+        outcomes, output, code = self.run_variant("correct", filter_="FixtureDump")
+        self.assertEqual(outcomes, {
+            "A_sequence_of_pairs_keeps_its_order_and_only_a_map_is_sorted": "Passed",
+            "A_scalar_carries_its_runtime_type": "Passed",
+            "Date_time_and_floating_point_values_are_dumped_so_that_they_round_trip": "Passed",
+            "An_enumerable_of_the_engines_own_is_its_fields_and_its_items": "Passed"}, output[-3000:])
+        self.assertEqual(code, 0)
+
+    def test_an_allowlisted_item_no_run_reached_is_named_in_the_test_output_and_fails_nothing(self):
+        # Finding 7: a stale item is visible, and it is not a failure.
+        outcomes, output, _ = self.run_variant("correct")
+        self.assertEqual(outcomes, {fact: "Passed" for fact in FACTS}, output[-3000:])
+        self.assertIn("rubber-scoring (docs/rubber.md, the reading of a rubber): no run declined at this reading",
+                      self.written["Allowlisted_locators_are_cited_by_one_entry_only"])
+        outcomes, output, _ = self.run_variant("decline-allowed")
+        self.assertEqual(outcomes, {fact: "Passed" for fact in FACTS}, output[-3000:])
+        self.assertEqual(self.written["Allowlisted_locators_are_cited_by_one_entry_only"], "")
+
     def test_an_allowlisted_locator_another_entry_cites_is_refused_by_its_own_fact(self):
         engine = os.path.join(self.tmp, "shared-locator")
         shutil.copytree(self.base, engine, ignore=shutil.ignore_patterns("bin", "obj"))
         # stake-multiplier is a premise of a derived entry, and four other entries cite its passage.
-        write_declaration(engine, dict(DECLARATION, allowlist={"stake-multiplier": "docs/stakes.md"}))
+        write_declaration(engine, dict(DECLARATION, allowlist={"stake-multiplier": "docs/stakes.md, the stake of a game"}))
         produce(self.nupkg, engine)
         code, output = self.dotnet(engine, "build", f"tests/{NAME}.Tests/{NAME}.Tests.csproj", "-f", "net10.0",
                                    "-warnaserror", "-nologo")
@@ -447,7 +541,7 @@ class TestHarnessRunsInDotnet(Case):
         outcomes, output, _ = self.run_variant("correct", engine=engine)
         self.assertEqual({n for n, o in outcomes.items() if o == "Failed"},
                          {"Allowlisted_locators_are_cited_by_one_entry_only"}, output[-3000:])
-        self.assertIn("stake-multiplier (docs/stakes.md): its locator is also cited by", output)
+        self.assertIn("stake-multiplier (docs/stakes.md, the stake of a game): its locator is also cited by", output)
 
     def test_a_declaration_without_an_adapter_does_not_build_and_the_compiler_names_each_member(self):
         engine = os.path.join(self.tmp, "no-adapter")

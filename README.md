@@ -388,6 +388,10 @@ engine        a .NET solution on RulesKernel: managed build policy, the kernel's
               determinism analyzers, engine-owned projects and overlay, generated
               *.g.cs tied to the map, the corpus
 gate          scripts/validate.sh and the CI workflow that runs it
+acceptance    optional: acceptance.json, which the engine owns and declares an action surface
+              in, and the full-play harness (ActionSurfaceAcceptance.g.cs) that produce then
+              generates from it and the engine's own adapter (0078); an engine that declares
+              none gets neither
 backlog       not a file in the engine: GitHub issues, one per entry still to
               build, in dependency order (factory backlog --create), rendered from
               the map and the overlay on demand (factory backlog --render)
