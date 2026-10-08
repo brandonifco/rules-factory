@@ -45,11 +45,15 @@ ADAPTER = "ActionSurface.cs"
 #: The largest count a declaration may hold: the harness declares them as C# `int` constants.
 MAXIMUM = 2147483647
 
+#: The most decimal places `leastCompleted` may have. The harness compares `completed >= LeastCompleted *
+#: played` in `decimal`, which holds 28 digits: 18 places and a count's 10 digits fit, so the product is exact.
+PLACES = 18
+
 FIELDS = {
     "seedsPerConfiguration": f"an integer from 1 to {MAXIMUM}: how many seeds each configuration plays",
     "stepCap": f"an integer from 1 to {MAXIMUM}: the most steps a run may take before it is over",
-    "leastCompleted": "a number above 0 and at most 1: the fraction of a configuration's seeds that must reach "
-                      "a natural end",
+    "leastCompleted": f"a number above 0 and at most 1, to at most {PLACES} decimal places: the fraction of a "
+                      f"configuration's seeds that must reach a natural end",
     "allowlist": "an object mapping an entry id to a sentence saying where the engine documents that reading",
 }
 
@@ -142,12 +146,14 @@ def load(root, model):
     for field in ("seedsPerConfiguration", "stepCap"):
         if not _integer(declared[field]) or not 1 <= declared[field] <= MAXIMUM:
             raise _refuse(f"`{field}` is {_shown(declared[field])}; it must be {FIELDS[field]}")
-    # Read exactly (a Decimal), so 1.00000000000000001 is above 1 and is not rounded into it; and the
-    # constant the harness holds, a double, must still be above 0.
+    # Read exactly (a Decimal), so 1.00000000000000001 is above 1 and is not rounded into it, and held
+    # exactly: the harness holds a C# decimal, so a value it cannot hold in PLACES is refused, not rounded.
     least = declared["leastCompleted"]
-    if (isinstance(least, bool) or not isinstance(least, (int, decimal.Decimal)) or not 0 < least <= 1
-            or not 0 < float(least) <= 1):
+    if isinstance(least, bool) or not isinstance(least, (int, decimal.Decimal)) or not 0 < least <= 1:
         raise _refuse(f"`leastCompleted` is {_shown(least)}; it must be {FIELDS['leastCompleted']}")
+    least = _exact(decimal.Decimal(least))
+    if -least.as_tuple().exponent > PLACES:
+        raise _refuse(f"`leastCompleted` is {_shown(declared['leastCompleted'])}; it must be {FIELDS['leastCompleted']}")
     allowlist = declared["allowlist"]
     if not isinstance(allowlist, dict):
         raise _refuse(f"`allowlist` is {allowlist!r}; it must be {FIELDS['allowlist']}")
@@ -163,11 +169,22 @@ def load(root, model):
             raise _refuse(f"`allowlist` item {entry_id!r} is not an entry of this engine's map; an item is an "
                           f"entry id, in the form the registry uses")
     return {"seedsPerConfiguration": declared["seedsPerConfiguration"], "stepCap": declared["stepCap"],
-            "leastCompleted": float(least), "allowlist": dict(sorted(allowlist.items()))}
+            "leastCompleted": least, "allowlist": dict(sorted(allowlist.items()))}
 
 
-def _double(value):
-    return repr(float(value))
+def _exact(value):
+    """`value` without the trailing zeros of its fraction (no rounding: that is a context's, not a digit's)."""
+    sign, digits, exponent = value.as_tuple()
+    digits = list(digits)
+    while exponent < 0 and len(digits) > 1 and digits[-1] == 0:
+        digits.pop()
+        exponent += 1
+    return decimal.Decimal((sign, tuple(digits), exponent))
+
+
+def _decimal(value):
+    """A C# `decimal` literal for the exact value."""
+    return format(value, "f") + "m"
 
 
 def tests_cs(model):
@@ -177,30 +194,57 @@ def tests_cs(model):
                         for entry_id, documented in declared["allowlist"].items())
     values = {"@HEADER@": model.header, "@NAME@": model.name,
               "@SEEDS@": str(declared["seedsPerConfiguration"]), "@CAP@": str(declared["stepCap"]),
-              "@LEAST@": _double(declared["leastCompleted"]), "@ALLOWLIST@": allowlist}
+              "@LEAST@": _decimal(declared["leastCompleted"]), "@ALLOWLIST@": allowlist}
     # One pass, so nothing a value says is read as a marker.
     return re.sub("|".join(values), lambda match: values[match.group(0)],
                   acceptancecs.HARNESS.replace("@DUMP@", DUMP))
 
 
 #: The nested `StructuralDump` class: a reflective walk, written apart so the harness reads as the invariants.
-DUMP = """    // A reflective walk over every instance field, public and private, sorted by name. A map (a type
-    // that implements IDictionary, IDictionary<,> or IReadOnlyDictionary<,>, and nothing else) and a
-    // set are sorted by the dump of each entry; every other sequence keeps its order, a sequence of
-    // KeyValuePair included. Every scalar carries its runtime type's full name, and its value in a
-    // format that round-trips. It depends on no hash code, culture or clock, and a record's own
-    // equality, which compares its collections by reference, is not used. Not compared: object
-    // identity and aliasing, a collection's comparer, NaN payloads, array lower bounds.
+DUMP = """    // A reflective walk. A value is written one of three ways. A type that is known to be an exact
+    // scalar is written as its type, its length and its text, in a format that round-trips: the
+    // primitives, string, char, decimal (from decimal.GetBits, so the sign of zero and the scale are
+    // kept), enums (the assembly-qualified type and the underlying value), DateTime, DateTimeOffset,
+    // DateOnly, TimeOnly, TimeSpan, Guid, BigInteger, Half, Int128 and UInt128. A type that is known to
+    // be a collection (an array, List, HashSet, SortedSet, Queue, Stack, LinkedList, Dictionary,
+    // SortedDictionary, SortedList and the System.Collections.Immutable collections) is written by its
+    // items alone, its fields being bookkeeping: a map and a set are sorted by the dump of each entry,
+    // and every other sequence keeps its order, a sequence of KeyValuePair included. Every other type,
+    // any System IFormattable (a Uri) and any other enumerable (a LINQ grouping) included, is written
+    // by every instance field, public and private, sorted by name, and by its items too if it is
+    // enumerable; the walk of a type that derives from a known collection stops at it, its items
+    // standing for its fields. Every string-valued element is framed by its kind and its length, so no
+    // text can reproduce a neighbouring field. Delegates and pointers are skipped. A dump depends on no
+    // hash code, culture or clock, and a record's own equality, which compares its collections by
+    // reference, is not used. Not compared: object identity and aliasing, a collection's comparer, NaN
+    // payloads, array lower bounds.
     internal static class StructuralDump
     {
         private const int DepthLimit = 64;
 
         private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
+        private static readonly HashSet<Type> KnownSequences =
+        [
+            typeof(List<>), typeof(Queue<>), typeof(Stack<>), typeof(LinkedList<>),
+            typeof(ImmutableArray<>), typeof(ImmutableList<>), typeof(ImmutableQueue<>), typeof(ImmutableStack<>),
+        ];
+
+        private static readonly HashSet<Type> KnownMaps =
+        [
+            typeof(Dictionary<,>), typeof(SortedDictionary<,>), typeof(SortedList<,>),
+            typeof(ImmutableDictionary<,>), typeof(ImmutableSortedDictionary<,>),
+        ];
+
+        private static readonly HashSet<Type> KnownSets =
+        [
+            typeof(HashSet<>), typeof(SortedSet<>), typeof(ImmutableHashSet<>), typeof(ImmutableSortedSet<>),
+        ];
+
         public static string Of(object? value)
         {
             var text = new StringBuilder();
-            Write(text, value, 0, "$");
+            Write(text, value, 0, "$", []);
             return text.ToString();
         }
 
@@ -223,14 +267,44 @@ DUMP = """    // A reflective walk over every instance field, public and private
             return $"'{Cut(left)}' then '{Cut(right)}'";
         }
 
-        // The engine's own type: not System and not inside it. An array of an engine type is not one.
-        private static bool Owned(Type type)
+        // Kind, then the length of the text in brackets, then the text: the one way anything that is
+        // text is written, so what follows a frame is the next field and never a part of this one.
+        private static void Frame(StringBuilder text, string kind, string value) =>
+            text.Append(kind).Append('[').Append(value.Length).Append("]:").Append(value);
+
+        // The type that identifies a Type, an enum or a missing element: assembly-qualified, and for a
+        // generic parameter (which has no name of its own to qualify) its declaring type's and its position.
+        private static string NameOf(Type type)
         {
-            var space = type.Namespace ?? "";
-            return !type.IsArray && space != "System" && !space.StartsWith("System.", StringComparison.Ordinal);
+            if (type.IsGenericParameter)
+            {
+                var owner = type.DeclaringMethod is { } method
+                    ? method.DeclaringType?.AssemblyQualifiedName + " " + method
+                    : type.DeclaringType?.AssemblyQualifiedName;
+                return owner + " #" + type.GenericParameterPosition;
+            }
+
+            return type.AssemblyQualifiedName ?? type.FullName ?? type.ToString();
         }
 
-        private static void Write(StringBuilder text, object? value, int depth, string path)
+        // "seq", "map" or "set" for a type that is known to be a collection, or null.
+        private static string? Known(Type type)
+        {
+            if (type.IsArray)
+            {
+                return "seq";
+            }
+
+            if (!type.IsGenericType)
+            {
+                return null;
+            }
+
+            var definition = type.GetGenericTypeDefinition();
+            return KnownSequences.Contains(definition) ? "seq" : KnownMaps.Contains(definition) ? "map" : KnownSets.Contains(definition) ? "set" : null;
+        }
+
+        private static void Write(StringBuilder text, object? value, int depth, string path, List<object> above)
         {
             if (depth > DepthLimit)
             {
@@ -246,76 +320,106 @@ DUMP = """    // A reflective walk over every instance field, public and private
                     text.Append("<skipped>");
                     return;
                 case Type t:
-                    text.Append("typeof(").Append(t.FullName).Append(')');
+                    Frame(text, "type", NameOf(t));
                     return;
             }
 
             var type = value.GetType();
-            if (Scalar(text, value, type))
+            if (Exact(text, value, type))
             {
                 return;
             }
 
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ImmutableArray<>)
-                && (bool)type.GetProperty("IsDefault")!.GetValue(value)!)
+            // Reached again while it is still being written: a cycle, written as how far back it is.
+            // Aliasing without a cycle is written in full each time.
+            var back = above.FindIndex(ancestor => ReferenceEquals(ancestor, value));
+            if (back >= 0)
             {
-                text.Append("default<").Append(type.GetGenericArguments()[0].FullName).Append('>');
+                Frame(text, "cycle", back.ToString(Inv));
                 return;
             }
 
-            if (value is IEnumerable sequence && !Owned(type))
+            above.Add(value);
+            try
             {
-                WriteSequence(text, sequence, type, depth, path);
-                return;
+                Structure(text, value, type, depth, path, above);
             }
-
-            // The engine's own enumerable is its fields and its items; the fields of a System base
-            // class it derives from are that class's bookkeeping, which its items already stand for.
-            text.Append(type.FullName).Append('{');
-            WriteFields(text, value, type, depth, path, value is IEnumerable);
-            if (value is IEnumerable items)
+            finally
             {
-                text.Append("items=");
-                WriteSequence(text, items, type, depth, path);
+                above.RemoveAt(above.Count - 1);
             }
-
-            text.Append('}');
         }
 
-        private static void WriteFields(StringBuilder text, object value, Type type, int depth, string path, bool ownedOnly)
+        private static void Structure(StringBuilder text, object value, Type type, int depth, string path, List<object> above)
         {
-            for (var t = type; t is not null && t != typeof(object) && t != typeof(ValueType) && (!ownedOnly || Owned(t)); t = t.BaseType)
+            var known = Known(type);
+            if (known is not null)
+            {
+                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ImmutableArray<>)
+                    && (bool)type.GetProperty("IsDefault")!.GetValue(value)!)
+                {
+                    Frame(text, "default", NameOf(type.GetGenericArguments()[0]));
+                    return;
+                }
+
+                WriteItems(text, (IEnumerable)value, known, type, depth, path, above);
+                return;
+            }
+
+            Frame(text, "object", type.FullName ?? type.Name);
+            text.Append('{');
+            for (var t = type; t is not null && t != typeof(object) && t != typeof(ValueType) && Known(t) is null; t = t.BaseType)
             {
                 var fields = t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
                     .Where(f => !f.FieldType.IsPointer && !typeof(Delegate).IsAssignableFrom(f.FieldType))
                     .OrderBy(f => f.Name, StringComparer.Ordinal);
                 foreach (var field in fields)
                 {
-                    text.Append(t == type ? "" : t.Name + ".").Append(field.Name).Append('=');
-                    Write(text, field.GetValue(value), depth + 1, path + "." + field.Name);
+                    Frame(text, "field", (t == type ? "" : t.FullName + ".") + field.Name);
+                    text.Append('=');
+                    Write(text, field.GetValue(value), depth + 1, path + "." + field.Name, above);
                     text.Append(';');
                 }
             }
+
+            if (value is IEnumerable items)
+            {
+                text.Append("items=");
+                WriteItems(text, items, Shape(type, items), type, depth, path, above);
+            }
+
+            text.Append('}');
         }
 
-        private static void WriteSequence(StringBuilder text, IEnumerable sequence, Type type, int depth, string path)
+        // The shape of an enumerable that is not a known collection: a map is a value whose type
+        // implements IDictionary, IDictionary<,> or IReadOnlyDictionary<,>; a set implements ISet<>,
+        // IReadOnlySet<> or IImmutableSet<>; every other sequence keeps its order.
+        private static string Shape(Type type, IEnumerable sequence)
         {
             var interfaces = type.GetInterfaces();
-            var map = sequence is IDictionary
+            if (sequence is IDictionary
                 || interfaces.Any(i => i.IsGenericType && (i.GetGenericTypeDefinition() == typeof(IDictionary<,>)
-                    || i.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>)));
-            var set = interfaces.Any(i => i.IsGenericType && (i.GetGenericTypeDefinition() == typeof(ISet<>)
+                    || i.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>))))
+            {
+                return "map";
+            }
+
+            return interfaces.Any(i => i.IsGenericType && (i.GetGenericTypeDefinition() == typeof(ISet<>)
                 || i.GetGenericTypeDefinition() == typeof(IReadOnlySet<>)
-                || i.GetGenericTypeDefinition() == typeof(System.Collections.Immutable.IImmutableSet<>)));
+                || i.GetGenericTypeDefinition() == typeof(IImmutableSet<>))) ? "set" : "seq";
+        }
+
+        private static void WriteItems(StringBuilder text, IEnumerable sequence, string shape, Type type, int depth, string path, List<object> above)
+        {
             var items = new List<string>();
-            if (map)
+            if (shape == "map")
             {
                 foreach (var (key, entry) in Entries(sequence))
                 {
                     var one = new StringBuilder();
-                    Write(one, key, depth + 1, path + "[key]");
+                    Write(one, key, depth + 1, path + "[key]", above);
                     one.Append("=>");
-                    Write(one, entry, depth + 1, path + "[value]");
+                    Write(one, entry, depth + 1, path + "[value]", above);
                     items.Add(one.ToString());
                 }
             }
@@ -325,18 +429,18 @@ DUMP = """    // A reflective walk over every instance field, public and private
                 foreach (var item in sequence)
                 {
                     var one = new StringBuilder();
-                    Write(one, item, depth + 1, path + "[" + index + "]");
+                    Write(one, item, depth + 1, path + "[" + index + "]", above);
                     items.Add(one.ToString());
                     index++;
                 }
             }
 
-            if (map || set)
+            if (shape != "seq")
             {
                 items.Sort(StringComparer.Ordinal);
             }
 
-            text.Append(map ? "map" : set ? "set" : "seq").Append(type.IsArray ? "[" + string.Join(",", Enumerable.Range(0, type.GetArrayRank()).Select(d => ((Array)sequence).GetLength(d))) + "]" : "")
+            text.Append(shape).Append(type.IsArray ? "[" + string.Join(",", Enumerable.Range(0, type.GetArrayRank()).Select(d => ((Array)sequence).GetLength(d))) + "]" : "")
                 .Append('(').Append(items.Count).Append("){").Append(string.Join(", ", items)).Append('}');
         }
 
@@ -367,55 +471,54 @@ DUMP = """    // A reflective walk over every instance field, public and private
             }
         }
 
-        private static bool Scalar(StringBuilder text, object value, Type type)
+        // The closed list of types written as scalars: nothing else is, however it formats.
+        private static bool Exact(StringBuilder text, object value, Type type)
         {
-            // An exact format where the type has one; the fallback is only for a type that has none:
-            // the integers, decimal, Guid, Half, BigInteger and the rest of System and System.Numerics,
-            // whose default format under the invariant culture is exact.
-            var shown = value switch
+            string shown;
+            switch (value)
             {
-                string s => Quoted(s),
-                char c => Quoted(c.ToString()),
-                bool b => b ? "true" : "false",
-                Enum => value.ToString(),
-                float or double => ((IFormattable)value).ToString("R", Inv),
-                DateTime d => d.ToString("O", Inv),
-                DateTimeOffset o => o.ToString("O", Inv),
-                DateOnly o => o.ToString("O", Inv),
-                TimeOnly o => o.ToString("O", Inv),
-                TimeSpan s => s.ToString("c", Inv),
-                _ => null,
-            };
-            if (shown is null && (type.IsPrimitive || (value is IFormattable && type.Namespace is "System" or "System.Numerics" && value is not IEnumerable)))
-            {
-                shown = value is IFormattable formattable ? formattable.ToString(null, Inv) : value.ToString();
+                case string s:
+                    shown = s;
+                    break;
+                case char c:
+                    shown = c.ToString();
+                    break;
+                case bool b:
+                    shown = b ? "true" : "false";
+                    break;
+                case float or double or Half:
+                    shown = ((IFormattable)value).ToString("R", Inv);
+                    break;
+                case decimal m:
+                    shown = string.Join(",", decimal.GetBits(m).Select(bits => bits.ToString(Inv)));
+                    break;
+                case Enum:
+                    Frame(text, NameOf(type), ((IFormattable)value).ToString("d", Inv));
+                    return true;
+                case DateTime or DateTimeOffset or DateOnly or TimeOnly:
+                    shown = ((IFormattable)value).ToString("O", Inv);
+                    break;
+                case TimeSpan span:
+                    shown = span.ToString("c", Inv);
+                    break;
+                case Guid guid:
+                    shown = guid.ToString("D", Inv);
+                    break;
+                case System.Numerics.BigInteger or Int128 or UInt128:
+                    shown = ((IFormattable)value).ToString(null, Inv);
+                    break;
+                default:
+                    if (!type.IsPrimitive)
+                    {
+                        return false;
+                    }
+
+                    shown = value is IFormattable formattable ? formattable.ToString(null, Inv) : value.ToString()!;
+                    break;
             }
 
-            if (shown is null)
-            {
-                return false;
-            }
-
-            text.Append(type.FullName).Append(':').Append(shown);
+            Frame(text, type.FullName!, shown);
             return true;
-        }
-
-        private static string Quoted(string value)
-        {
-            var text = new StringBuilder("\\"");
-            foreach (var c in value)
-            {
-                if (c is '\\\\' or '"' || c < ' ')
-                {
-                    text.Append("\\\\u").Append(((int)c).ToString("x4", Inv));
-                }
-                else
-                {
-                    text.Append(c);
-                }
-            }
-
-            return text.Append('"').ToString();
         }
     }
 """

@@ -13,6 +13,8 @@ global using ActionSurfaceAction = HoyleBackgammon.Tests.Step;
 
 using System.Collections;
 using System.Collections.Immutable;
+using System.Numerics;
+using RulesKernel.Provenance;
 using RulesKernel.Resolution;
 
 namespace HoyleBackgammon.Tests;
@@ -74,6 +76,33 @@ public sealed class Box
     public object? Value;
 }
 
+/// <summary>Two fields, each of which may hold any value: the field after one is what the one must not reproduce.</summary>
+public sealed class Pair(object? first, object? second)
+{
+    public readonly object? First = first;
+
+    public readonly object? Second = second;
+}
+
+public sealed class Node
+{
+    public string? Label;
+
+    public Node? Next;
+}
+
+public enum Colour
+{
+    Red = 1,
+    Green = 2,
+}
+
+public enum Shade
+{
+    Red = 1,
+    Green = 2,
+}
+
 /// <summary>An engine's own enumerable: a field and items, neither of which the other may stand for.</summary>
 public sealed class Labelled(string label, params int[] items) : IEnumerable<int>
 {
@@ -113,7 +142,6 @@ public sealed class FixtureDump
         var other = new Dictionary<string, int> { ["b"] = 2, ["a"] = 1 };
         Same(one, other, "a dictionary does not depend on the order it was filled in");
         Same(one, ImmutableDictionary.CreateRange(other), "a dictionary and an immutable one");
-        Same(one, new Hashtable { ["b"] = 2, ["a"] = 1 }, "an IDictionary that is not generic");
         Differ(one, new Dictionary<string, int> { ["a"] = 1, ["b"] = 3 }, "a dictionary with another value");
     }
 
@@ -159,6 +187,115 @@ public sealed class FixtureDump
         Same(small, roomy, "a list's capacity is its bookkeeping, not its value");
         Differ(small, new Hand("y") { 1, 2 }, "a derived list's own field");
         Differ(small, new Hand("x") { 1, 3 }, "a derived list's items");
+    }
+
+    [Xunit.Fact]
+    public void A_system_enumerable_that_is_not_a_known_collection_is_walked_by_its_fields_and_its_items()
+    {
+        // Second review of 44614be, findings 2 and 3: a System enumerable, and a System IFormattable.
+        int[] items = [1, 2, 3];
+        var alice = items.GroupBy(_ => "alice").First();
+        var bob = items.GroupBy(_ => "bob").First();
+        Xunit.Assert.True(alice.SequenceEqual(bob), "the groupings hold the same items");
+        Differ(alice, bob, "two groupings with different keys over the same items");
+        Same(alice, items.GroupBy(_ => "alice").First(), "two groupings with one key");
+    }
+
+    [Xunit.Fact]
+    public void A_system_formattable_that_is_not_an_exact_scalar_is_walked_by_its_fields()
+    {
+        var upper = new Uri("HTTP://EXAMPLE.COM/a");
+        var lower = new Uri("http://example.com/a");
+        Xunit.Assert.Equal(upper.ToString(), lower.ToString());
+        Differ(upper, lower, "two URIs that differ only in the string they were made from");
+        var again = new Uri("http://example.com/a");
+        Xunit.Assert.Equal(lower.ToString(), again.ToString()); // both have computed what they compute lazily
+        Same(lower, again, "two URIs made from one string");
+        Differ(new Pair(upper, "x"), new Pair(lower, "x"), "the same, as a field of a state");
+    }
+
+    [Xunit.Fact]
+    public void A_cycle_is_written_as_a_reference_back_and_is_not_walked_forever()
+    {
+        static Node Ring(string label)
+        {
+            var (first, second) = (new Node { Label = label }, new Node { Label = label + "2" });
+            (first.Next, second.Next) = (second, first);
+            return first;
+        }
+
+        Same(Ring("x"), Ring("x"), "two equal rings");
+        Differ(Ring("x"), Ring("y"), "two rings with different labels");
+        var loop = new Node { Label = "x" };
+        loop.Next = loop;
+        var pair = new Node { Label = "x", Next = new Node { Label = "x" } };
+        Differ(loop, pair, "a node that is its own next, and one that is not");
+    }
+
+    [Xunit.Fact]
+    public void A_decimal_keeps_its_scale_and_the_sign_of_zero()
+    {
+        var negative = new decimal(0, 0, 0, true, 0);
+        Xunit.Assert.Equal(0m, negative);
+        Differ(0m, negative, "zero and negative zero");
+        Differ(1.0m, 1.00m, "one at two scales");
+        Differ(new Box { Value = 0m }, new Box { Value = negative }, "the same, as a field");
+        Same(1.50m, 1.50m, "equal decimals");
+    }
+
+    [Xunit.Fact]
+    public void Generic_parameters_are_told_apart_and_so_are_equal_names_in_two_enums()
+    {
+        var list = typeof(List<>).GetGenericArguments()[0];
+        var key = typeof(Dictionary<,>).GetGenericArguments()[0];
+        var value = typeof(Dictionary<,>).GetGenericArguments()[1];
+        Xunit.Assert.Equal(list.GenericParameterPosition, key.GenericParameterPosition);
+        Differ(list, key, "T of List<> and TKey of Dictionary<,>");
+        Differ(key, value, "TKey and TValue of Dictionary<,>");
+        Same(list, typeof(List<>).GetGenericArguments()[0], "the same parameter twice");
+        Differ(typeof(List<int>), typeof(List<long>), "two constructed types");
+        Differ(typeof(int), typeof(long), "two plain types");
+        Differ(Colour.Red, Shade.Red, "enums of two types with one value");
+        Differ(Colour.Red, Colour.Green, "enums of one type with two values");
+        Differ(new Box { Value = Colour.Red }, new Box { Value = 1 }, "an enum and its underlying value");
+    }
+
+    [Xunit.Fact]
+    public void Every_scalar_and_string_is_framed_by_its_length_and_cannot_reproduce_a_neighbour()
+    {
+        // The text of one string is the prefix of the next entry's: only the length tells them apart.
+        var left = new Dictionary<string, string> { ["a"] = "b=>System.String:c" };
+        var right = new Dictionary<string, string> { ["a=>System.String:b"] = "c" };
+        Differ(left, right, "a key and a value that split one text two ways");
+        Differ(new Pair("ab", "c"), new Pair("a", "bc"), "two fields that split one text two ways");
+        Differ(new Pair("x", "y"), new Pair("x;Second=System.String:y", ""), "a field that carries the next one");
+        Xunit.Assert.Contains("System.String[5]:alice", Dump("alice"));
+        Xunit.Assert.Contains("System.Int32[2]:42", Dump(42));
+        Differ(new[] { "a", "b" }, new[] { "a, System.String[1]:b" }, "two elements, one element");
+        Differ(new Pair(new Uri("http://h/a"), "b"), new Pair(new Uri("http://h/a"), "b "), "a trailing space");
+        Differ(BigInteger.Parse("12"), BigInteger.Parse("123"), "big integers");
+        Same(BigInteger.Parse("12"), BigInteger.Parse("12"), "equal big integers");
+    }
+
+    [Xunit.Fact]
+    public void An_ending_is_its_fields_and_two_locators_that_split_alike_end_differently()
+    {
+        // Second review of 44614be, finding 4: a display string cannot tell where the source ends.
+        static UnresolvedResult Declined(string source, string citation, string attempted = "the fixture leaves it open",
+            UnresolvedReason reason = UnresolvedReason.RequiresInterpretation) =>
+            new(reason, attempted, new SourceLocator(source, citation));
+        var one = ActionSurfaceAcceptance.Ending.Stopped(Declined("core", "1.2"));
+        var split = ActionSurfaceAcceptance.Ending.Stopped(Declined("core-1", "2"));
+        Differ(one, split, "two locators that split source and citation differently");
+        Same(one, ActionSurfaceAcceptance.Ending.Stopped(Declined("core", "1.2")), "two equal endings");
+        Differ(one, ActionSurfaceAcceptance.Ending.Completed(), "a decline and a natural end");
+        Differ(one, ActionSurfaceAcceptance.Ending.Stopped(Declined("core", "1.2", reason: UnresolvedReason.OutsideCurrentScope)), "two reasons");
+        Differ(one, ActionSurfaceAcceptance.Ending.Stopped(Declined("core", "1.2", "another operation")), "two attempted operations");
+        // A locator prints as 'a / b / c' for both of these.
+        var (left, right) = (Declined("a", "b / c"), Declined("a / b", "c"));
+        Xunit.Assert.Equal(left.Locator.ToString(), right.Locator.ToString());
+        Differ(ActionSurfaceAcceptance.Ending.Stopped(left), ActionSurfaceAcceptance.Ending.Stopped(right),
+            "locators that print alike and split source and citation differently");
     }
 }
 
@@ -229,8 +366,17 @@ public sealed partial class ActionSurfaceAcceptance
             Variant == "drift" ? Interlocked.Increment(ref stamps) : 0);
     }
 
-    internal static partial bool IsOver(Counter state) =>
-        state.Value >= 10 || (Variant == "ending-drift" && Zero(state) && Replaying(state));
+    internal static partial bool IsOver(Counter state)
+    {
+        // A lazily finalizing IsOver: it caches an incrementing stamp on a terminal state it is asked
+        // about, after the harness has dumped that state.
+        if (Variant == "isover-cache" && state.Configuration == "alpha" && state.Seed == 0 && state.Value >= 10)
+        {
+            state.Poke();
+        }
+
+        return state.Value >= 10 || (Variant == "ending-drift" && Zero(state) && Replaying(state));
+    }
 
     internal static partial Resolution<ImmutableArray<Step>> LegalActions(Counter state)
     {
@@ -269,7 +415,9 @@ public sealed partial class ActionSurfaceAcceptance
             return Open<ImmutableArray<Step>>("rubber-scoring", UnresolvedReason.OutsideCurrentScope);
         }
 
-        if ((Variant == "decline-allowed" && Affected(state)) || (Variant == "slow" && state.Configuration == "beta"))
+        // Half of alpha's two seeds decline on the allowlisted reading, so only the other half can complete.
+        if ((Variant == "half" && state.Configuration == "alpha" && state.Seed == 1)
+            || (Variant == "decline-allowed" && Affected(state)) || (Variant == "slow" && state.Configuration == "beta"))
         {
             return Open<ImmutableArray<Step>>("rubber-scoring");
         }

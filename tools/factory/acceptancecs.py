@@ -37,8 +37,8 @@ public sealed partial class ActionSurfaceAcceptance
     /// <summary>The most steps a run may take before it must be over (<c>acceptance.json</c>).</summary>
     internal const int StepCap = @CAP@;
 
-    /// <summary>The fraction of a configuration's seeds that must reach a natural end (<c>acceptance.json</c>).</summary>
-    internal const double LeastCompleted = @LEAST@;
+    /// <summary>The fraction of a configuration's seeds that must reach a natural end (<c>acceptance.json</c>), exact.</summary>
+    internal const decimal LeastCompleted = @LEAST@;
 
     /// <summary>The readings a run may end on: an entry id, and where the engine documents the reading.</summary>
     private static readonly (string EntryId, string Documented)[] Allowlist =
@@ -56,7 +56,7 @@ public sealed partial class ActionSurfaceAcceptance
     internal static partial ActionSurfaceState Start(string configuration, int seed);
 
     /// <summary>Whether a state is a natural end.</summary>
-    /// <param name="state">A state.</param>
+    /// <param name="state">A state. The call must not change it: no caching, no finalizing.</param>
     /// <returns>True when nothing more is to be done in it.</returns>
     internal static partial bool IsOver(ActionSurfaceState state);
 
@@ -126,7 +126,8 @@ public sealed partial class ActionSurfaceAcceptance
             }
 
             var completed = played.Count(run => run.Completed);
-            if ((double)completed / played.Count < LeastCompleted)
+            // In decimal, which holds the product exactly (the declaration has at most 18 places).
+            if (!(completed >= LeastCompleted * played.Count))
             {
                 problems.Add($"{configuration}: {completed} of {played.Count} seeds reached a natural end, below the declared {LeastCompleted.ToString(CultureInfo.InvariantCulture)}");
             }
@@ -173,9 +174,11 @@ public sealed partial class ActionSurfaceAcceptance
                 problems.Add($"{name}: the runs dumped {first.Dumps.Count} and {again.Dumps.Count} states");
             }
 
-            if (first.Ending != again.Ending)
+            // The fields of each ending, framed as every state is: never the display string.
+            var (ended, endedAgain) = (StructuralDump.Of(first.Ending), StructuralDump.Of(again.Ending));
+            if (ended != endedAgain)
             {
-                problems.Add($"{name}: the runs ended differently: '{first.Ending}' then '{again.Ending}'");
+                problems.Add($"{name}: the runs ended differently: '{first.Ending}' then '{again.Ending}' ({StructuralDump.Around(ended, endedAgain)})");
             }
         }
 
@@ -269,7 +272,7 @@ public sealed partial class ActionSurfaceAcceptance
         catch (Exception error)
         {
             run.Threw("Start", error);
-            return run.Stop("invariant 2 (Start threw)");
+            return run.Stop(Ending.Invariant(2, "Start threw"));
         }
 
         string? returned = null;
@@ -294,19 +297,21 @@ public sealed partial class ActionSurfaceAcceptance
             catch (Exception error)
             {
                 run.Threw($"IsOver at step {step}", error);
-                return run.Stop("invariant 2 (IsOver threw)");
+                return run.Stop(Ending.Invariant(2, "IsOver threw"));
             }
 
+            // The run's last dump is the one above, so a lazily finalizing IsOver is compared here.
+            run.After(state, step, "IsOver");
             if (over)
             {
                 run.Completed = true;
-                return run.Stop("completed");
+                return run.Stop(Ending.Completed());
             }
 
             if (step >= StepCap)
             {
                 run.Find(4, $"{run.Name}: not over after {StepCap} steps");
-                return run.Stop("invariant 4 (not over within the step cap)");
+                return run.Stop(Ending.Invariant(4, "not over within the step cap"));
             }
 
             Resolution<ImmutableArray<ActionSurfaceAction>> legal;
@@ -317,7 +322,7 @@ public sealed partial class ActionSurfaceAcceptance
             catch (Exception error)
             {
                 run.Threw($"LegalActions at step {step}", error);
-                return run.Stop("invariant 2 (LegalActions threw)");
+                return run.Stop(Ending.Invariant(2, "LegalActions threw"));
             }
 
             run.After(state, step, "LegalActions");
@@ -328,17 +333,17 @@ public sealed partial class ActionSurfaceAcceptance
             {
                 if (run.Allowed(declined))
                 {
-                    return run.Stop($"stopped: {Name(declined)}");
+                    return run.Stop(Ending.Stopped(declined));
                 }
 
                 run.Find(5, $"{run.Name} step {step}: stopped on {Name(declined)}, which is not an allowlisted reading");
-                return run.Stop($"invariant 5 ({Name(declined)})");
+                return run.Stop(Ending.Invariant(5, declined));
             }
 
             if (offered.IsDefaultOrEmpty)
             {
                 run.Find(3, $"{run.Name} step {step}: the state is not over, offers no action and gives no reason");
-                return run.Stop("invariant 3 (offers nothing and says nothing)");
+                return run.Stop(Ending.Invariant(3, "offers nothing and says nothing"));
             }
 
             var lines = run.Lines(step, offered);
@@ -358,7 +363,7 @@ public sealed partial class ActionSurfaceAcceptance
                 catch (Exception error)
                 {
                     run.Threw($"Apply of offered action {i} at step {step}", error);
-                    return run.Stop("invariant 2 (Apply threw)");
+                    return run.Stop(Ending.Invariant(2, "Apply threw"));
                 }
 
                 if (i == chosen)
@@ -380,7 +385,7 @@ public sealed partial class ActionSurfaceAcceptance
             var stopped = advance!.Match<UnresolvedResult?>(_ => null, unresolved => unresolved);
             if (stopped is not null)
             {
-                return run.Stop(run.Allowed(stopped) ? $"stopped: {Name(stopped)}" : $"invariant 1 ({Name(stopped)})");
+                return run.Stop(run.Allowed(stopped) ? Ending.Stopped(stopped) : Ending.Invariant(1, stopped));
             }
 
             state = advance.Match(value => value, _ => throw new InvalidOperationException("unreachable"));
@@ -390,6 +395,36 @@ public sealed partial class ActionSurfaceAcceptance
 
     private static string Name(UnresolvedResult result) =>
         $"{result.Reason} at {result.Locator} ({result.Attempted})";
+
+    /// <summary>How a run ended, as fields: replays are compared by their dump, never by a display string.</summary>
+    internal sealed class Ending
+    {
+        private Ending(string kind, string? reason = null, string? sourceId = null, string? citation = null, string? attempted = null) =>
+            (Kind, Reason, SourceId, Citation, Attempted) = (kind, reason, sourceId, citation, attempted);
+
+        public string Kind { get; }
+
+        public string? Reason { get; }
+
+        public string? SourceId { get; }
+
+        public string? Citation { get; }
+
+        public string? Attempted { get; }
+
+        public static Ending Completed() => new("completed");
+
+        public static Ending Stopped(UnresolvedResult result) => Of("stopped", result);
+
+        public static Ending Invariant(int invariant, string what) => new($"invariant {invariant} ({what})");
+
+        public static Ending Invariant(int invariant, UnresolvedResult result) => Of($"invariant {invariant}", result);
+
+        private static Ending Of(string kind, UnresolvedResult result) =>
+            new(kind, result.Reason.ToString(), result.Locator.SourceId, result.Locator.Citation, result.Attempted);
+
+        public override string ToString() => Reason is null ? Kind : $"{Kind}: {Reason} at {SourceId} {Citation} ({Attempted})";
+    }
 
     private static string Where(Exception error)
     {
@@ -424,7 +459,7 @@ public sealed partial class ActionSurfaceAcceptance
         public bool Completed { get; set; }
 
         /// <summary>How the run ended: completed; stopped on an allowlisted decline; or the invariant a finding stopped it under.</summary>
-        public string Ending { get; private set; } = "";
+        public Ending Ending { get; private set; } = Ending.Invariant(0, "the run did not end");
 
         /// <summary>The rendered line of each action the run chose, the one it ended on included.</summary>
         public List<string> History { get; } = [];
@@ -435,7 +470,7 @@ public sealed partial class ActionSurfaceAcceptance
         /// <summary>The locators of the allowlisted declines the run met.</summary>
         public HashSet<SourceLocator> Reached { get; } = [];
 
-        public Run Stop(string ending)
+        public Run Stop(Ending ending)
         {
             Ending = ending;
             return this;
