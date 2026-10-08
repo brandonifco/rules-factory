@@ -561,6 +561,16 @@ class TestHarnessRunsInDotnet(Case):
         self.assertEqual(outcomes, {fact: "Passed" for fact in FACTS}, output[-3000:])
         self.assertEqual(self.written["Allowlisted_locators_are_cited_by_one_entry_only"], "")
 
+    def test_two_endings_that_print_alike_and_split_a_locator_differently_are_told_apart_by_the_replay(self):
+        # Second review of 44614be, finding 4: the endings are compared as fields, not as a display
+        # string. The decline is off the allowlist in both runs (so invariant 5 is red as well), and
+        # both print 'a b c'.
+        outcomes, output, _ = self.run_variant("locator-split")
+        self.assertEqual({n for n, o in outcomes.items() if o == "Failed"},
+                         {"Runs_stop_early_only_on_the_allowlist", "Replay_is_deterministic_compared_structurally"}, output[-3000:])
+        self.assertIn("the runs ended differently: 'invariant 5: RequiresInterpretation at a b c (the fixture leaves it open)' then "
+                      "'invariant 5: RequiresInterpretation at a b c (the fixture leaves it open)'", output)
+
     def test_the_threshold_is_compared_exactly_and_not_as_a_rounded_double(self):
         # Second review of 44614be, finding 5: 1 of 2 seeds completes, and the declared fraction is
         # a hair above a half. As a double that is 0.5 and the configuration passes.

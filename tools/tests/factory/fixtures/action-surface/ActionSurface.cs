@@ -390,6 +390,14 @@ public sealed partial class ActionSurfaceAcceptance
             return Resolution<ImmutableArray<Step>>.FromValue(Replaying(state) ? [new Step(5), new Step(6)] : [new Step(1), new Step(2)]);
         }
 
+        // Off the allowlist in both runs, and the same display in both: 'a b c'. Only the split of the
+        // locator into its source and its citation differs between the play and the replay.
+        if (Variant == "locator-split" && Zero(state))
+        {
+            return Resolution<ImmutableArray<Step>>.FromUnresolved(new UnresolvedResult(UnresolvedReason.RequiresInterpretation,
+                "the fixture leaves it open", Replaying(state) ? new SourceLocator("a", "b c") : new SourceLocator("a b", "c")));
+        }
+
         if (Variant == "ending-drift" && Zero(state))
         {
             return Open<ImmutableArray<Step>>("rubber-scoring");
