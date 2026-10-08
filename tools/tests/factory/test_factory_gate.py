@@ -58,8 +58,9 @@ REGISTRY = f"src/{NAME}/Generated/Registry.g.cs"
 RECIPE = ("scripts/validate.sh", "scripts/map-overlay.py", "scripts/engine-gate.py",
           "scripts/factory/generate.py", "scripts/factory/intake.py", "scripts/factory/ownership.py",
           "scripts/factory/provenance.py", "scripts/factory/rulings.py",
-          # The generator is nine modules since #171, and an engine that received only some of
+          # The generator is several modules since #171, and an engine that received only some of
           # them could not regenerate at all.
+          "scripts/factory/acceptance.py", "scripts/factory/acceptancecs.py",
           "scripts/factory/agentrails.py", "scripts/factory/contracts.py", "scripts/factory/correspondence.py",
           "scripts/factory/csharp.py", "scripts/factory/entries.py", "scripts/factory/pins.py",
           "scripts/factory/registry.py", "scripts/factory/scaffold.py", "scripts/factory/semantics.py",
@@ -192,7 +193,7 @@ class TestRecipeIsEmitted(GateCase):
                       "run by hand, the gate leaves no scripts/factory/__pycache__ in the engine")
         subprocess.run(["bash", "-n", os.path.join(engine, "scripts", "validate.sh")], check=True)
         for module in ("generate.py", "intake.py", "ownership.py", "provenance.py", "rulings.py",
-                       "agentrails.py", "contracts.py", "correspondence.py", "csharp.py", "entries.py",
+                       "acceptance.py", "acceptancecs.py", "agentrails.py", "contracts.py", "correspondence.py", "csharp.py", "entries.py",
                        "pins.py", "registry.py", "scaffold.py", "semantics.py"):
             with open(os.path.join(FACTORY, module), "rb") as a, \
                     open(os.path.join(engine, "scripts", "factory", module), "rb") as b:

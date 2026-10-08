@@ -84,7 +84,7 @@ The factory is now code, in standard-library Python under
 | Milestone | Modules | State on `main` |
 |---|---|---|
 | M1 intake | `intake.py` | merged. The package is read as data and never run ([0016](docs/decisions/0016-a-map-package-is-data-not-code.md)); every cited corpus is built and verified by rules-corpus from the definition committed beside it ([0074](docs/decisions/0074-a-corpus-is-built-and-verified-by-rules-corpus-from-the-definition-committed-beside-it.md)), and [0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md) binds those resolved bytes to the exact map, manifest and packaged checker that passed the publish gate |
-| M2 scaffold and generation | `generate.py` over `semantics.py`, `csharp.py`, `entries.py`, `registry.py`, `contracts.py`, `correspondence.py`, `pins.py`, `scaffold.py`, `agentrails.py`; `ownership.py` | merged. The registry, map entries and correspondence tests as `*.g.cs`; one ownership class per file ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)). `generate.py` was one 88 KB module until [#171](https://github.com/brandonifco/rules-factory/issues/171) split it by what it emits; it is now the composition, and the name a produced engine imports |
+| M2 scaffold and generation | `generate.py` over `semantics.py`, `csharp.py`, `entries.py`, `registry.py`, `contracts.py`, `correspondence.py`, `acceptance.py` (with `acceptancecs.py`), `pins.py`, `scaffold.py`, `agentrails.py`; `ownership.py` | merged. The registry, map entries and correspondence tests as `*.g.cs`; one ownership class per file ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)). An engine that declares an action surface in `acceptance.json` also gets the full-play acceptance harness `ActionSurfaceAcceptance.g.cs`, and one that does not gets nothing ([0078](docs/decisions/0078-an-engine-with-an-action-surface-proves-it-through-that-surface.md)). `generate.py` was one 88 KB module until [#171](https://github.com/brandonifco/rules-factory/issues/171) split it by what it emits; it is now the composition, and the name a produced engine imports |
 | M3 gate recipe | `gate.py`, `recipe/` | merged. Every engine carries `scripts/validate.sh` and a CI workflow that runs it |
 | M4 provenance | `provenance.py` | merged. `provenance.json` (format 3), and a command that recomputes it |
 | M5 backlog | `backlog.py` | merged. GitHub issues, one per entry still to build, matched by an entry marker and never by title; one state label and one risk label from the engine's own `.github/agent-policy.json`. Rendered from the map and the overlay on demand and never committed into the engine ([#243](https://github.com/brandonifco/rules-factory/issues/243)) |
@@ -388,6 +388,10 @@ engine        a .NET solution on RulesKernel: managed build policy, the kernel's
               determinism analyzers, engine-owned projects and overlay, generated
               *.g.cs tied to the map, the corpus
 gate          scripts/validate.sh and the CI workflow that runs it
+acceptance    optional: acceptance.json, which the engine owns and declares an action surface
+              in, and the full-play harness (ActionSurfaceAcceptance.g.cs) that produce then
+              generates from it and the engine's own adapter (0078); an engine that declares
+              none gets neither
 backlog       not a file in the engine: GitHub issues, one per entry still to
               build, in dependency order (factory backlog --create), rendered from
               the map and the overlay on demand (factory backlog --render)

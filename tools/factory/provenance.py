@@ -182,6 +182,10 @@ COPY_IGNORE = shutil.ignore_patterns(*sorted(SKIP_DIRS))
 BUILD_INPUT_NAMES = frozenset({"global.json", "nuget.config", "packages.lock.json", "directory.build.rsp",
                                ".editorconfig", ".globalconfig",
                                agentrails.AGENT_POLICY.rsplit("/", 1)[-1].lower()})
+# Engine-root files named by path, because their name means something only there. `acceptance.json`
+# declares an action surface (0078): `produce` reads it to decide whether to emit the harness, so what
+# it held at a commit has to be recoverable from the record, as the overlay's files are.
+BUILD_INPUT_PATHS = frozenset({"acceptance.json"})
 BUILD_INPUT_SUFFIXES = (".props", ".targets", ".sln", ".slnx", ".csproj", ".fsproj", ".vbproj")
 LOCK_FILE = "packages.lock.json"
 
@@ -421,6 +425,8 @@ def is_build_input(relative):
     and something reads at face value, so what it held at a commit has to be recoverable from the
     record. The reader is the rails rather than MSBuild (0029).
 
+    `acceptance.json` is here by its path at the engine root (0078), for the reason the overlay is.
+
     `overlay/<entry id>.json` is here by path and not by name (#247): its name is the entry's, so
     there is no name to list. It is the input every generated file is made from, and covering the
     whole directory by rule -- rather than the files that happened to be there -- is what makes a
@@ -430,6 +436,8 @@ def is_build_input(relative):
     if any(part in SKIP_DIRS for part in parts[:-1]):
         return False
     if overlay_step.is_overlay_file(relative):
+        return True
+    if relative in BUILD_INPUT_PATHS:
         return True
     name = parts[-1].lower()
     return name in BUILD_INPUT_NAMES or name.endswith(BUILD_INPUT_SUFFIXES)

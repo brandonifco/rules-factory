@@ -203,6 +203,9 @@ class TestTheTable(OwnershipCase):
         # engine's do not. It is put in place here so that its row is exercised like every other;
         # that produce writes and retires it for real is TestDistribution in test_factory_produce.py.
         self.write(generate.DISTRIBUTION_NOTICE, "# Distribution: private\n")
+        # acceptance.json is the engine's declaration of an action surface (0078): engine-owned, written by
+        # nothing here. That a produce reads it and emits the harness is test_factory_acceptance.py's.
+        self.write("acceptance.json", "{}\n")
         classes = self.assert_every_file_has_one_class(self.out, NAME)
         for row in ownership.rows(NAME):
             self.assertTrue(any(ownership.matching(p, NAME) == [row] for p in classes), f"row {row.pattern} matches nothing")
@@ -253,7 +256,7 @@ class TestTheTable(OwnershipCase):
         self.assertEqual(set(scaffold.managed_files()), {r.pattern for r in ownership.rows(NAME) if r.cls == ownership.MANAGED})
         # The lock files are restore's (verify.py); the overlay's files are the engine's own
         # evidence, written when an entry is implemented and by no scaffold (#247).
-        self.assertEqual(set(scaffold.engine_owned(model)) | set(LOCKS) | {"overlay/*.json"},
+        self.assertEqual(set(scaffold.engine_owned(model)) | set(LOCKS) | {"overlay/*.json", "acceptance.json"},
                          {r.pattern for r in ownership.rows(NAME) if r.cls == ownership.ENGINE_OWNED})
         # The gate regenerates exactly the generated `*.g.*` files, and vendors what it needs as generated files.
         for relative in list(gate.FILES) + [f"src/{NAME}/Generated/X.g.cs", f"tests/{NAME}.Tests/Generated/X.g.cs",

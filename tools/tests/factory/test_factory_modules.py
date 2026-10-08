@@ -53,10 +53,12 @@ LAYERS = {
     "registry": {"csharp", "semantics"},
     "contracts": {"csharp", "semantics"},
     "correspondence": {"csharp", "semantics"},
+    "acceptancecs": set(),
+    "acceptance": {"acceptancecs", "csharp", "semantics"},
     "pins": {"csharp", "semantics"},
     "agentrails": {"overlay", "pins"},
     "scaffold": {"agentrails", "ownership", "pins"},
-    "generate": {"agentrails", "contracts", "correspondence", "entries", "overlay", "ownership",
+    "generate": {"acceptance", "agentrails", "contracts", "correspondence", "entries", "overlay", "ownership",
                  "pins", "registry", "rulings", "scaffold", "semantics"},
     # The rest of the factory.
     "__main__": {"backlog", "compose", "gate", "generate", "intake", "ownership", "provenance",
@@ -110,7 +112,7 @@ LAYERS = {
 }
 # The renderers of C# text, and the rails. #171 took the rails emission out of the generator; these
 # two sets are what "out of" has to keep meaning.
-RENDERERS = frozenset({"csharp", "entries", "registry", "contracts", "correspondence"})
+RENDERERS = frozenset({"csharp", "entries", "registry", "contracts", "correspondence", "acceptance", "acceptancecs"})
 RAILS = frozenset({"agentrails"})
 # The modules #171 split generate.py into, generate.py itself included: what the issue's "no
 # resulting module over ~25 KB" is measured against. The rest of the factory has monoliths of its

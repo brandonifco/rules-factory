@@ -38,6 +38,7 @@ produced engine depends on and not a convenience.
   * `registry.py` -- `Registry.g.cs`;
   * `contracts.py` -- `Contracts.g.cs` and `Requests.g.cs`;
   * `correspondence.py` -- `CorrespondenceTests.g.cs`;
+  * `acceptance.py` -- `ActionSurfaceAcceptance.g.cs`, for an engine that declares an action surface (0078);
   * `pins.py` -- every version the factory pins, and `RulesFactory.Packages.g.props`;
   * `scaffold.py` -- the managed and engine-owned files;
   * `agentrails.py` -- the agent rails (0029) and the one reading of `.github/agent-policy.json`.
@@ -49,6 +50,7 @@ paths, no dictionary-order accidents.
 import json
 import os
 
+import acceptance as acceptance_step
 import agentrails
 import contracts
 import correspondence
@@ -106,7 +108,19 @@ def generated(model):
     }
     if model.rulings:
         files[f"src/{name}/Generated/{entries.RULINGS_FILE}"] = entries.rulings_cs(model)
+    if model.acceptance:
+        files[acceptance_step.harness_path(name)] = acceptance_step.tests_cs(model)
     return files
+
+
+def declare_acceptance(model, root):
+    """Read `acceptance.json` in `root` into `model`, so `generated` emits the harness for it (0078).
+
+    The one reading `produce` and the engine's gate share, so the two cannot disagree about whether
+    a harness is owed. A malformed declaration raises `GenerationError`.
+    """
+    model.acceptance = acceptance_step.load(root, model)
+    return model
 
 
 def _write(path, data):
@@ -213,6 +227,7 @@ def produce(intake, name, out, log=None, adopt=(), reset=(), engine_path=None):
         raise GenerationError(str(error))
     model = Model(intake, merge(intake.map, overlay, root=out), name, rulings_step.collect(overlay))
     pins.refuse_split_pins(model, out)
+    declare_acceptance(model, out)
     try:
         managed_writes, model.managed, model.adopted, notes = ownership.plan_managed(
             out, name, {p: t.encode("utf-8") for p, t in scaffold.managed_files().items()}, adopt, reset,
@@ -266,6 +281,12 @@ def produce(intake, name, out, log=None, adopt=(), reset=(), engine_path=None):
     if not model.rulings and os.path.isfile(stale_rulings):
         os.remove(stale_rulings)
         written.append(f"(removed) src/{name}/Generated/{entries.RULINGS_FILE}")
+    # The same for the action-surface harness: an engine that deletes acceptance.json no longer
+    # declares a surface, and a harness left behind would be a stray *.g.cs the gate refuses (0078).
+    stale_harness = os.path.join(out, *acceptance_step.harness_path(name).split("/"))
+    if not model.acceptance and os.path.isfile(stale_harness):
+        os.remove(stale_harness)
+        written.append(f"(removed) {acceptance_step.harness_path(name)}")
     # The distribution notice, written for a private engine and removed from one that stops being
     # private -- the same shape as the rulings file above, and for the same reason: a notice that
     # outlived its restriction says something false (0068 section 5).

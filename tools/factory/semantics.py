@@ -135,6 +135,9 @@ class Model:
         self.name = name
         # The owner's rulings (0027), from the overlay (rulings.collect): never in `merged`, the map.
         self.rulings = list(rulings)
+        # The action surface the engine declares in acceptance.json (acceptance.py, 0078), or None.
+        # Set by whoever read the declaration -- `produce`, the engine's gate -- since the model is the map.
+        self.acceptance = None
         # Every package the engine is composed of, ordered by package id so that what the
         # generator writes is a function of the inputs and not of the order they were given in
         # (0067). One package is the ordinary case and reads exactly as it did.

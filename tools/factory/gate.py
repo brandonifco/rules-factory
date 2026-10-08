@@ -43,6 +43,9 @@ FILES = {
     "scripts/validate.sh": (os.path.join(RECIPE, "validate.sh"), True),
     "scripts/map-overlay.py": (os.path.join(RECIPE, "map-overlay.py"), True),
     "scripts/engine-gate.py": (os.path.join(RECIPE, "engine-gate.py"), True),
+    # The harness of an engine that declares an action surface (0078): generate.py imports it.
+    "scripts/factory/acceptance.py": (os.path.join(HERE, "acceptance.py"), False),
+    "scripts/factory/acceptancecs.py": (os.path.join(HERE, "acceptancecs.py"), False),
     "scripts/factory/agentrails.py": (os.path.join(HERE, "agentrails.py"), False),
     # The engine's own gate reproduces the map the factory merged, and for a composed engine that
     # means composing the restored packages before the overlay is applied (0067).
