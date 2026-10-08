@@ -545,7 +545,7 @@ prove than its entries: every entry's tests can pass while the surface stalls, o
 refuses, or declines far more than the open question needs (rules-factory decision 0078).
 The engine **declares** it, and the factory does not guess: `acceptance.json` at the engine root,
 which `produce` reads and never writes, holds `seedsPerConfiguration`, `stepCap`, `leastCompleted`
-(above 0, at most 1) and an `allowlist`. With it, `produce` emits
+(above 0, at most 1, to 18 decimal places, compared exactly) and an `allowlist`. With it, `produce` emits
 `tests/<name>.Tests/Generated/ActionSurfaceAcceptance.g.cs`; without it, nothing, and a harness
 emitted earlier is removed. You write the adapter, `tests/<name>.Tests/ActionSurface.cs`: two
 `global using` aliases, `ActionSurfaceState` and `ActionSurfaceAction`, and the six members the
@@ -556,8 +556,8 @@ Each run starts from one configuration and one seed and, at each step, applies *
 action and then advances by one chosen from the seed. Each invariant is its own test over the same
 runs, played once and in parallel:
 
-1. every offered action is accepted: applying it resolves, or declines on the allowlist; and neither
-   `LegalActions` nor `Apply` changes the state it is given (checked on each configuration's first
+1. every offered action is accepted: applying it resolves, or declines on the allowlist; and none of
+   `IsOver`, `LegalActions` and `Apply` changes the state it is given (checked on each configuration's first
    seed and its replay, by a dump before and after each call);
 2. nothing throws, and a failure names the exception's type and first frame;
 3. a state that is not over offers an action or says why, never nothing in silence;
@@ -570,10 +570,12 @@ runs, played once and in parallel:
 7. replaying each configuration's first seed gives the same history (the step a run ends on
    included), the same state at the start of every step, the last being the final one, and the same
    ending: completed, stopped on a decline (reason, locator, attempted operation), or the invariant
-   that stopped it. States are compared by a structural dump of public and private fields, taken when
-   each was reached; record equality is not used, because a record compares its collections by
-   reference. `Render` must give unequal actions unequal lines, which the harness checks at every
-   step, because the history comparison relies on it.
+   that stopped it, each as fields. States are compared by a structural dump, taken when each was
+   reached, that walks public and private fields unless a type is known to be an exact scalar or a
+   known collection (dumped by its items), with every string framed by its length; record equality is
+   not used, because a record compares its collections by reference. `Render` must give unequal
+   actions unequal lines, which the harness checks at every step, because the history comparison
+   relies on it.
 
 A last test fails an allowlisted entry whose locator another entry also cites, since one documented
 decline would then excuse another.

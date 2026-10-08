@@ -42,7 +42,10 @@ engine-owned:
 - **`acceptance.json`** at the engine root. Its presence is the declaration. It holds the
   parameters (section 4) and the allowlist (section 3): `seedsPerConfiguration` and `stepCap`
   (integers from 1 to 2147483647, the largest a C# `int` constant holds), `leastCompleted` (a
-  number above 0 and at most 1, read exactly, so `1.00000000000000001` is above 1) and `allowlist`
+  number above 0 and at most 1, read exactly, so `1.00000000000000001` is above 1, and held exactly: to
+  at most 18 decimal places, emitted as a C# `decimal` literal, so that `completed >= LeastCompleted *
+  played` is a product of a `decimal` and an `int` that fits the 28 digits a `decimal` holds, and is
+  exact) and `allowlist`
   (an object mapping an entry id to a sentence). `produce` reads it, and never writes or rewrites
   it. It validates it before it writes anything and refuses a malformed one naming the field: a
   missing, unknown, duplicated or mistyped field, an allowlist item whose sentence is a placeholder
@@ -56,9 +59,14 @@ engine-owned:
 - **An adapter** in the test project, implementing the members the generated harness declares and
   leaves for the engine: the configurations, how a run begins from a configuration and a seed,
   whether a state is over, the legal actions in a state, how to apply one, and how to render an
-  action for the history. `LegalActions` and `Apply` must not change the state they are given, and
-  `Render` gives unequal actions unequal lines: the harness checks both (section 2). The engine
-  writes it, in `tests/{name}.Tests/ActionSurface.cs`; `produce` never does. The generated harness declares these members as C# partial methods with an
+  action for the history. **Every member except `Start` is pure.** `IsOver`, `LegalActions`, `Apply`
+  and `Render` must not change the state or the action they are given: not by mutating it, and not by
+  caching or finalizing a value on it, which is what an `IsOver` that stamps a terminal state does,
+  since the harness takes a run's final dump before `IsOver` is asked about it. And `Render` gives
+  unequal actions unequal lines. The harness checks the state around `IsOver`, `LegalActions` and
+  `Apply`, and the lines of `Render` (section 2); it does not dump an action, so an `Apply` or a
+  `Render` that changes the action it was given is the adapter's to avoid and not the harness's to see.
+  The engine writes it, in `tests/{name}.Tests/ActionSurface.cs`; `produce` never does. The generated harness declares these members as C# partial methods with an
   accessibility modifier, so a declaration with no adapter fails to build with CS8795, naming each
   missing member. The state and action types are the engine's: the adapter binds them with two
   `global using` aliases, `ActionSurfaceState` and `ActionSurfaceAction`, because a partial method
@@ -81,13 +89,14 @@ own test over the same runs:
 
 1. **Every offered action is accepted.** Each action the surface offers in a state is applied to
    that state, and each application resolves. A refusal, or an unresolved answer other than an
-   allowlisted decline, fails. **`LegalActions` and `Apply` must not change the state they are
-   given**, because every offered action is applied to the same state, and one that changed it would
-   have the later actions judged against a state that is not the one that offered them. On each
-   configuration's first seed and its replay (a dump walks the whole state, so it is not taken in
-   every run), the state is dumped before the step's calls, and again after `LegalActions` and
-   after each `Apply`; a difference is a finding under this invariant, naming the step and the
-   call after which the state changed. The result of the chosen action is dumped as it is returned,
+   allowlisted decline, fails. **`IsOver`, `LegalActions` and `Apply` must not change the state they
+   are given**, because every offered action is applied to the same state, and one that changed it
+   would have the later actions judged against a state that is not the one that offered them; and
+   because the state a run ends in is dumped before `IsOver` is asked about it, so an `IsOver` that
+   finalizes a value would be inside no comparison. On each configuration's first seed and its replay
+   (a dump walks the whole state, so it is not taken in every run), the state is dumped before the
+   step's calls, and again after `IsOver`, after `LegalActions` and after each `Apply`; a difference is
+   a finding under this invariant, naming the step and the call after which the state changed. The result of the chosen action is dumped as it is returned,
    before any later probe runs, and compared with the state the next step begins in: a probe that
    reaches an earlier result is a finding too.
 2. **Nothing throws.** An exception on any surface call fails, and the failure names its type and
@@ -101,15 +110,20 @@ own test over the same runs:
    name work the engine has not done, not a reading still open.
 6. **Enough runs complete.** In each configuration, at least the declared fraction of seeds reaches
    a natural end, and a configuration that produced no runs, or a surface with no configuration,
-   fails rather than passing empty.
+   fails rather than passing empty. The comparison is `completed >= LeastCompleted * played` in
+   `decimal`, with `LeastCompleted` the declared number exactly, so a fraction a hair above a half is
+   not a half.
 7. **Replay is deterministic, compared structurally.** Each configuration's first seed is played
    twice. Compared, in each pair of runs: the action **histories**, the line of each chosen action
    recorded before its outcome is resolved, so the step a run ends on is in it; the **state at the
    start of every step**, the last being the state the run ended in, each as the structural dump
    taken when it was reached, never a reference to a live object, which a later play could change;
    and the **ending** of each run, which is `completed`; or `stopped` with its reason, locator and
-   attempted operation; or the invariant a finding stopped it under. Anything not in that list is
-   not compared. States are compared by a **structural dump** (below). Record equality is not used,
+   attempted operation; or the invariant a finding stopped it under. An ending is structured fields
+   (kind; reason; locator source id; citation; attempted), each framed as the dump frames a string
+   (below), and it is those fields that are compared and never a display string, which two locators
+   that split their source and citation differently can share. Anything not in that list is not
+   compared. States are compared by a **structural dump** (below). Record equality is not used,
    because a record compares its collections by reference, so two identical replays would compare
    unequal and two different ones could compare equal. The history comparison relies on **`Render`
    giving unequal actions unequal lines**, so the harness checks that within every step of every
@@ -127,20 +141,39 @@ Each is its own `[Fact]` (`Every_offered_action_is_accepted`, `Nothing_throws`,
 `Replay_is_deterministic_compared_structurally`), and the choice at each step depends on nothing but
 the seed and the step: no hash code, culture or clock.
 
-The **structural dump** walks every instance field, public and private, by name, and skips
-delegates and pointers. A **map** is a value whose type implements `IDictionary`, `IDictionary<,>`
-or `IReadOnlyDictionary<,>`, and nothing else; it and a set are sorted by the dump of each entry,
-and every other sequence keeps its order, a sequence of `KeyValuePair` included. Every scalar is
-written with its runtime type's full name and a value that round-trips: `DateTime`,
-`DateTimeOffset`, `DateOnly` and `TimeOnly` as `"O"`, `TimeSpan` as `"c"`, `double` and `float` as
-`"R"`; the `IFormattable` fallback, under the invariant culture, is used only for a type with no
-exact format of its own, which is the integers, `decimal`, `Guid`, `Half`, `BigInteger` and the rest
-of `System` and `System.Numerics`, whose default format is exact. A default `ImmutableArray<T>`
-carries `T`. An enumerable of the engine's own, a type whose namespace is not `System` or inside it,
-is dumped as its fields **and** its items (the fields of a `System` base class it derives from are
-that class's bookkeeping, which its items stand for). A dump throws past a depth limit rather than
-loop. **Not compared:** object identity and aliasing, a collection's comparer, NaN payloads, and
-array lower bounds.
+The **structural dump** walks every instance field, public and private, sorted by name, **unless a
+type is known to be an exact scalar or a known collection**; it skips delegates and pointers.
+
+- **Exact scalars**, a closed list: the primitives, `string`, `char`, `decimal` (written from
+  `decimal.GetBits`, so the sign of zero and the scale are kept), enums (the assembly-qualified type
+  and the underlying value), `DateTime`, `DateTimeOffset`, `DateOnly` and `TimeOnly` (`"O"`),
+  `TimeSpan` (`"c"`), `Guid`, `BigInteger`, `Half` (`"R"`), `Int128` and `UInt128`; `double` and
+  `float` are `"R"`, and every format is under the invariant culture. Nothing else is a scalar,
+  whatever it formats as.
+- **Known collections**, whose fields are bookkeeping and are dumped by items only: arrays, `List<>`,
+  `HashSet<>`, `SortedSet<>`, `Queue<>`, `Stack<>`, `LinkedList<>`, `Dictionary<,>`,
+  `SortedDictionary<,>`, `SortedList<,>`, and the `System.Collections.Immutable` collection types
+  (`ImmutableArray<>`, `ImmutableList<>`, `ImmutableHashSet<>`, `ImmutableSortedSet<>`,
+  `ImmutableDictionary<,>`, `ImmutableSortedDictionary<,>`, `ImmutableQueue<>`, `ImmutableStack<>`). A
+  map and a set are sorted by the dump of each entry, and every other sequence keeps its order, a
+  sequence of `KeyValuePair` included. A default `ImmutableArray<T>` carries `T`.
+- **Every other type**, any `System` `IFormattable` (such as `Uri`) and any other enumerable (such as a
+  LINQ grouping) included, is dumped by its fields, and by its items too if it is enumerable. A type
+  that derives from a known collection is walked down to it and no further, its items standing for the
+  collection's own fields. A field reached again while it is being written is a cycle, written as how
+  far back it is; aliasing without a cycle is written in full each time.
+- **A `Type`** is written as its `AssemblyQualifiedName`; a generic parameter, which has none, as its
+  declaring type's assembly-qualified name and its position.
+- **Framing.** Every scalar, and every string-valued element (a type's name, a field's name), is written
+  as its kind, its length and its text, `System.String[5]:alice`, so no text can reproduce the prefix of
+  a neighbouring field.
+
+A walk by fields reads what an object has computed lazily as well: a `Uri` whose `ToString` has been
+called holds fields that one whose has not does not, so a state that holds one is changed, as the dump
+sees it, by a call that only reads it. That is a finding under invariant 1, and it is the cost of
+walking a type the dump does not know. A dump throws past a depth limit rather than loop on a chain
+that is not a cycle, and depends on no hash code, culture or clock. **Not compared:** object identity
+and aliasing, a collection's comparer, NaN payloads, and array lower bounds.
 
 ### 3. The allowlist names readings that were observed, and the harness names the ones it did not reach
 
