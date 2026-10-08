@@ -32,6 +32,7 @@ import importlib.util
 import json
 import os
 import re
+import sys
 
 import acceptancecs
 import csharp
@@ -81,6 +82,10 @@ def _shown(value):
     """A declared value as it was written: a number is held exactly (a Decimal), and says so as written."""
     return str(value) if isinstance(value, decimal.Decimal) else repr(value)
 
+
+# map-overlay.py is loaded by path, below, and the loader writes a module's bytecode beside it unless this
+# is set before it does: a checkout the run dirties (#384). Set at import, so before that load.
+sys.dont_write_bytecode = True
 
 _PLACEHOLDER_RULE = []
 

@@ -41,20 +41,24 @@ engine-owned:
 
 - **`acceptance.json`** at the engine root. Its presence is the declaration. It holds the
   parameters (section 4) and the allowlist (section 3): `seedsPerConfiguration` and `stepCap`
-  (integers of at least 1), `leastCompleted` (a number above 0 and at most 1) and `allowlist` (an
-  object mapping an entry id to a non-empty string). `produce` reads it, and never writes or
-  rewrites it. It validates it before it writes anything and refuses a malformed one naming the
-  field: a missing, unknown, duplicated or mistyped field, an allowlist item with no sentence saying
-  where the reading is documented, and an allowlist id that is not an entry of the engine's map, in
-  the id form the registry uses (a composed engine's `Package.entry-id`). Because the harness is
+  (integers from 1 to 2147483647, the largest a C# `int` constant holds), `leastCompleted` (a
+  number above 0 and at most 1, read exactly, so `1.00000000000000001` is above 1) and `allowlist`
+  (an object mapping an entry id to a sentence). `produce` reads it, and never writes or rewrites
+  it. It validates it before it writes anything and refuses a malformed one naming the field: a
+  missing, unknown, duplicated or mistyped field, an allowlist item whose sentence is a placeholder
+  (it is held to the floor an overlay's mutations are held to, by the same function,
+  `placeholder_problem` of `map-overlay.py`, and not a copy of it), an allowlist id that is not an
+  entry of the engine's map, in the id form the registry uses (a composed engine's
+  `Package.entry-id`), and a file that is a symbolic link. Because the harness is
   generated from it, `buildInputs` records its hash, so an edit that is not followed by a produce is
   a named mismatch, and the engine's own gate reads it through the same function to regenerate the
   harness, so a stale or stray one is refused there too.
 - **An adapter** in the test project, implementing the members the generated harness declares and
   leaves for the engine: the configurations, how a run begins from a configuration and a seed,
   whether a state is over, the legal actions in a state, how to apply one, and how to render an
-  action for the history. The engine writes it, in `tests/{name}.Tests/ActionSurface.cs`; `produce`
-  never does. The generated harness declares these members as C# partial methods with an
+  action for the history. `LegalActions` and `Apply` must not change the state they are given, and
+  `Render` gives unequal actions unequal lines: the harness checks both (section 2). The engine
+  writes it, in `tests/{name}.Tests/ActionSurface.cs`; `produce` never does. The generated harness declares these members as C# partial methods with an
   accessibility modifier, so a declaration with no adapter fails to build with CS8795, naming each
   missing member. The state and action types are the engine's: the adapter binds them with two
   `global using` aliases, `ActionSurfaceState` and `ActionSurfaceAction`, because a partial method
@@ -77,7 +81,15 @@ own test over the same runs:
 
 1. **Every offered action is accepted.** Each action the surface offers in a state is applied to
    that state, and each application resolves. A refusal, or an unresolved answer other than an
-   allowlisted decline, fails.
+   allowlisted decline, fails. **`LegalActions` and `Apply` must not change the state they are
+   given**, because every offered action is applied to the same state, and one that changed it would
+   have the later actions judged against a state that is not the one that offered them. On each
+   configuration's first seed and its replay (a dump walks the whole state, so it is not taken in
+   every run), the state is dumped before the step's calls, and again after `LegalActions` and
+   after each `Apply`; a difference is a finding under this invariant, naming the step and the
+   call after which the state changed. The result of the chosen action is dumped as it is returned,
+   before any later probe runs, and compared with the state the next step begins in: a probe that
+   reaches an earlier result is a finding too.
 2. **Nothing throws.** An exception on any surface call fails, and the failure names its type and
    first frame.
 3. **Nothing stalls without a reason.** A state that is not over offers at least one action, or
@@ -91,11 +103,18 @@ own test over the same runs:
    a natural end, and a configuration that produced no runs, or a surface with no configuration,
    fails rather than passing empty.
 7. **Replay is deterministic, compared structurally.** Each configuration's first seed is played
-   twice. The action histories must be equal, and so must the final states, compared by a
-   **structural dump**: a reflective walk over public and private instance fields, sequences
-   item by item, dictionaries by sorted key. Record equality is not used, because a record compares
-   its collections by reference, so two identical replays would compare unequal and two
-   different ones could compare equal.
+   twice. Compared, in each pair of runs: the action **histories**, the line of each chosen action
+   recorded before its outcome is resolved, so the step a run ends on is in it; the **state at the
+   start of every step**, the last being the state the run ended in, each as the structural dump
+   taken when it was reached, never a reference to a live object, which a later play could change;
+   and the **ending** of each run, which is `completed`; or `stopped` with its reason, locator and
+   attempted operation; or the invariant a finding stopped it under. Anything not in that list is
+   not compared. States are compared by a **structural dump** (below). Record equality is not used,
+   because a record compares its collections by reference, so two identical replays would compare
+   unequal and two different ones could compare equal. The history comparison relies on **`Render`
+   giving unequal actions unequal lines**, so the harness checks that within every step of every
+   run: two offered actions that are not equal and render alike are a finding under this
+   invariant.
 
 The runs are played once per test run and shared by every test, in parallel. A run stops at the
 first failure it can no longer continue past (a throw, a stall, a state with no legal action, an
@@ -106,11 +125,24 @@ Each is its own `[Fact]` (`Every_offered_action_is_accepted`, `Nothing_throws`,
 `Nothing_stalls_without_a_reason`, `A_run_ends_within_the_step_cap`,
 `Runs_stop_early_only_on_the_allowlist`, `Enough_runs_complete`,
 `Replay_is_deterministic_compared_structurally`), and the choice at each step depends on nothing but
-the seed and the step: no hash code, culture or clock. The structural dump skips delegates and
-pointers, sorts dictionaries and sets by the dump of each key or item, treats a default
-`ImmutableArray` as itself, and throws past a depth limit rather than loop.
+the seed and the step: no hash code, culture or clock.
 
-### 3. The allowlist names readings, and only readings that were reached
+The **structural dump** walks every instance field, public and private, by name, and skips
+delegates and pointers. A **map** is a value whose type implements `IDictionary`, `IDictionary<,>`
+or `IReadOnlyDictionary<,>`, and nothing else; it and a set are sorted by the dump of each entry,
+and every other sequence keeps its order, a sequence of `KeyValuePair` included. Every scalar is
+written with its runtime type's full name and a value that round-trips: `DateTime`,
+`DateTimeOffset`, `DateOnly` and `TimeOnly` as `"O"`, `TimeSpan` as `"c"`, `double` and `float` as
+`"R"`; the `IFormattable` fallback, under the invariant culture, is used only for a type with no
+exact format of its own, which is the integers, `decimal`, `Guid`, `Half`, `BigInteger` and the rest
+of `System` and `System.Numerics`, whose default format is exact. A default `ImmutableArray<T>`
+carries `T`. An enumerable of the engine's own, a type whose namespace is not `System` or inside it,
+is dumped as its fields **and** its items (the fields of a `System` base class it derives from are
+that class's bookkeeping, which its items stand for). A dump throws past a depth limit rather than
+loop. **Not compared:** object identity and aliasing, a collection's comparer, NaN payloads, and
+array lower bounds.
+
+### 3. The allowlist names readings that were observed, and the harness names the ones it did not reach
 
 Each allowlist item is an entry id mapped to where the engine documents the reading. An item is
 matched by that entry's locator, because a decline names the locator. `produce` refuses an
@@ -119,8 +151,11 @@ another entry also cites (its `Locators`, which for a derived entry are the prem
 because a shared locator would let one documented decline excuse another. That is the eighth `[Fact]`,
 `Allowlisted_locators_are_cited_by_one_entry_only`.
 
-The list is built from what the engine actually declined, never from readings someone expects to
-matter. A reading no run reaches stays off it. A decline should be as narrow as the open question
+The list is built from declines observed in runs of the surface, in the gate or in a longer
+probe, never from readings someone expects to matter. The gate's own seeds may not reach a reading
+that a longer probe did, so an item they do not reach is **not a failure**; but the harness names
+each such item in the test output (`ITestOutputHelper`, from the allowlist fact), so a stale item
+is visible and can be taken off. A decline should be as narrow as the open question
 is: where the open readings would give the same answer for the state at hand, the engine answers
 and does not decline ([`adversarial-self-review.md`](../../tools/factory/recipe/rails/adversarial-self-review.md),
 `refusal-classification`).
@@ -157,8 +192,9 @@ more, in two configurations, with a collection, a dictionary, a set, a default `
 delegate and a private field in its state. `acceptance.json` declares 20 seeds per configuration, a step
 cap of 40, a completion fraction of 0.5 and one allowlisted reading. The engine is built once; each
 violation is selected by an environment variable the adapter reads, committed in a quarter of one
-configuration's seeds so that the completion fraction still holds and the invariant under test is the
-only one that goes red.
+configuration's seeds (or, for the replay violations, in the first seed's play or replay) so that the
+completion fraction still holds and the invariant under test is the only one that goes red. The
+adapter file also carries four plain facts over the structural dump, on paired values (section 2).
 
 **Each invariant goes red under the adapter that violates exactly it**, and it alone (the test asserts
 the set of failed facts is that one, and that all eight ran):
@@ -166,38 +202,56 @@ the set of failed facts is that one, and that all eight ran):
 | Invariant | Fixture violation | Observed failure |
 |---|---|---|
 | 1. every offered action is accepted | `Apply` answers an offered +2 with `UnsupportedRule` | `Every_offered_action_is_accepted`: `offered action 1 '+2' was answered with UnsupportedRule` |
+| 1. neither call changes the state it is given | `Apply` increments a field of its input; separately, `LegalActions` does | `Every_offered_action_is_accepted`: `Apply of offered action 0 changed the state it was given`; `LegalActions changed the state it was given` |
+| 1. the chosen result is kept as returned | `Apply` changes the result of the offered action before it | `Every_offered_action_is_accepted`: `the state the chosen action returned was changed by a later call on the step before` |
 | 2. nothing throws | `LegalActions` throws | `Nothing_throws`: `threw System.InvalidOperationException: the fixture throws here [first frame: ...]` |
 | 3. nothing stalls without a reason | `LegalActions` offers an empty array | `Nothing_stalls_without_a_reason`: `the state is not over, offers no action and gives no reason` |
 | 4. a run ends within the step cap | `Apply` resets the counter, so the run never ends | `A_run_ends_within_the_step_cap`: `not over after 40 steps` |
 | 5. runs stop early only on the allowlist | `LegalActions` declines `RequiresInterpretation` at a locator off the allowlist; separately, `OutsideCurrentScope` at an allowlisted one | `Runs_stop_early_only_on_the_allowlist`: `which is not an allowlisted reading`; `stopped on OutsideCurrentScope` |
 | 6. enough runs complete | one configuration ends every run early, on an allowlisted decline | `Enough_runs_complete`: `beta: 0 of 20 seeds reached a natural end, below the declared 0.5` |
-| 7. replay is deterministic | a private field drawn from a process-wide counter, which the state's own equality cannot see; separately, a history line drawn from one | `Replay_is_deterministic_compared_structurally`: `the final states differ structurally`; `the histories first differ at step 0` |
+| 7. replay is deterministic | a private field drawn from a process-wide counter, which the state's own equality cannot see | `Replay_is_deterministic_compared_structurally`: `the states first differ structurally at step 0` |
+| 7. a history line drawn from a counter | `Render` appends a process-wide counter | `the histories first differ at step 0` |
+| 7. states are captured, not referenced | `Start` returns one shared object, whose private stamp every `Start` moves on | `the states first differ structurally at step 0` |
+| 7. the step a run ends on is in the history | the same seed offers +1, +2 on the play and +5, +6 on the replay, and the chosen action declines on the allowlisted locator in both | `the histories first differ at step ...` |
+| 7. the ending is compared | the play declines on the allowlisted locator; the replay is over in a state with equal fields | `the runs ended differently: 'stopped: RequiresInterpretation ...' then 'completed'` |
+| 7. every step's state is compared | a private stamp in the intermediate states that is gone from the final state | `the states first differ structurally at step ...` |
+| 7. unequal actions render unequally | `Render` returns a constant | `offered actions 0 and 1 are not equal and both render as '+'` |
 | allowlist locator uniqueness | an allowlisted entry whose passage four other entries cite | `Allowlisted_locators_are_cited_by_one_entry_only`: `its locator is also cited by ...` |
 
+The four facts over the dump each pass on a correct dump and go red under the edit that breaks them: a
+sequence of `KeyValuePair` keeps its order while a dictionary does not depend on the order it was
+filled in; a boxed `1` and `1L`, the keys `1` and `1L`, and a default `ImmutableArray<int>` and
+`<string>` dump differently; `TimeOnly` seconds apart, ticks apart, `DateTime` kinds and
+`DateTimeOffset` offsets dump differently; an engine's own enumerable is its fields and its items,
+and a list's capacity is not its value.
+
 A correct adapter passes all eight. An allowlisted `RequiresInterpretation` decline ends runs early
-and fails nothing. A declaration with no adapter does not build: CS8795, once for each of the six
+and fails nothing. An allowlisted item no run reached is named in the test output of the allowlist
+fact (`rubber-scoring ...: no run declined at this reading`), and nothing fails. A declaration with no adapter does not build: CS8795, once for each of the six
 members, each named (and CS0246 for the two type aliases the adapter binds).
 
 **Cost, in the gate.** `HoyleBackgammon`, produced and verified by the factory at the branch head, then
 the same engine with `acceptance.json` and the fixture adapter, each gate run twice
-(`./scripts/validate.sh full`, 24 cores, SDK 10.0.112). Seconds, run 1 / run 2:
+(`./scripts/validate.sh full`, 24 cores, SDK 10.0.112, re-measured after the repair). Seconds, run 1 / run 2:
 
 | | without | with |
 |---|---|---|
 | `produce --no-verify` | 0.9 | 0.9 |
-| verified `produce` (restore, build, test, gate) | 11.2 | 12.0 |
-| gate: `dotnet format --verify-no-changes` | 1.9 / 1.9 | 3.9 / 4.0 |
-| gate: test Debug | 1.5 / 1.4 | 1.4 / 1.4 |
-| gate: test Release | 1.5 / 1.4 | 1.4 / 1.4 |
-| whole gate | 9.0 / 8.4 | 11.1 / 10.5 |
+| verified `produce` (restore, build, test, gate) | 12.7 | 13.1 |
+| gate: `dotnet format --verify-no-changes` | 2.5 / 2.4 | 4.5 / 4.5 |
+| gate: build + test Debug | 2.1 / 1.9 | 2.2 / 1.9 |
+| gate: build + test Release | 2.1 / 1.9 | 2.2 / 1.9 |
+| whole gate | 8.9 / 8.4 | 11.1 / 10.4 |
 
-The harness plays 40 toy runs plus 2 replays in about 30 ms, so the test steps do not move; the
-added 2 s is the formatter reading the adapter. What the harness costs an engine is the cost of the
-engine's own runs, which is why section 4 says to make the engine faster.
+The harness plays 40 toy runs plus 2 replays, and dumps the state around every call of the two
+capturing runs, in well under a second, so the test steps do not move; the added 2 s is the
+formatter reading the adapter. What the harness costs an engine is the cost of the engine's own
+runs, and of a dump of its state around every call of two runs per configuration, which is why
+section 4 says to make the engine faster.
 
-**Cost, in the factory's own tests.** `test_factory_acceptance.py` runs 28 tests: 22 need no SDK and
-take about 8 s, and the 6 that build and run the produced engine add about 26 s (one build, then
-about 1 s per violation), 34 s for the module on this machine. They skip, saying why, without the
+**Cost, in the factory's own tests.** `test_factory_acceptance.py` runs 35 tests: 27 need no SDK and
+take about 8 s, and the 8 that build and run the produced engine add about 35 s (one build, then
+about 1 s per violation), 43 s for the module on this machine. They skip, saying why, without the
 pinned SDK, as `test_factory_provenance.py`'s `dotnet test` of a produced engine does.
 
 **What was watched failing.** Each of these edits to the factory turns the named tests red, and was
@@ -207,6 +261,20 @@ keeping a harness whose source was deleted; leaving `acceptance.json` out of the
 engine's gate not reading the declaration; applying only the first offered action; removing the
 step-cap finding; accepting any decline reason on the allowlist; and a throw reported under the wrong
 invariant.
+
+After the review of the first head, each repair was shown red the same way, by the edit that undoes
+it (each reverted): dropping the dump comparison after `LegalActions` and `Apply`; dropping the
+comparison of the chosen result with the next step; keeping a reference to each state and dumping it
+when the runs are compared; dropping the ending from the replay comparison; recording the chosen
+line only after its outcome resolved; comparing only the last state of the two runs; dropping the
+finding for two unequal actions with one line; classifying a sequence of `KeyValuePair` as a map;
+writing a scalar without its type, and a default `ImmutableArray` without its element type; leaving
+`TimeOnly` and `DateTimeOffset` to the `IFormattable` fallback; dumping an engine's enumerable by its
+items alone, and by its fields alone; not writing the unreached allowlist items to the test output;
+accepting a placeholder allowlist sentence; putting no upper bound on the counts; reading
+`leastCompleted` as a float; and following a symlinked `acceptance.json`. The new tests were also run
+against the first head's two generator modules (with the dump made reachable so that they build), and
+every one of them is red there.
 
 ## Compatibility
 
