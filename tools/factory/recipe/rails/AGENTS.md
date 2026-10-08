@@ -571,8 +571,10 @@ runs, played once and in parallel:
    included), the same state at the start of every step, the last being the final one, and the same
    ending: completed, stopped on a decline (reason, locator, attempted operation), or the invariant
    that stopped it, each as fields. States are compared by a structural dump, taken when each was
-   reached, that walks public and private fields unless a type is known to be an exact scalar or a
-   known collection (dumped by its items), with every string framed by its length; record equality is
+   reached, that walks public and private fields unless a type is known to be an exact scalar, a
+   known collection, a grouping or a `System` or compiler-generated enumerable (dumped by its items, a
+   grouping's key too), with every string framed by its length; it enumerates what it dumps, so a
+   state that holds a deferred query has it evaluated on every dump; record equality is
    not used, because a record compares its collections by reference. `Render` must give unequal
    actions unequal lines, which the harness checks at every step, because the history comparison
    relies on it.

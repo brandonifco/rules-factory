@@ -157,11 +157,19 @@ type is known to be an exact scalar or a known collection**; it skips delegates 
   `ImmutableDictionary<,>`, `ImmutableSortedDictionary<,>`, `ImmutableQueue<>`, `ImmutableStack<>`). A
   map and a set are sorted by the dump of each entry, and every other sequence keeps its order, a
   sequence of `KeyValuePair` included. A default `ImmutableArray<T>` carries `T`.
-- **Every other type**, any `System` `IFormattable` (such as `Uri`) and any other enumerable (such as a
-  LINQ grouping) included, is dumped by its fields, and by its items too if it is enumerable. A type
-  that derives from a known collection is walked down to it and no further, its items standing for the
-  collection's own fields. A field reached again while it is being written is a cycle, written as how
-  far back it is; aliasing without a cycle is written in full each time.
+- **A grouping** (`IGrouping<,>`) is dumped as its `Key`, dumped as a value, and its items; it is not
+  walked by fields.
+- **Any other enumerable of a `System` namespace, or marked `[CompilerGenerated]`** (the state machine
+  of a C# iterator method) is dumped **by its items only**: its fields are iteration machinery. A
+  deferred LINQ iterator serves as its own enumerator on the thread that made it, so reading its fields
+  and then enumerating it moves them, and a state machine records the thread that made it.
+- **Every other type**, any `System` `IFormattable` (such as `Uri`) included, is dumped by its fields,
+  and by its items too if it is enumerable. An engine-owned enumerable (any other namespace) is
+  **enumerated first** and its fields are read after, so a type that is its own enumerator is in one
+  state each time it is dumped. A type that derives from a known collection is walked down to it and no
+  further, its items standing for the collection's own fields. A field reached again while it is being
+  written is a cycle, written as how far back it is; aliasing without a cycle is written in full each
+  time.
 - **A `Type`** is written as its `AssemblyQualifiedName`; a generic parameter, which has none, as its
   declaring type's assembly-qualified name and its position.
 - **Framing.** Every scalar, and every string-valued element (a type's name, a field's name), is written
@@ -171,7 +179,9 @@ type is known to be an exact scalar or a known collection**; it skips delegates 
 A walk by fields reads what an object has computed lazily as well: a `Uri` whose `ToString` has been
 called holds fields that one whose has not does not, so a state that holds one is changed, as the dump
 sees it, by a call that only reads it. That is a finding under invariant 1, and it is the cost of
-walking a type the dump does not know. A dump throws past a depth limit rather than loop on a chain
+walking a type the dump does not know. The dump also enumerates what it dumps, so an engine that
+holds a deferred query in its state has it evaluated on every dump; holding materialized collections is
+what this record expects. A dump throws past a depth limit rather than loop on a chain
 that is not a cycle, and depends on no hash code, culture or clock. **Not compared:** object identity
 and aliasing, a collection's comparer, NaN payloads, and array lower bounds.
 
@@ -254,12 +264,14 @@ the set of failed facts is that one, and that all eight ran):
 | 6. the threshold is exact | two seeds, one completes, `leastCompleted` is `0.50000000000000001` (and `0.5` passes) | `Enough_runs_complete`: `alpha: 1 of 2 seeds reached a natural end, below the declared 0.50000000000000001` |
 | allowlist locator uniqueness | an allowlisted entry whose passage four other entries cite | `Allowlisted_locators_are_cited_by_one_entry_only`: `its locator is also cited by ...` |
 
-The eleven facts over the dump each pass on a correct dump and go red under the edit that breaks them: a
+The twelve facts over the dump each pass on a correct dump and go red under the edit that breaks them: a
 sequence of `KeyValuePair` keeps its order while a dictionary does not depend on the order it was
 filled in; a boxed `1` and `1L`, the keys `1` and `1L`, and a default `ImmutableArray<int>` and
 `<string>` dump differently; `TimeOnly` seconds apart, ticks apart, `DateTime` kinds and
 `DateTimeOffset` offsets dump differently; an engine's own enumerable is its fields and its items,
-and a list's capacity is not its value; two groupings with different keys over the same items, and
+and a list's capacity is not its value; two groupings with different keys over the same items, a
+deferred LINQ iterator, the result of an iterator method (made on two threads) and an engine type that is
+its own enumerator, each dumped the same every time, and
 two `Uri`s that differ only in the string they were made from, dump differently (a `Uri` made from
 one string and read the same way dumps alike); a ring of nodes is written as a reference back, and
 two rings with different labels dump differently; `0m` and negative zero, and `1.0m` and `1.00m`,
@@ -330,6 +342,13 @@ head the second review read, 44614be (with the ending kept as a display string, 
 builds), and these are red there: the `IsOver` violation, the groupings, the `Uri`s, the framed
 strings, the generic parameters, negative zero, the endings, the exact threshold and the emitted
 literal.
+
+After the third review, of 62a0677, the repair was shown red the same way: writing the fields of a
+`System` enumerable before its items (the dump of the head the review read) turns red a state that holds
+`new[] { 1, 2 }.Where(...)` and one that holds the result of a `yield return` method, each over at once,
+with `IsOver changed the state it was given`, and the dump fact over deferred iterators; and enumerating
+first while still writing a `System` or compiler-generated enumerable's fields turns the dump fact red on
+the thread a state machine records (each reverted).
 
 ## Compatibility
 

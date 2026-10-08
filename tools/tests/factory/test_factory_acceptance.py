@@ -544,12 +544,24 @@ class TestHarnessRunsInDotnet(Case):
             # Second review of 44614be, findings 2 to 4 and the piddly one.
             "A_system_enumerable_that_is_not_a_known_collection_is_walked_by_its_fields_and_its_items": "Passed",
             "A_system_formattable_that_is_not_an_exact_scalar_is_walked_by_its_fields": "Passed",
+            # Third review of 62a0677: a dump must not change what it compares.
+            "A_deferred_iterator_is_the_same_each_time_it_is_dumped_and_so_is_a_self_enumerating_type": "Passed",
             "A_cycle_is_written_as_a_reference_back_and_is_not_walked_forever": "Passed",
             "A_decimal_keeps_its_scale_and_the_sign_of_zero": "Passed",
             "Generic_parameters_are_told_apart_and_so_are_equal_names_in_two_enums": "Passed",
             "Every_scalar_and_string_is_framed_by_its_length_and_cannot_reproduce_a_neighbour": "Passed",
             "An_ending_is_its_fields_and_two_locators_that_split_alike_end_differently": "Passed"}, output[-3000:])
         self.assertEqual(code, 0)
+
+    def test_a_state_that_holds_a_deferred_query_passes_every_fact(self):
+        # Third review of 62a0677: a deferred LINQ iterator, and the result of an iterator method,
+        # serve as their own enumerators, so a dump that read their fields and then enumerated them
+        # moved them, and the dump after IsOver reported that IsOver had changed the state.
+        for variant in ("deferred-linq", "deferred-iterator"):
+            with self.subTest(variant=variant):
+                outcomes, output, code = self.run_variant(variant)
+                self.assertEqual(outcomes, {fact: "Passed" for fact in FACTS}, output[-3000:])
+                self.assertEqual(code, 0)
 
     def test_an_allowlisted_item_no_run_reached_is_named_in_the_test_output_and_fails_nothing(self):
         # Finding 7: a stale item is visible, and it is not a failure.

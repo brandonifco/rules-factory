@@ -50,6 +50,10 @@ public sealed class Counter : IEquatable<Counter>
 
     public Func<int> Ignored { get; init; } = () => 0;
 
+    // A deferred query: it is nothing until it is enumerated, and a LINQ iterator serves as its own
+    // enumerator, so enumerating it moves its fields.
+    public IEnumerable<int>? Deferred { get; init; }
+
     public int Stamp() => stamp;
 
     // What a call on a state must not do: change a field of the state it was given.
@@ -60,6 +64,7 @@ public sealed class Counter : IEquatable<Counter>
         {
             Tally = Tally.SetItem(by.ToString(), Tally.GetValueOrDefault(by.ToString()) + 1),
             Seen = Seen.Add(by),
+            Deferred = Deferred,
         };
 
     public bool Equals(Counter? other) => other is not null && Value == other.Value;
@@ -117,6 +122,33 @@ public sealed class Labelled(string label, params int[] items) : IEnumerable<int
 public sealed class Hand(string label) : List<int>
 {
     private readonly string label = label;
+}
+
+/// <summary>An engine's own type that is its own enumerator, as a LINQ iterator is, and which starts
+/// over when it is asked for its enumerator: enumerating it moves its position, its field.</summary>
+public sealed class Reel : IEnumerable<int>, IEnumerator<int>
+{
+    private int position = -1;
+
+    public int Current => position + 1;
+
+    object IEnumerator.Current => Current;
+
+    public IEnumerator<int> GetEnumerator()
+    {
+        position = -1;
+        return this;
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    public bool MoveNext() => ++position < 2;
+
+    public void Reset() => position = -1;
+
+    public void Dispose()
+    {
+    }
 }
 
 /// <summary>The structural dump, on paired values that must dump differently (and some that must not).</summary>
@@ -199,6 +231,29 @@ public sealed class FixtureDump
         Xunit.Assert.True(alice.SequenceEqual(bob), "the groupings hold the same items");
         Differ(alice, bob, "two groupings with different keys over the same items");
         Same(alice, items.GroupBy(_ => "alice").First(), "two groupings with one key");
+    }
+
+    [Xunit.Fact]
+    public void A_deferred_iterator_is_the_same_each_time_it_is_dumped_and_so_is_a_self_enumerating_type()
+    {
+        // Third review of 62a0677: a dump must not change what it compares.
+        var query = new[] { 1, 2 }.Where(static x => x > 0);
+        var first = Dump(query);
+        Xunit.Assert.Equal(first, Dump(query));
+        Xunit.Assert.Equal(first, Dump(new[] { 1, 2 }.Where(static x => x > 0)));
+        Differ(query, new[] { 1, 3 }.Where(static x => x > 0), "two queries over different items");
+        var method = Iterators.Counted();
+        Xunit.Assert.Equal(Dump(method), Dump(method));
+        Differ(method, Iterators.Counted(3), "two iterator methods that yield different items");
+        // An iterator method's state machine records the thread that made it: that is machinery, not value.
+        IEnumerable<int>? elsewhere = null;
+        var thread = new Thread(() => elsewhere = Iterators.Counted());
+        thread.Start();
+        thread.Join();
+        Same(Iterators.Counted(), elsewhere!, "two iterator methods made on two threads");
+        var reel = new Reel();
+        Xunit.Assert.Equal(Dump(reel), Dump(reel));
+        Differ(new Reel(), new Labelled("x", 1, 2), "a self-enumerating type and another type");
     }
 
     [Xunit.Fact]
@@ -299,6 +354,17 @@ public sealed class FixtureDump
     }
 }
 
+public static class Iterators
+{
+    public static IEnumerable<int> Counted(int to = 2)
+    {
+        for (var i = 1; i <= to; i++)
+        {
+            yield return i;
+        }
+    }
+}
+
 public sealed class FixtureEquality
 {
     // What the structural dump is for: this state's equality cannot see a private field, so two
@@ -363,7 +429,15 @@ public sealed partial class ActionSurfaceAcceptance
         }
 
         return new(configuration, seed, configuration == "alpha" ? 0 : 4, [],
-            Variant == "drift" ? Interlocked.Increment(ref stamps) : 0);
+            Variant == "drift" ? Interlocked.Increment(ref stamps) : 0)
+        {
+            Deferred = Variant switch
+            {
+                "deferred-linq" => new[] { 1, 2 }.Where(static x => x > 0),
+                "deferred-iterator" => Iterators.Counted(),
+                _ => null,
+            },
+        };
     }
 
     internal static partial bool IsOver(Counter state)
@@ -375,7 +449,9 @@ public sealed partial class ActionSurfaceAcceptance
             state.Poke();
         }
 
-        return state.Value >= 10 || (Variant == "ending-drift" && Zero(state) && Replaying(state));
+        // A state that holds a deferred query is over at once: nothing else moves the query, so a
+        // difference around IsOver can only be the dump's own.
+        return state.Value >= 10 || Variant is "deferred-linq" or "deferred-iterator" || (Variant == "ending-drift" && Zero(state) && Replaying(state));
     }
 
     internal static partial Resolution<ImmutableArray<Step>> LegalActions(Counter state)
