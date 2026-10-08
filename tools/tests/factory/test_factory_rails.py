@@ -6805,7 +6805,7 @@ if step.get("replace"):
     os.replace(copy, target)
 if step.get("terminate"):
     import signal, time
-    os.kill(os.getppid(), signal.SIGTERM)
+    os.kill(os.getppid(), getattr(signal, step["terminate"]) if isinstance(step["terminate"], str) else signal.SIGTERM)
     time.sleep(30)
 print(step["say"])
 sys.exit(step.get("code", 0))
@@ -7362,6 +7362,52 @@ class TestTheMutationRunner(RailsInAGitEngine):
         self.assertEqual(calls[1]["watched"], "alpha\nBETA\ngamma\n", "the signal did not arrive in the mutated run")
         self.assertNotEqual(done.returncode, 0, "a terminated run reported success")
         self.assertEqual(self.on_disk(), ORIGINAL, "a terminated run left the source mutated")
+
+    @unittest.skipUnless(hasattr(signal, "SIGHUP") and sys.platform != "win32", "needs POSIX SIGHUP")
+    def test_a_hung_up_run_puts_the_source_back_and_exits_non_zero(self):
+        """Only SIGTERM was handled; a closed terminal's SIGHUP ended the process with the source mutated."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
+                  {"say": "never printed", "terminate": "SIGHUP"})
+        done = self.mutate(self.spec())
+        calls = self.calls()
+        self.assertEqual(len(calls), 2, done.stdout + done.stderr)
+        self.assertEqual(calls[1]["watched"], "alpha\nBETA\ngamma\n", "the signal did not arrive in the mutated run")
+        self.assertEqual(done.returncode, 1, "a hung-up run did not exit 1: " + done.stdout + done.stderr)
+        self.assertIn("INTERRUPTED", done.stderr)
+        self.assertEqual(self.on_disk(), ORIGINAL, "a hung-up run left the source mutated")
+
+    def test_an_interrupt_that_could_not_restore_a_file_does_not_claim_it_was_put_back(self):
+        """main() printed "put back" for every KeyboardInterrupt, even one that left a file mutated."""
+        self.engine_with_a_probe()
+        self.put_bytes(b"one\ntwo\n", "other.txt")
+        module = self.runner()
+        spec_path = os.path.join(self.tmp, "interrupted-spec.json")
+        with open(spec_path, "w", encoding="utf-8") as handle:
+            json.dump(self.spec(extra_edits=(self.edit("two", "TWO", file="other.txt"),)), handle)
+        real, seen = pathlib.Path.write_bytes, []
+
+        def write_bytes(path, data):
+            # 1: the mutated probe. 2: other.txt, interrupted. 3: restoring the probe, interrupted.
+            # 4: its retry, which fails. Every write after that is real.
+            seen.append(path.name)
+            if len(seen) in (2, 3):
+                raise KeyboardInterrupt
+            if len(seen) == 4:
+                raise OSError("disk full")
+            return real(path, data)
+        err, out = io.StringIO(), io.StringIO()
+        with unittest.mock.patch.object(pathlib.Path, "write_bytes", write_bytes), \
+                unittest.mock.patch.dict(os.environ, {"RULES_ENGINE_ALLOW_PRIMARY_MUTATION": "1"}), \
+                redirect_stderr(err), redirect_stdout(out):
+            code = module.main([spec_path, "--no-baseline"])
+        self.assertEqual(seen[:4], [PROBE, "other.txt", PROBE, PROBE], "the interrupts did not fall where intended")
+        self.assertEqual(self.bytes_on_disk(), b"alpha\nBETA\ngamma\n", "the probe was meant to stay mutated")
+        self.assertEqual(code, 1)
+        self.assertIn(PROBE, err.getvalue())
+        self.assertIn("could not be restored", err.getvalue())
+        self.assertNotIn("put back", err.getvalue(), "it claimed the files were restored")
+        self.assertEqual(self.bytes_on_disk("other.txt"), b"one\ntwo\n")
 
     def test_every_name_a_spec_gave_a_hard_linked_file_is_restored(self):
         """Restoration was keyed to the first name; the run replaced it, and the other stayed mutated."""

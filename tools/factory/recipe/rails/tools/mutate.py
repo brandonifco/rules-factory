@@ -59,9 +59,12 @@ before the failure is raised. Anything it cannot restore, it says loudly.
 **Restoring is not best-effort.** The original bytes are held in memory and written back in a
 `finally`, byte for byte, then read again and compared. An interrupted run leaves no mutated file:
 an interrupt (^C) in the middle of applying or restoring finishes putting every file back before it
-is raised again, and SIGTERM is turned into the same interrupt from just before the first write
-until the last file is back. (SIGKILL cannot be caught, and nothing here pretends otherwise.) The
-one thing worse than no mutation evidence is a source tree quietly carrying a mutation.
+is raised again, and SIGTERM, and SIGHUP where the platform has it (a closed terminal sends it in
+the middle of a long test run), are turned into the same interrupt from just before the first write
+until the last file is back. (SIGKILL cannot be caught, and nothing here pretends otherwise.) An
+interrupt is reported as having left the source as it was only after every file the spec names has
+been read again and found byte for byte what it was before the run; otherwise the files that differ
+are listed, and the exit is 1. The one thing worse than no mutation evidence is a source tree quietly carrying a mutation.
 
 **A mutation that does not compile is not a red test.** It is reported as its own outcome and
 counts as a failure of the run: the test was never asked the question.
@@ -248,7 +251,7 @@ def apply(spec, where):
             if identity not in texts:
                 raw = path.read_bytes()
                 # Decoded and matched exactly as it is on disk: no newline translation, so CR LF is
-                # two characters and an `old` holding LF alone does not match it.
+                # two characters, and an `old` holding LF alone matches the LF inside it.
                 texts[identity] = raw.decode("utf-8")
                 originals[identity], paths[identity], written[identity] = raw, [], []
             if path not in paths[identity]:
@@ -416,8 +419,22 @@ def _excerpt(text, width=70):
     return repr(one_line if len(one_line) <= width else one_line[:width] + "...")
 
 
+def _named_originals(spec):
+    """[(path, bytes)] for every file the spec names, as it is on disk now, before anything is written."""
+    pairs, seen = [], set()
+    for edit in spec["edits"]:
+        path = (ROOT / edit["file"]).resolve()
+        if path in seen or not _within(path, ROOT):
+            continue
+        seen.add(path)
+        original = _bytes_of(path)
+        if original is not None:
+            pairs.append((path, original))
+    return pairs
+
+
 def _terminated(signum, frame):
-    """SIGTERM while a file is mutated is an interrupt like ^C, so the `finally` clauses run."""
+    """SIGTERM or SIGHUP while a file is mutated is an interrupt like ^C, so the `finally` clauses run."""
     raise KeyboardInterrupt(f"terminated by signal {signum}")
 
 
@@ -459,13 +476,18 @@ def main(argv=None):
             results.append((label, f"BASELINE {baselines[test]}", "the test was not green before the mutation"))
             continue
 
-        # From just before the first write until the last file is back, SIGTERM is an interrupt: a
-        # terminated process runs no `finally`, and would leave the source mutated. `apply` puts
-        # back what it wrote if it is interrupted, and `restore` finishes every file before it
-        # raises.
-        previous = signal.signal(signal.SIGTERM, _terminated)
+        # From just before the first write until the last file is back, SIGTERM and SIGHUP are an
+        # interrupt: a terminated process runs no `finally`, and would leave the source mutated.
+        # `apply` puts back what it wrote if it is interrupted, and `restore` finishes every file
+        # before it raises.
+        named = []
+        previous = {}
+        for signum in (signal.SIGTERM, getattr(signal, "SIGHUP", None)):
+            if signum is not None:
+                previous[signum] = signal.signal(signum, _terminated)
         try:
             try:
+                named = _named_originals(spec)
                 restore_pairs = apply(spec, f"spec {number}")
             except NotRestored as error:
                 print(f"REFUSED: {error}", file=sys.stderr)
@@ -488,11 +510,19 @@ def main(argv=None):
                           "before anything else:\n  " + "\n  ".join(str(p) for p in failed), file=sys.stderr)
                     return 1
         except KeyboardInterrupt as error:
+            # The claim is made only after looking: each named file against the bytes it had.
+            failed = [path for path, original in named if _bytes_of(path) != original]
+            if failed:
+                print(f"INTERRUPTED: {error or 'interrupted'}\nREFUSED: these files were mutated and "
+                      f"could not be restored -- fix them before anything else:\n  "
+                      + "\n  ".join(str(p) for p in failed), file=sys.stderr)
+                return 1
             print(f"INTERRUPTED: {error or 'interrupted'}; every file the mutation touched was put "
                   f"back.", file=sys.stderr)
             return 1
         finally:
-            signal.signal(signal.SIGTERM, previous)
+            for signum, handler in previous.items():
+                signal.signal(signum, handler)
         results.append((label, outcome, line))
         print(f"[{number}/{len(specs)}] {label}\n    {outcome}: {line}", flush=True)
 

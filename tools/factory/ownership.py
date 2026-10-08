@@ -149,7 +149,7 @@ TABLE = (
         "a recorded mutation, run: the edit, the named test, and the source put back, so the evidence "
         "AGENTS.md asks for is re-runnable by the reviewer rather than a sentence (#454); a spec's edits "
         "apply in order, each to the text the earlier ones left, so every edit to a file is in place for "
-        "the run, and one that reads another's output is refused (#623); an interrupt or SIGTERM puts every "
+        "the run, and one that reads another's output is refused (#623); an interrupt, SIGTERM or SIGHUP puts every "
         "file back, every name of a hard-linked file is restored, and a spec that names no site or "
         "cancels itself out is refused (#623)"),
     Row("tools/re-produce.sh", MANAGED, 8,
@@ -444,7 +444,7 @@ RECIPE_SHA256 = {
     },
     "tools/mutate.py": {
         1: "d33f7ddedc923388af4582ffb6c04a1434c09f695738ca34f191839f21847901",
-        2: "c0e3dea4a39bd758d9a374e564bad989d54b2e7952a82857d86980b8f6448213",
+        2: "eb722639671ba46c0703f699dc85177fe88f52e00ced99ccf4e90f54a30c49eb",
     },
     "tools/re-produce.sh": {
         1: "2a281f94f81ce141733494a94744caa96c88af3cd9fa848cec21c13e73739499",
