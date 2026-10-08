@@ -7019,6 +7019,12 @@ class TestTheMutationRunner(RailsInAGitEngine):
     def edit(self, old, new, file=PROBE, **more):
         return {"file": file, "old": old, "new": new, **more}
 
+    def assertRefusedBeforeAnythingWasWritten(self):
+        """Only the baseline reached dotnet, it saw the original, and the file is the original still."""
+        self.assertEqual([call["watched"] for call in self.calls()], [ORIGINAL],
+                         "a refused spec reached the mutated run, or left a file changed before it")
+        self.assertEqual(self.on_disk(), ORIGINAL, "a refused spec left an edit written")
+
     def test_two_edits_to_one_file_are_both_in_place_for_the_run_and_both_undone_after_it(self):
         """The defect: each edit was planned against the file's original bytes, so the last write won."""
         self.engine_with_a_probe()
@@ -7069,8 +7075,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
         self.assertIn("edit 1", said)
         self.assertIn("occurs 0 time(s)", said)
         self.assertIn(PROBE, said)
-        self.assertEqual(self.calls(), [], "a refused spec reached dotnet")
-        self.assertEqual(self.on_disk(), ORIGINAL, "a refused spec left its first edit written")
+        self.assertRefusedBeforeAnythingWasWritten()
 
     def test_an_edit_inside_text_an_earlier_edit_wrote_is_refused_and_nothing_is_written(self):
         self.engine_with_a_probe()
@@ -7081,8 +7086,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
         self.assertIn("edit 1", said)
         self.assertIn("overlaps text edit 0 wrote", said)
         self.assertIn(PROBE, said)
-        self.assertEqual(self.calls(), [])
-        self.assertEqual(self.on_disk(), ORIGINAL)
+        self.assertRefusedBeforeAnythingWasWritten()
 
     def test_an_edit_that_straddles_the_edge_of_text_an_earlier_edit_wrote_is_refused(self):
         """Part of `old` is the original's and part is the earlier edit's: still the edit's output."""
@@ -7091,7 +7095,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
         done = self.mutate(self.spec(extra_edits=(self.edit("A\ng", "A\nG"),), new="BETA"))
         self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
         self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
-        self.assertEqual(self.on_disk(), ORIGINAL)
+        self.assertRefusedBeforeAnythingWasWritten()
 
     def test_an_edit_whose_old_exists_only_because_an_earlier_edit_made_it_is_refused(self):
         """Deleting `pha` joins `l` to `\n`; `l\nb` is in no file the spec's author could read."""
@@ -7100,8 +7104,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
         done = self.mutate(self.spec(old="pha", new="", extra_edits=(self.edit("l\nb", "L\nB"),)))
         self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
         self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
-        self.assertEqual(self.calls(), [])
-        self.assertEqual(self.on_disk(), ORIGINAL)
+        self.assertRefusedBeforeAnythingWasWritten()
 
 
 class TestReProducingAnEmbeddedEngine(AFactoryToReProduceFrom, RailsInAGitEngine):

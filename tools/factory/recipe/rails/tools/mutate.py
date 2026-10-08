@@ -27,11 +27,15 @@ should turn it red:
                 "old": "!finding.BelowMet && !finding.HorizontalMet",
                 "new": "finding.BelowMet && finding.HorizontalMet"}]}
 
-`count` on an edit says how many occurrences of `old` are expected; the default is 1.
+`count` on an edit says how many occurrences of `old` are expected; the default is 1. Edits apply
+in the order they are named, each to the text the earlier ones left, so a spec may edit one file
+several times.
 
-**What it refuses.** An `old` string that does not occur exactly `count` times, before anything is
-written -- a mutation applied to the wrong site, or to nothing, proves nothing and the run would
-still print a colour. The primary checkout, for the reason the rails block writes there at all.
+**What it refuses.** An `old` string that does not occur exactly `count` times -- counted in the
+text the spec's earlier edits left, not in the file as it was read -- before anything is written: a
+mutation applied to the wrong site, or to nothing, proves nothing and the run would still print a
+colour. An `old` any occurrence of which overlaps text an earlier edit of the same spec wrote, for
+the same reason: it edits the mutation, not the code. The primary checkout, for the reason the rails block writes there at all.
 Anything it cannot restore, loudly.
 
 **Restoring is not best-effort.** The original bytes are held in memory and written back in a
@@ -181,30 +185,60 @@ def checked(spec, where):
 def apply(spec, where):
     """Apply every edit of one spec, or none of them. Returns [(path, original bytes)] to restore.
 
-    The occurrence count is checked for **every** edit before the first byte is written, so a spec
-    whose second edit is ambiguous does not leave the first one applied.
+    Edits are applied in the order the spec names them, each to what the earlier ones left: the
+    occurrences of `old` are counted in that text, not in the file as it was read. A file the spec
+    edits twice is read once, and the pair returned for it holds the bytes from before any edit.
+
+    An edit is refused when its `old` does not occur exactly `count` times in that text, and when
+    any occurrence of it overlaps text an earlier edit of the same spec wrote: that is an edit to
+    the mutation, not to the code the test is about, and no one reading the source could have
+    written it. Every check, for every edit, is made before the first byte is written, so a spec
+    whose later edit is refused does not leave an earlier one applied.
     """
-    planned = []
+    texts = {}      # path -> the text so far, after the earlier edits of this spec
+    originals = {}  # path -> the bytes before any edit, in the order the paths first appear
+    written = {}    # path -> [[start, end, index of the edit that wrote it]] in `texts[path]`
     for index, edit in enumerate(spec["edits"]):
         path = (ROOT / edit["file"]).resolve()
         if not _within(path, ROOT):
             raise Refused(f"{where} edit {index} names {edit['file']}, which is outside this engine")
-        try:
-            original = path.read_text(encoding="utf-8")
-        except (OSError, ValueError) as error:
-            raise Refused(f"{where} edit {index} cannot read {edit['file']}: {error}")
+        if path not in texts:
+            try:
+                originals[path] = texts[path] = path.read_text(encoding="utf-8")
+            except (OSError, ValueError) as error:
+                raise Refused(f"{where} edit {index} cannot read {edit['file']}: {error}")
+            written[path] = []
+        text, spans = texts[path], written[path]
         expected = edit.get("count", 1)
-        found = original.count(edit["old"])
-        if found != expected:
-            raise Refused(f"{where} edit {index}: {_excerpt(edit['old'])} occurs {found} time(s) in "
-                          f"{edit['file']}, expected {expected}. A mutation applied to the wrong site, "
-                          f"or to nothing, proves nothing about the test.")
-        planned.append((path, original, original.replace(edit["old"], edit["new"])))
+        hits = [(m.start(), m.end()) for m in re.finditer(re.escape(edit["old"]), text)]
+        if len(hits) != expected:
+            after = f" as edit(s) {', '.join(str(n) for n in sorted({s[2] for s in spans}))} leave it" if spans else ""
+            raise Refused(f"{where} edit {index}: {_excerpt(edit['old'])} occurs {len(hits)} time(s) in "
+                          f"{edit['file']}{after}, expected {expected}. A mutation applied to the wrong "
+                          f"site, or to nothing, proves nothing about the test.")
+        for start, end in hits:
+            for first, last, by in spans:
+                if first < end and start < last:
+                    raise Refused(f"{where} edit {index}: {_excerpt(edit['old'])} in {edit['file']} overlaps "
+                                  f"text edit {by} wrote. An edit to another edit's output is not an edit "
+                                  f"to the code the test is about; name the final text in one edit.")
+        pieces, moved, cursor, grown = [], [list(span) for span in spans], 0, 0
+        for start, end in hits:
+            pieces += [text[cursor:start], edit["new"]]
+            cursor = end
+            delta = len(edit["new"]) - (end - start)
+            for span in moved:
+                if span[2] != index and span[0] >= end:
+                    span[0] += delta
+                    span[1] += delta
+            moved.append([start + grown, start + grown + len(edit["new"]), index])
+            grown += delta
+        pieces.append(text[cursor:])
+        texts[path], written[path] = "".join(pieces), moved
 
-    restore = [(path, original) for path, original, _ in planned]
-    for path, _, mutated in planned:
+    for path, mutated in texts.items():
         path.write_text(mutated, encoding="utf-8")
-    return restore
+    return list(originals.items())
 
 
 def restore(pairs):

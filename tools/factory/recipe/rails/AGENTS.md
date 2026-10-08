@@ -332,7 +332,8 @@ decline that names why and cites where — that is the engine working, not the e
 
   It refuses an `old` string that does not occur exactly as many times as the spec says, before it
   writes anything: a mutation applied to the wrong site, or to nothing, proves nothing and would
-  still print a colour. It runs each test unmutated first, because a test that was already red
+  still print a colour. A spec's edits apply in order, each to the text the earlier ones left, so
+  `old` is counted there and may not overlap text an earlier edit wrote. It runs each test unmutated first, because a test that was already red
   proves nothing either. And it names the one failure the prose cannot — **a mutation that leaves
   its test green**, which is precisely the test nobody has watched fail — by reporting it and
   exiting non-zero. Paste its output into the pull request as the evidence, and put the specs
