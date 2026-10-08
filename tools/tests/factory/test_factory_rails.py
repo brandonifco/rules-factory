@@ -34,9 +34,11 @@ import importlib.util
 import io
 import json
 import os
+import pathlib
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -6787,9 +6789,24 @@ plan = json.loads(pathlib.Path(os.environ["DOTNET_PLAN"]).read_text())
 state = pathlib.Path(os.environ["DOTNET_CALLS"])
 calls = json.loads(state.read_text()) if state.exists() else []
 step = plan[min(len(calls), len(plan) - 1)]
-watched = pathlib.Path(os.environ["DOTNET_WATCH"])
-calls.append({"argv": sys.argv[1:], "watched": watched.read_text() if watched.exists() else None})
+names = os.environ["DOTNET_WATCH"].split(os.pathsep)
+watched = pathlib.Path(names[0])
+calls.append({"argv": sys.argv[1:], "watched": watched.read_text() if watched.exists() else None,
+              "watchedFiles": {pathlib.Path(n).name: pathlib.Path(n).read_text() if pathlib.Path(n).exists() else None
+                               for n in names},
+              "watchedBytes": {pathlib.Path(n).name: pathlib.Path(n).read_bytes().hex() if pathlib.Path(n).exists() else None
+                               for n in names}})
 state.write_text(json.dumps(calls))
+if step.get("replace"):
+    # A test run that replaces a file with a new inode (a rebuild, a checkout, an editor's save).
+    target = next(pathlib.Path(n) for n in names if pathlib.Path(n).name == step["replace"])
+    copy = target.with_name(target.name + ".copy")
+    copy.write_bytes(target.read_bytes())
+    os.replace(copy, target)
+if step.get("terminate"):
+    import signal, time
+    os.kill(os.getppid(), getattr(signal, step["terminate"]) if isinstance(step["terminate"], str) else signal.SIGTERM)
+    time.sleep(30)
 print(step["say"])
 sys.exit(step.get("code", 0))
 '''
@@ -6837,10 +6854,10 @@ class TestTheMutationRunner(RailsInAGitEngine):
         with open(self.calls_path, encoding="utf-8") as handle:
             return json.load(handle)
 
-    def mutate(self, spec, *flags, hatch=True):
+    def mutate(self, spec, *flags, hatch=True, watch=(PROBE,)):
         environment = {**os.environ, "PATH": self.bin + os.pathsep + os.environ["PATH"],
                        "DOTNET_PLAN": self.plan_path, "DOTNET_CALLS": self.calls_path,
-                       "DOTNET_WATCH": os.path.join(self.out, PROBE)}
+                       "DOTNET_WATCH": os.pathsep.join(os.path.join(self.out, name) for name in watch)}
         if hatch:
             environment["RULES_ENGINE_ALLOW_PRIMARY_MUTATION"] = "1"
         return subprocess.run([sys.executable, os.path.join(self.out, "tools", "mutate.py"), "-", *flags],
@@ -7007,6 +7024,456 @@ class TestTheMutationRunner(RailsInAGitEngine):
         done = self.mutate({"edits": [{"file": PROBE, "old": "beta", "new": "BETA"}]})
         self.assertEqual(done.returncode, 1)
         self.assertIn("names no `test`", done.stdout + done.stderr)
+
+    # -- several edits in one spec: each is applied to what the earlier ones produced (#623) -------
+
+    GREEN_THEN_RED = ({"say": "Passed!  - Failed:     0, Passed:     1"},
+                      {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1})
+
+    def edit(self, old, new, file=PROBE, **more):
+        return {"file": file, "old": old, "new": new, **more}
+
+    def assertRefusedBeforeAnythingWasWritten(self, original=ORIGINAL):
+        """Only the baseline reached dotnet, it saw the original, and the file is the original still."""
+        self.assertEqual([call["watched"] for call in self.calls()], [original],
+                         "a refused spec reached the mutated run, or left a file changed before it")
+        self.assertEqual(self.on_disk(), original, "a refused spec left an edit written")
+
+    def test_two_edits_to_one_file_are_both_in_place_for_the_run_and_both_undone_after_it(self):
+        """The defect: each edit was planned against the file's original bytes, so the last write won."""
+        self.engine_with_a_probe()
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(extra_edits=(self.edit("gamma", "GAMMA"),)))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        calls = self.calls()
+        self.assertEqual(calls[1]["watched"], "alpha\nBETA\nGAMMA\n",
+                         "the run saw only some of the spec's edits")
+        self.assertEqual(self.on_disk(), ORIGINAL, "the file was not restored to its original bytes")
+
+    def test_edits_to_two_files_are_both_in_place_for_the_run_and_both_undone_after_it(self):
+        probe = self.engine_with_a_probe()
+        other = os.path.join(self.out, "other.txt")
+        with open(other, "w", encoding="utf-8") as handle:
+            handle.write("one\ntwo\n")
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(extra_edits=(self.edit("two", "TWO", file="other.txt"),)),
+                           watch=(PROBE, "other.txt"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        seen = self.calls()[1]["watchedFiles"]
+        self.assertEqual(seen, {PROBE: "alpha\nBETA\ngamma\n", "other.txt": "one\nTWO\n"})
+        self.assertEqual(self.on_disk(), ORIGINAL)
+        with open(other, encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), "one\ntwo\n")
+
+    def test_an_edit_after_one_that_changes_the_length_still_lands_on_its_own_text(self):
+        """The written spans move when a later edit changes lengths before them.
+
+        Edit 1 writes `BETA!!`; edit 2 shortens the text before it; edit 3 starts exactly where
+        edit 1's text ends. With edit 1's span left where it was written, edit 3 would look like an
+        overlap and be refused.
+        """
+        self.engine_with_a_probe()
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(new="BETA!!", extra_edits=(self.edit("alpha", "AL"),
+                                                                 self.edit("\ngamma", "\nGAMMA"))))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.calls()[1]["watched"], "AL\nBETA!!\nGAMMA\n")
+        self.assertEqual(self.on_disk(), ORIGINAL)
+
+    def test_an_edit_whose_old_an_earlier_edit_removed_is_refused_and_nothing_is_written(self):
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(extra_edits=(self.edit("beta", "zeta"),)))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        said = done.stdout + done.stderr
+        self.assertIn("edit 1", said)
+        self.assertIn("occurs 0 time(s)", said)
+        self.assertIn(PROBE, said)
+        self.assertRefusedBeforeAnythingWasWritten()
+
+    def test_an_edit_inside_text_an_earlier_edit_wrote_is_refused_and_nothing_is_written(self):
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(old="beta", new="be-ta", extra_edits=(self.edit("-t", "+t"),)))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        said = done.stdout + done.stderr
+        self.assertIn("edit 1", said)
+        self.assertIn("overlaps text edit 0 wrote", said)
+        self.assertIn(PROBE, said)
+        self.assertRefusedBeforeAnythingWasWritten()
+
+    def test_an_edit_that_straddles_the_edge_of_text_an_earlier_edit_wrote_is_refused(self):
+        """Part of `old` is the original's and part is the earlier edit's: still the edit's output."""
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(extra_edits=(self.edit("A\ng", "A\nG"),), new="BETA"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten()
+
+    def test_an_edit_whose_old_exists_only_because_an_earlier_edit_made_it_is_refused(self):
+        """Deleting `pha` joins `l` to `\n`; `l\nb` is in no file the spec's author could read."""
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(old="pha", new="", extra_edits=(self.edit("l\nb", "L\nB"),)))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten()
+
+    # -- repair after review of #624: spans, bytes, overlaps, partial writes, hard links -----------
+
+    def test_a_later_hit_does_not_move_an_earlier_edits_span_a_second_time(self):
+        """Edit 1 has two hits and grows the text; edit 2 names edit 0's output, which is refused.
+
+        Each hit moved the spans already shifted by the hit before it, so edit 0's `B` was taken
+        to sit where it does not, and `B` was rewritten after all.
+        """
+        self.engine_with_a_probe("aba")
+        self.plan()
+        done = self.mutate(self.spec(old="b", new="B", extra_edits=(
+            self.edit("a", "aaaa", count=2), self.edit("B", "C"))))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten("aba")
+
+    def test_a_growing_edit_with_three_hits_does_not_make_an_edit_to_untouched_text_look_like_an_overlap(self):
+        """Moved by every hit after the first as well, edit 0's span landed on the `.` and refused it."""
+        self.engine_with_a_probe("abxa.a")
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(old="b", new="M", extra_edits=(
+            self.edit("a", "XXXX", count=3), self.edit(".", "!"))))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.calls()[1]["watched"], "XXXXMxXXXX!XXXX")
+        self.assertEqual(self.on_disk(), "abxa.a")
+
+    def test_a_growing_edit_with_two_hits_still_refuses_an_edit_to_the_text_an_earlier_edit_wrote(self):
+        self.engine_with_a_probe("x.M.x.QQ")
+        self.plan()
+        done = self.mutate(self.spec(old="M", new="N", extra_edits=(
+            self.edit("x", "X" * 10, count=2), self.edit("N.", "!"))))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten("x.M.x.QQ")
+
+    def test_a_shrinking_edit_with_two_hits_still_refuses_an_edit_to_the_text_an_earlier_edit_wrote(self):
+        self.engine_with_a_probe("aaXXaaZ")
+        self.plan()
+        done = self.mutate(self.spec(old="Z", new="Q", extra_edits=(
+            self.edit("aa", "a", count=2), self.edit("Q", "R"))))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten("aaXXaaZ")
+
+    def test_a_shrinking_edit_with_two_hits_does_not_make_an_edit_to_untouched_text_look_like_an_overlap(self):
+        self.engine_with_a_probe("aaXXaaZ!")
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(old="Z", new="Q", extra_edits=(
+            self.edit("aa", "a", count=2), self.edit("!", "?"))))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.calls()[1]["watched"], "aXXaQ?")
+        self.assertEqual(self.on_disk(), "aaXXaaZ!")
+
+    # Bytes, not text: restoring is the one promise the runner must not break.
+
+    def put_bytes(self, data, name=PROBE):
+        path = os.path.join(self.out, name)
+        with open(path, "wb") as handle:
+            handle.write(data)
+        return path
+
+    def bytes_on_disk(self, name=PROBE):
+        with open(os.path.join(self.out, name), "rb") as handle:
+            return handle.read()
+
+    def test_a_file_comes_back_byte_for_byte_whatever_its_line_endings(self):
+        self.engine_with_a_probe()
+        for label, data, expected in (
+                ("CRLF", b"aba\r\n", b"aBa\r\n"),
+                ("a lone CR", b"a\rb\r", b"a\rB\r"),
+                ("mixed endings", b"a\r\nb\nc\rd", b"a\r\nB\nc\rd")):
+            with self.subTest(label):
+                self.put_bytes(data)
+                if os.path.exists(self.calls_path):
+                    os.remove(self.calls_path)
+                self.plan(*self.GREEN_THEN_RED)
+                done = self.mutate(self.spec(old="b", new="B"))
+                self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+                self.assertEqual(self.calls()[1]["watchedBytes"][PROBE], expected.hex(),
+                                 "the run saw other bytes than the original with the one edit")
+                self.assertEqual(self.bytes_on_disk(), data, "the file did not come back byte for byte")
+
+    def test_an_old_that_holds_a_newline_does_not_match_a_crlf_line_ending(self):
+        """Text is matched as it is on disk: CR LF is two characters, and LF alone is not it."""
+        self.engine_with_a_probe()
+        self.put_bytes(b"x\r\ny\r\n")
+        self.plan()
+        done = self.mutate(self.spec(old="x\ny", new="x-y"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("occurs 0 time(s)", done.stdout + done.stderr)
+        self.assertEqual(self.bytes_on_disk(), b"x\r\ny\r\n")
+
+    # Occurrences that overlap one another are one ambiguous site.
+
+    def test_an_edit_whose_second_occurrence_overlaps_text_an_earlier_edit_wrote_is_refused(self):
+        self.engine_with_a_probe("aab")
+        self.plan()
+        done = self.mutate(self.spec(old="b", new="a", extra_edits=(self.edit("aa", "z"),)))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten("aab")
+
+    def test_an_old_whose_occurrences_overlap_one_another_is_an_ambiguous_site(self):
+        self.engine_with_a_probe("aaa")
+        self.plan()
+        done = self.mutate(self.spec(old="aa", new="z"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlap one another", done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten("aaa")
+
+    # A write that fails leaves nothing changed.
+
+    def test_a_replacement_that_cannot_be_encoded_is_refused_before_any_file_is_written(self):
+        self.engine_with_a_probe()
+        self.put_bytes(b"one\ntwo\n", "other.txt")
+        self.plan()
+        done = self.mutate(self.spec(extra_edits=(self.edit("two", "\ud800", file="other.txt"),)),
+                           watch=(PROBE, "other.txt"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("REFUSED", done.stdout + done.stderr)
+        self.assertEqual(self.bytes_on_disk(), ORIGINAL.encode(), "the first file stayed mutated")
+        self.assertEqual(self.bytes_on_disk("other.txt"), b"one\ntwo\n")
+        self.assertEqual(len(self.calls()), 1, "dotnet ran the mutated source")
+
+    def test_a_file_that_cannot_be_written_puts_the_files_already_written_back(self):
+        if hasattr(os, "geteuid") and os.geteuid() == 0:
+            self.skipTest("root writes through a read-only file")
+        self.engine_with_a_probe()
+        other = self.put_bytes(b"one\ntwo\n", "other.txt")
+        os.chmod(other, 0o444)
+        self.plan()
+        done = self.mutate(self.spec(extra_edits=(self.edit("two", "TWO", file="other.txt"),)),
+                           watch=(PROBE, "other.txt"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("REFUSED", done.stdout + done.stderr)
+        self.assertIn("other.txt", done.stdout + done.stderr)
+        self.assertEqual(self.bytes_on_disk(), ORIGINAL.encode(), "the file written first stayed mutated")
+        self.assertEqual(self.bytes_on_disk("other.txt"), b"one\ntwo\n")
+        self.assertEqual(len(self.calls()), 1, "dotnet ran the mutated source")
+
+    def test_a_write_failure_whose_restoration_also_fails_is_not_swallowed(self):
+        """In process: the child cannot be made to fail its own restore, so `apply` is called here."""
+        if hasattr(os, "geteuid") and os.geteuid() == 0:
+            self.skipTest("root writes through a read-only file")
+        self.engine_with_a_probe()
+        other = self.put_bytes(b"one\ntwo\n", "other.txt")
+        os.chmod(other, 0o444)
+        saved = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
+        try:
+            loaded = importlib.util.spec_from_file_location(
+                "mutate_under_test", os.path.join(self.out, "tools", "mutate.py"))
+            module = importlib.util.module_from_spec(loaded)
+            loaded.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = saved
+        module.restore = lambda pairs: [path for path, _ in pairs]
+        with self.assertRaises(module.NotRestored) as caught:
+            module.apply(self.spec(extra_edits=(self.edit("two", "TWO", file="other.txt"),)), "spec 1")
+        self.assertIn(PROBE, str(caught.exception))
+        self.assertIn("could not be restored", str(caught.exception))
+
+    # Two names for one file are one file.
+
+    def test_two_names_for_one_file_are_planned_as_one_file(self):
+        self.engine_with_a_probe()
+        first = self.put_bytes(b"abc", "a.txt")
+        try:
+            os.link(first, os.path.join(self.out, "b.txt"))
+        except (OSError, AttributeError) as error:
+            self.skipTest(f"this filesystem will not hard-link: {error}")
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate({"test": "ProbeTests.Linked", "edits": [
+            self.edit("a", "A", file="a.txt"), self.edit("c", "C", file="b.txt")]},
+            watch=("a.txt", "b.txt"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.calls()[1]["watchedFiles"], {"a.txt": "AbC", "b.txt": "AbC"})
+        self.assertEqual(self.bytes_on_disk("a.txt"), b"abc")
+        self.assertEqual(self.bytes_on_disk("b.txt"), b"abc")
+
+    # -- second repair after review of #624: interruption, aliases, line endings, empty specs ------
+
+    def runner(self):
+        """`tools/mutate.py` of the produced engine, loaded in this process (its ROOT is `self.out`)."""
+        saved = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
+        try:
+            loaded = importlib.util.spec_from_file_location(
+                "mutate_under_test", os.path.join(self.out, "tools", "mutate.py"))
+            module = importlib.util.module_from_spec(loaded)
+            loaded.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = saved
+        return module
+
+    @staticmethod
+    def write_that_is_interrupted_on(number):
+        """A `Path.write_bytes` that raises KeyboardInterrupt on its `number`th call and writes otherwise."""
+        real, seen = pathlib.Path.write_bytes, []
+
+        def write_bytes(path, data):
+            seen.append(path.name)
+            if len(seen) == number:
+                raise KeyboardInterrupt
+            return real(path, data)
+        return write_bytes, seen
+
+    def test_an_interrupt_after_the_first_write_puts_the_first_file_back(self):
+        """`apply` caught only OSError, so a ^C between two writes left the first file mutated."""
+        self.engine_with_a_probe()
+        self.put_bytes(b"one\ntwo\n", "other.txt")
+        module = self.runner()
+        write, seen = self.write_that_is_interrupted_on(2)
+        with unittest.mock.patch.object(pathlib.Path, "write_bytes", write):
+            with self.assertRaises(KeyboardInterrupt):
+                module.apply(self.spec(extra_edits=(self.edit("two", "TWO", file="other.txt"),)), "spec 1")
+        self.assertEqual(seen[:2], [PROBE, "other.txt"], "the interrupt did not fall between the two writes")
+        self.assertEqual(self.bytes_on_disk(), ORIGINAL.encode(), "the file written first stayed mutated")
+        self.assertEqual(self.bytes_on_disk("other.txt"), b"one\ntwo\n")
+
+    def test_an_interrupt_during_restoring_still_restores_the_files_after_it(self):
+        """`restore` stopped at the first thing that was not an OSError and left the rest mutated."""
+        self.engine_with_a_probe()
+        first, second = self.put_bytes(b"MUTATED", "a.txt"), self.put_bytes(b"MUTATED", "b.txt")
+        module = self.runner()
+        write, seen = self.write_that_is_interrupted_on(1)
+        with unittest.mock.patch.object(pathlib.Path, "write_bytes", write):
+            with self.assertRaises(KeyboardInterrupt):
+                module.restore([(pathlib.Path(first), b"first"), (pathlib.Path(second), b"second")])
+        self.assertEqual(self.bytes_on_disk("b.txt"), b"second", "the file after the interrupt stayed mutated")
+        self.assertEqual(self.bytes_on_disk("a.txt"), b"first", "the interrupted file was not tried again")
+
+    @unittest.skipUnless(hasattr(signal, "SIGTERM") and sys.platform != "win32", "needs POSIX SIGTERM")
+    def test_a_terminated_run_puts_the_source_back_and_exits_non_zero(self):
+        """No handler: SIGTERM ended the process with no `finally`, and the source stayed mutated."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"}, {"say": "never printed", "terminate": True})
+        done = self.mutate(self.spec())
+        calls = self.calls()
+        self.assertEqual(len(calls), 2, done.stdout + done.stderr)
+        self.assertEqual(calls[1]["watched"], "alpha\nBETA\ngamma\n", "the signal did not arrive in the mutated run")
+        self.assertNotEqual(done.returncode, 0, "a terminated run reported success")
+        self.assertEqual(self.on_disk(), ORIGINAL, "a terminated run left the source mutated")
+
+    @unittest.skipUnless(hasattr(signal, "SIGHUP") and sys.platform != "win32", "needs POSIX SIGHUP")
+    def test_a_hung_up_run_puts_the_source_back_and_exits_non_zero(self):
+        """Only SIGTERM was handled; a closed terminal's SIGHUP ended the process with the source mutated."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
+                  {"say": "never printed", "terminate": "SIGHUP"})
+        done = self.mutate(self.spec())
+        calls = self.calls()
+        self.assertEqual(len(calls), 2, done.stdout + done.stderr)
+        self.assertEqual(calls[1]["watched"], "alpha\nBETA\ngamma\n", "the signal did not arrive in the mutated run")
+        self.assertEqual(done.returncode, 1, "a hung-up run did not exit 1: " + done.stdout + done.stderr)
+        self.assertIn("INTERRUPTED", done.stderr)
+        self.assertEqual(self.on_disk(), ORIGINAL, "a hung-up run left the source mutated")
+
+    def test_an_interrupt_that_could_not_restore_a_file_does_not_claim_it_was_put_back(self):
+        """main() printed "put back" for every KeyboardInterrupt, even one that left a file mutated."""
+        self.engine_with_a_probe()
+        self.put_bytes(b"one\ntwo\n", "other.txt")
+        module = self.runner()
+        spec_path = os.path.join(self.tmp, "interrupted-spec.json")
+        with open(spec_path, "w", encoding="utf-8") as handle:
+            json.dump(self.spec(extra_edits=(self.edit("two", "TWO", file="other.txt"),)), handle)
+        real, seen = pathlib.Path.write_bytes, []
+
+        def write_bytes(path, data):
+            # 1: the mutated probe. 2: other.txt, interrupted. 3: restoring the probe, interrupted.
+            # 4: its retry, which fails. Every write after that is real.
+            seen.append(path.name)
+            if len(seen) in (2, 3):
+                raise KeyboardInterrupt
+            if len(seen) == 4:
+                raise OSError("disk full")
+            return real(path, data)
+        err, out = io.StringIO(), io.StringIO()
+        with unittest.mock.patch.object(pathlib.Path, "write_bytes", write_bytes), \
+                unittest.mock.patch.dict(os.environ, {"RULES_ENGINE_ALLOW_PRIMARY_MUTATION": "1"}), \
+                redirect_stderr(err), redirect_stdout(out):
+            code = module.main([spec_path, "--no-baseline"])
+        self.assertEqual(seen[:4], [PROBE, "other.txt", PROBE, PROBE], "the interrupts did not fall where intended")
+        self.assertEqual(self.bytes_on_disk(), b"alpha\nBETA\ngamma\n", "the probe was meant to stay mutated")
+        self.assertEqual(code, 1)
+        self.assertIn(PROBE, err.getvalue())
+        self.assertIn("could not be restored", err.getvalue())
+        self.assertNotIn("put back", err.getvalue(), "it claimed the files were restored")
+        self.assertEqual(self.bytes_on_disk("other.txt"), b"one\ntwo\n")
+
+    def test_every_name_a_spec_gave_a_hard_linked_file_is_restored(self):
+        """Restoration was keyed to the first name; the run replaced it, and the other stayed mutated."""
+        self.engine_with_a_probe()
+        first = self.put_bytes(b"abc", "a.txt")
+        try:
+            os.link(first, os.path.join(self.out, "b.txt"))
+        except (OSError, AttributeError) as error:
+            self.skipTest(f"this filesystem will not hard-link: {error}")
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
+                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1, "replace": "a.txt"})
+        done = self.mutate({"test": "ProbeTests.Linked", "edits": [
+            self.edit("a", "A", file="a.txt"), self.edit("c", "C", file="b.txt")]},
+            watch=("a.txt", "b.txt"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.calls()[1]["watchedFiles"], {"a.txt": "AbC", "b.txt": "AbC"})
+        self.assertEqual(self.bytes_on_disk("a.txt"), b"abc")
+        self.assertEqual(self.bytes_on_disk("b.txt"), b"abc", "the name the run did not replace stayed mutated")
+
+    def test_matching_is_plain_substring_search_so_an_lf_old_also_matches_inside_crlf(self):
+        """The documented behaviour: CR LF is two characters, and an `old` of LF alone matches its LF."""
+        self.engine_with_a_probe()
+        self.put_bytes(b"x\r\ny\r\n")
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(old="\n", new="!", count=2))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(bytes.fromhex(self.calls()[1]["watchedBytes"][PROBE]), b"x\r!y\r!")
+        self.assertEqual(self.bytes_on_disk(), b"x\r\ny\r\n")
+
+    def test_an_empty_old_names_no_site_and_is_refused(self):
+        """`a` to nothing, then nothing to `a`, wrote the original bytes and certified a mutation."""
+        self.engine_with_a_probe("a")
+        self.plan()
+        done = self.mutate(self.spec(old="a", new="", extra_edits=(self.edit("", "a"),)))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("empty `old`", done.stdout + done.stderr)
+        self.assertEqual(self.calls(), [], "dotnet ran for a spec that was refused as a spec")
+        self.assertEqual(self.on_disk(), "a")
+
+    def test_an_empty_old_is_refused_even_when_its_count_matches_every_position_in_the_file(self):
+        """`` occurs once between every two characters and at both ends; a count of 3 fits `ab`."""
+        self.engine_with_a_probe("ab")
+        self.plan()
+        done = self.mutate(self.spec(old="", new="-", count=3))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("empty `old`", done.stdout + done.stderr)
+        self.assertEqual(self.calls(), [], "dotnet ran against a file with a dash between every character")
+        self.assertEqual(self.on_disk(), "ab")
+
+    def test_a_spec_whose_edits_cancel_out_is_refused_before_any_write(self):
+        """`a`->`ab` then `bc`->`c` on `abbc` passes every other check and writes `abbc` again."""
+        self.engine_with_a_probe("abbc")
+        self.plan()
+        done = self.mutate(self.spec(old="a", new="ab", extra_edits=(self.edit("bc", "c"),)))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("edits cancel out", done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten("abbc")
+
+    def test_a_spec_that_changes_one_of_its_files_is_not_taken_for_one_that_cancels_out(self):
+        self.engine_with_a_probe("abbc")
+        self.put_bytes(b"one\n", "other.txt")
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(old="a", new="ab", extra_edits=(
+            self.edit("bc", "c"), self.edit("one", "ONE", file="other.txt"))), watch=(PROBE, "other.txt"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.calls()[1]["watchedFiles"], {PROBE: "abbc", "other.txt": "ONE\n"})
 
 
 class TestReProducingAnEmbeddedEngine(AFactoryToReProduceFrom, RailsInAGitEngine):
