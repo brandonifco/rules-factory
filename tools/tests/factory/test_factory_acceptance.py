@@ -389,8 +389,11 @@ class TestHarnessRunsInDotnet(Case):
                     "DOTNET_CLI_USE_MSBUILD_SERVER": "0"})
         if variant:
             env["ACTION_SURFACE_FIXTURE"] = variant
-        done = subprocess.run(["dotnet", *args], cwd=engine, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                              text=True, env=env, timeout=900)
+        # No compiler server and no reused build node: nothing is left running after the tests.
+        extra = ["-p:UseSharedCompilation=false", "-nr:false"] if args[0] == "build" else []
+        # A harness that never ended a run would otherwise hang the suite: five minutes is generous.
+        done = subprocess.run(["dotnet", *args, *extra], cwd=engine, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              text=True, env=env, timeout=300)
         return done.returncode, done.stdout
 
     def run_variant(self, variant, engine=None, filter_="ActionSurfaceAcceptance"):

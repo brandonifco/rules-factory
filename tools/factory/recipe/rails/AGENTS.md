@@ -538,6 +538,50 @@ decline that names why and cites where — that is the engine working, not the e
 - A check that examines nothing is a failure, never an ok. If a step could not run, say it could
   not run.
 
+### An engine that declares an action surface is accepted through it
+
+An engine whose public API can start a state, list the actions legal in it and apply one has more to
+prove than its entries: every entry's tests can pass while the surface stalls, offers what it then
+refuses, or declines far more than the open question needs (rules-factory decision 0078).
+The engine **declares** it, and the factory does not guess: `acceptance.json` at the engine root,
+which `produce` reads and never writes, holds `seedsPerConfiguration`, `stepCap`, `leastCompleted`
+(above 0, at most 1) and an `allowlist`. With it, `produce` emits
+`tests/<name>.Tests/Generated/ActionSurfaceAcceptance.g.cs`; without it, nothing, and a harness
+emitted earlier is removed. You write the adapter, `tests/<name>.Tests/ActionSurface.cs`: two
+`global using` aliases, `ActionSurfaceState` and `ActionSurfaceAction`, and the six members the
+harness declares partial (the configurations, `Start`, `IsOver`, `LegalActions`, `Apply`, `Render`).
+Without it the test project does not build, and the compiler names each missing member (CS8795).
+
+Each run starts from one configuration and one seed and, at each step, applies **every** offered
+action and then advances by one chosen from the seed. Each invariant is its own test over the same
+runs, played once and in parallel:
+
+1. every offered action is accepted: applying it resolves, or declines on the allowlist;
+2. nothing throws, and a failure names the exception's type and first frame;
+3. a state that is not over offers an action or says why, never nothing in silence;
+4. a run ends within `stepCap`;
+5. a run stops early only on a `RequiresInterpretation` decline whose locator is an allowlisted entry's:
+   `UnsupportedRule`, `OutsideCurrentScope` and `MissingRulesData` name work not done, not a reading
+   still open;
+6. at least `leastCompleted` of each configuration's seeds reach a natural end, and a configuration
+   that produced no runs fails;
+7. replaying each configuration's first seed gives the same history and, by a structural dump of
+   public and private fields, the same final state: record equality is not used, because a record
+   compares its collections by reference.
+
+A last test fails an allowlisted entry whose locator another entry also cites, since one documented
+decline would then excuse another.
+
+**The allowlist is built only from what the engine actually declined**, each item an entry id and
+where the engine documents that reading. A reading no run reaches stays off it. A decline is as
+narrow as the open question: where the open readings give the same answer for the state at hand, the
+engine answers and does not decline (`docs/adversarial-self-review.md`, `refusal-classification`).
+
+**Cost is reduced by making the engine faster, not by checking less.** The three numbers are the only
+knobs, and visible. The harness has no parameter that applies a subset of the offered actions, because
+that weakens invariant 1 exactly where it is hardest to hold, in the states that offer the most.
+Optimized builds are already on in every configuration (rules-factory decision 0077).
+
 ## 8. Determinism
 
 Same inputs, same outputs, on any machine, in any order, forever. No wall-clock time, no

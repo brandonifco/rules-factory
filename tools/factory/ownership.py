@@ -91,7 +91,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 29,
+    Row("AGENTS.md", MANAGED, 30,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares, one per package for a "
@@ -102,7 +102,7 @@ TABLE = (
         "brief the next one reads (#465); section 3 says the orchestrator holds the scheduling decision and the repository holds the state, and names the command that reads it (#466); section 7 says a reviewer is given what its role judges, "
         "and that the role is part of the packet identity (#467); section 3 says where the rails are when the "
         "engine is embedded under a repository root, because GitHub runs a workflow only from the root (#501, "
-        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523); section 9 says the semantic surface is the engine's alone, so a host repository gates its own rule-bearing files (0072); section 7 says what a change owes the semantic review is its review class, computed from the diff and failing closed: a new decision record that overrules nothing, a regeneration with the rules unmoved and a document owe structural validation only, and an exemption is claimed on the pull request's `review class:` line and never assumed (0076); section 7 says a mutation spec's edits apply in order, each to the text the earlier ones left (#623)"),
+        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523); section 9 says the semantic surface is the engine's alone, so a host repository gates its own rule-bearing files (0072); section 7 says what a change owes the semantic review is its review class, computed from the diff and failing closed: a new decision record that overrules nothing, a regeneration with the rules unmoved and a document owe structural validation only, and an exemption is claimed on the pull request's `review class:` line and never assumed (0076); section 7 says a mutation spec's edits apply in order, each to the text the earlier ones left (#623); section 7 says an engine that declares an action surface in `acceptance.json` is accepted through it by a generated full-play harness, what its invariants hold, that the allowlist is built only from observed declines, and that cost is reduced by making the engine faster and not by checking less (0078)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 11,
@@ -411,6 +411,7 @@ RECIPE_SHA256 = {
         27: "0fc0caeb0b289d9a4ed6c3cc397529b746f07ed7ac3bebbd8cc219f85e5f51f0",
         28: "c764a5a4d78e8cf475847fd7143fbd35c3aac652285908065f22768f3a34c8a8",
         29: "747d6d7c57d43b7caad66e0017c29c4102223ccba62c1787e98f07e25a7c13c5",
+        30: "a55220ac3f7f767477ae914000bd10366b6746b9d7ddca8f71e0afc617bf4a5a",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
