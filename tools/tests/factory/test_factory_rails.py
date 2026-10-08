@@ -6791,6 +6791,8 @@ names = os.environ["DOTNET_WATCH"].split(os.pathsep)
 watched = pathlib.Path(names[0])
 calls.append({"argv": sys.argv[1:], "watched": watched.read_text() if watched.exists() else None,
               "watchedFiles": {pathlib.Path(n).name: pathlib.Path(n).read_text() if pathlib.Path(n).exists() else None
+                               for n in names},
+              "watchedBytes": {pathlib.Path(n).name: pathlib.Path(n).read_bytes().hex() if pathlib.Path(n).exists() else None
                                for n in names}})
 state.write_text(json.dumps(calls))
 print(step["say"])
@@ -7019,11 +7021,11 @@ class TestTheMutationRunner(RailsInAGitEngine):
     def edit(self, old, new, file=PROBE, **more):
         return {"file": file, "old": old, "new": new, **more}
 
-    def assertRefusedBeforeAnythingWasWritten(self):
+    def assertRefusedBeforeAnythingWasWritten(self, original=ORIGINAL):
         """Only the baseline reached dotnet, it saw the original, and the file is the original still."""
-        self.assertEqual([call["watched"] for call in self.calls()], [ORIGINAL],
+        self.assertEqual([call["watched"] for call in self.calls()], [original],
                          "a refused spec reached the mutated run, or left a file changed before it")
-        self.assertEqual(self.on_disk(), ORIGINAL, "a refused spec left an edit written")
+        self.assertEqual(self.on_disk(), original, "a refused spec left an edit written")
 
     def test_two_edits_to_one_file_are_both_in_place_for_the_run_and_both_undone_after_it(self):
         """The defect: each edit was planned against the file's original bytes, so the last write won."""
@@ -7105,6 +7107,185 @@ class TestTheMutationRunner(RailsInAGitEngine):
         self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
         self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
         self.assertRefusedBeforeAnythingWasWritten()
+
+    # -- repair after review of #624: spans, bytes, overlaps, partial writes, hard links -----------
+
+    def test_a_later_hit_does_not_move_an_earlier_edits_span_a_second_time(self):
+        """Edit 1 has two hits and grows the text; edit 2 names edit 0's output, which is refused.
+
+        Each hit moved the spans already shifted by the hit before it, so edit 0's `B` was taken
+        to sit where it does not, and `B` was rewritten after all.
+        """
+        self.engine_with_a_probe("aba")
+        self.plan()
+        done = self.mutate(self.spec(old="b", new="B", extra_edits=(
+            self.edit("a", "aaaa", count=2), self.edit("B", "C"))))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten("aba")
+
+    def test_a_growing_edit_with_three_hits_does_not_make_an_edit_to_untouched_text_look_like_an_overlap(self):
+        """Moved by every hit after the first as well, edit 0's span landed on the `.` and refused it."""
+        self.engine_with_a_probe("abxa.a")
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(old="b", new="M", extra_edits=(
+            self.edit("a", "XXXX", count=3), self.edit(".", "!"))))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.calls()[1]["watched"], "XXXXMxXXXX!XXXX")
+        self.assertEqual(self.on_disk(), "abxa.a")
+
+    def test_a_growing_edit_with_two_hits_still_refuses_an_edit_to_the_text_an_earlier_edit_wrote(self):
+        self.engine_with_a_probe("x.M.x.QQ")
+        self.plan()
+        done = self.mutate(self.spec(old="M", new="N", extra_edits=(
+            self.edit("x", "X" * 10, count=2), self.edit("N.", "!"))))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten("x.M.x.QQ")
+
+    def test_a_shrinking_edit_with_two_hits_still_refuses_an_edit_to_the_text_an_earlier_edit_wrote(self):
+        self.engine_with_a_probe("aaXXaaZ")
+        self.plan()
+        done = self.mutate(self.spec(old="Z", new="Q", extra_edits=(
+            self.edit("aa", "a", count=2), self.edit("Q", "R"))))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten("aaXXaaZ")
+
+    def test_a_shrinking_edit_with_two_hits_does_not_make_an_edit_to_untouched_text_look_like_an_overlap(self):
+        self.engine_with_a_probe("aaXXaaZ!")
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(old="Z", new="Q", extra_edits=(
+            self.edit("aa", "a", count=2), self.edit("!", "?"))))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.calls()[1]["watched"], "aXXaQ?")
+        self.assertEqual(self.on_disk(), "aaXXaaZ!")
+
+    # Bytes, not text: restoring is the one promise the runner must not break.
+
+    def put_bytes(self, data, name=PROBE):
+        path = os.path.join(self.out, name)
+        with open(path, "wb") as handle:
+            handle.write(data)
+        return path
+
+    def bytes_on_disk(self, name=PROBE):
+        with open(os.path.join(self.out, name), "rb") as handle:
+            return handle.read()
+
+    def test_a_file_comes_back_byte_for_byte_whatever_its_line_endings(self):
+        self.engine_with_a_probe()
+        for label, data, expected in (
+                ("CRLF", b"aba\r\n", b"aBa\r\n"),
+                ("a lone CR", b"a\rb\r", b"a\rB\r"),
+                ("mixed endings", b"a\r\nb\nc\rd", b"a\r\nB\nc\rd")):
+            with self.subTest(label):
+                self.put_bytes(data)
+                if os.path.exists(self.calls_path):
+                    os.remove(self.calls_path)
+                self.plan(*self.GREEN_THEN_RED)
+                done = self.mutate(self.spec(old="b", new="B"))
+                self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+                self.assertEqual(self.calls()[1]["watchedBytes"][PROBE], expected.hex(),
+                                 "the run saw other bytes than the original with the one edit")
+                self.assertEqual(self.bytes_on_disk(), data, "the file did not come back byte for byte")
+
+    def test_an_old_that_holds_a_newline_does_not_match_a_crlf_line_ending(self):
+        """Text is matched as it is on disk: CR LF is two characters, and LF alone is not it."""
+        self.engine_with_a_probe()
+        self.put_bytes(b"x\r\ny\r\n")
+        self.plan()
+        done = self.mutate(self.spec(old="x\ny", new="x-y"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("occurs 0 time(s)", done.stdout + done.stderr)
+        self.assertEqual(self.bytes_on_disk(), b"x\r\ny\r\n")
+
+    # Occurrences that overlap one another are one ambiguous site.
+
+    def test_an_edit_whose_second_occurrence_overlaps_text_an_earlier_edit_wrote_is_refused(self):
+        self.engine_with_a_probe("aab")
+        self.plan()
+        done = self.mutate(self.spec(old="b", new="a", extra_edits=(self.edit("aa", "z"),)))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten("aab")
+
+    def test_an_old_whose_occurrences_overlap_one_another_is_an_ambiguous_site(self):
+        self.engine_with_a_probe("aaa")
+        self.plan()
+        done = self.mutate(self.spec(old="aa", new="z"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlap one another", done.stdout + done.stderr)
+        self.assertRefusedBeforeAnythingWasWritten("aaa")
+
+    # A write that fails leaves nothing changed.
+
+    def test_a_replacement_that_cannot_be_encoded_is_refused_before_any_file_is_written(self):
+        self.engine_with_a_probe()
+        self.put_bytes(b"one\ntwo\n", "other.txt")
+        self.plan()
+        done = self.mutate(self.spec(extra_edits=(self.edit("two", "\ud800", file="other.txt"),)),
+                           watch=(PROBE, "other.txt"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("REFUSED", done.stdout + done.stderr)
+        self.assertEqual(self.bytes_on_disk(), ORIGINAL.encode(), "the first file stayed mutated")
+        self.assertEqual(self.bytes_on_disk("other.txt"), b"one\ntwo\n")
+        self.assertEqual(len(self.calls()), 1, "dotnet ran the mutated source")
+
+    def test_a_file_that_cannot_be_written_puts_the_files_already_written_back(self):
+        if hasattr(os, "geteuid") and os.geteuid() == 0:
+            self.skipTest("root writes through a read-only file")
+        self.engine_with_a_probe()
+        other = self.put_bytes(b"one\ntwo\n", "other.txt")
+        os.chmod(other, 0o444)
+        self.plan()
+        done = self.mutate(self.spec(extra_edits=(self.edit("two", "TWO", file="other.txt"),)),
+                           watch=(PROBE, "other.txt"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("REFUSED", done.stdout + done.stderr)
+        self.assertIn("other.txt", done.stdout + done.stderr)
+        self.assertEqual(self.bytes_on_disk(), ORIGINAL.encode(), "the file written first stayed mutated")
+        self.assertEqual(self.bytes_on_disk("other.txt"), b"one\ntwo\n")
+        self.assertEqual(len(self.calls()), 1, "dotnet ran the mutated source")
+
+    def test_a_write_failure_whose_restoration_also_fails_is_not_swallowed(self):
+        """In process: the child cannot be made to fail its own restore, so `apply` is called here."""
+        if hasattr(os, "geteuid") and os.geteuid() == 0:
+            self.skipTest("root writes through a read-only file")
+        self.engine_with_a_probe()
+        other = self.put_bytes(b"one\ntwo\n", "other.txt")
+        os.chmod(other, 0o444)
+        saved = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
+        try:
+            loaded = importlib.util.spec_from_file_location(
+                "mutate_under_test", os.path.join(self.out, "tools", "mutate.py"))
+            module = importlib.util.module_from_spec(loaded)
+            loaded.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = saved
+        module.restore = lambda pairs: [path for path, _ in pairs]
+        with self.assertRaises(module.NotRestored) as caught:
+            module.apply(self.spec(extra_edits=(self.edit("two", "TWO", file="other.txt"),)), "spec 1")
+        self.assertIn(PROBE, str(caught.exception))
+        self.assertIn("could not be restored", str(caught.exception))
+
+    # Two names for one file are one file.
+
+    def test_two_names_for_one_file_are_planned_as_one_file(self):
+        self.engine_with_a_probe()
+        first = self.put_bytes(b"abc", "a.txt")
+        try:
+            os.link(first, os.path.join(self.out, "b.txt"))
+        except (OSError, AttributeError) as error:
+            self.skipTest(f"this filesystem will not hard-link: {error}")
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate({"test": "ProbeTests.Linked", "edits": [
+            self.edit("a", "A", file="a.txt"), self.edit("c", "C", file="b.txt")]},
+            watch=("a.txt", "b.txt"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.calls()[1]["watchedFiles"], {"a.txt": "AbC", "b.txt": "AbC"})
+        self.assertEqual(self.bytes_on_disk("a.txt"), b"abc")
+        self.assertEqual(self.bytes_on_disk("b.txt"), b"abc")
 
 
 class TestReProducingAnEmbeddedEngine(AFactoryToReProduceFrom, RailsInAGitEngine):

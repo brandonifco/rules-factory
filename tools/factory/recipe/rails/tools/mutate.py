@@ -31,16 +31,29 @@ should turn it red:
 in the order they are named, each to the text the earlier ones left, so a spec may edit one file
 several times.
 
-**What it refuses.** An `old` string that does not occur exactly `count` times -- counted in the
-text the spec's earlier edits left, not in the file as it was read -- before anything is written: a
-mutation applied to the wrong site, or to nothing, proves nothing and the run would still print a
-colour. An `old` any occurrence of which overlaps text an earlier edit of the same spec wrote, for
-the same reason: it edits the mutation, not the code. The primary checkout, for the reason the rails block writes there at all.
-Anything it cannot restore, loudly.
+**What it matches.** The text of a file exactly as it is on disk: decoded as UTF-8 with no newline
+translation, so a CR LF line ending is two characters, and an `old` that holds an LF does not match
+it. To edit across such a line ending, put the CR in `old` too.
+
+**What it refuses**, before anything is written:
+
+- An `old` string that does not occur exactly `count` times -- counted in the text the spec's
+  earlier edits left, not in the file as it was read: a mutation applied to the wrong site, or to
+  nothing, proves nothing and the run would still print a colour.
+- An `old` whose occurrences overlap one another (`aa` in `aaa`): the site is ambiguous.
+- An `old` any occurrence of which overlaps text an earlier edit of the same spec wrote, for the
+  same reason: it edits the mutation, not the code.
+- Replacement text that cannot be written as UTF-8, so a bad `new` never leaves a file half
+  written.
+- The primary checkout, for the reason the rails block writes there at all.
+
+Two names for one file (a hard link) are one file, and are edited as one. If a write fails
+anyway, every file already written is put back before the refusal is raised. Anything it cannot
+restore, it says loudly.
 
 **Restoring is not best-effort.** The original bytes are held in memory and written back in a
-`finally`, then read again and compared. An interrupted run leaves no mutated file, because the
-one thing worse than no mutation evidence is a source tree quietly carrying a mutation.
+`finally`, byte for byte, then read again and compared. An interrupted run leaves no mutated file,
+because the one thing worse than no mutation evidence is a source tree quietly carrying a mutation.
 
 **A mutation that does not compile is not a red test.** It is reported as its own outcome and
 counts as a failure of the run: the test was never asked the question.
@@ -75,6 +88,10 @@ NO_TEST = "NO TEST MATCHED"
 
 class Refused(Exception):
     """Something the run cannot honestly do. Nothing is left mutated."""
+
+
+class NotRestored(Refused):
+    """A file was mutated and could not be put back. Unlike the rest, this stops the whole run."""
 
 
 def read_json(path, what):
@@ -188,29 +205,49 @@ def apply(spec, where):
     Edits are applied in the order the spec names them, each to what the earlier ones left: the
     occurrences of `old` are counted in that text, not in the file as it was read. A file the spec
     edits twice is read once, and the pair returned for it holds the bytes from before any edit.
+    Files are told apart by what they are (device and inode), not by the name a spec gave them, so
+    two names for one file are one file.
 
-    An edit is refused when its `old` does not occur exactly `count` times in that text, and when
-    any occurrence of it overlaps text an earlier edit of the same spec wrote: that is an edit to
-    the mutation, not to the code the test is about, and no one reading the source could have
-    written it. Every check, for every edit, is made before the first byte is written, so a spec
-    whose later edit is refused does not leave an earlier one applied.
+    An edit is refused when its `old` does not occur exactly `count` times in that text, when two
+    occurrences of it overlap one another (the site is ambiguous), and when any occurrence of it
+    overlaps text an earlier edit of the same spec wrote: that is an edit to the mutation, not to
+    the code the test is about, and no one reading the source could have written it. Every check,
+    for every edit, and the encoding of every file, is made before the first byte is written, so a
+    spec whose later edit is refused does not leave an earlier one applied.
+
+    If a write fails after all that, every file already written is put back from its original
+    bytes before the failure is raised, so a refusal never leaves a half-applied spec.
     """
-    texts = {}      # path -> the text so far, after the earlier edits of this spec
-    originals = {}  # path -> the bytes before any edit, in the order the paths first appear
-    written = {}    # path -> [[start, end, index of the edit that wrote it]] in `texts[path]`
+    texts = {}      # file identity -> the text so far, after the earlier edits of this spec
+    paths = {}      # file identity -> the first path the spec named it by
+    originals = {}  # file identity -> the bytes before any edit, in the order the files first appear
+    written = {}    # file identity -> [(start, end, index of the edit that wrote it)] in its text
     for index, edit in enumerate(spec["edits"]):
         path = (ROOT / edit["file"]).resolve()
         if not _within(path, ROOT):
             raise Refused(f"{where} edit {index} names {edit['file']}, which is outside this engine")
-        if path not in texts:
-            try:
-                originals[path] = texts[path] = path.read_text(encoding="utf-8")
-            except (OSError, ValueError) as error:
-                raise Refused(f"{where} edit {index} cannot read {edit['file']}: {error}")
-            written[path] = []
-        text, spans = texts[path], written[path]
+        try:
+            status = path.stat()
+            identity = (status.st_dev, status.st_ino)
+            if identity not in texts:
+                raw = path.read_bytes()
+                # Decoded and matched exactly as it is on disk: no newline translation, so CR LF is
+                # two characters and an `old` holding LF alone does not match it.
+                texts[identity] = raw.decode("utf-8")
+                originals[identity], paths[identity], written[identity] = raw, path, []
+        except (OSError, ValueError) as error:
+            raise Refused(f"{where} edit {index} cannot read {edit['file']}: {error}")
+        text, spans = texts[identity], written[identity]
         expected = edit.get("count", 1)
-        hits = [(m.start(), m.end()) for m in re.finditer(re.escape(edit["old"]), text)]
+        # Overlap allowed: `aa` occurs twice in `aaa`, and a search that skips past a match would
+        # report one.
+        hits = [(m.start(), m.start() + len(edit["old"]))
+                for m in re.finditer("(?=" + re.escape(edit["old"]) + ")", text)]
+        for (_, earlier_end), (later_start, _) in zip(hits, hits[1:]):
+            if later_start < earlier_end:
+                raise Refused(f"{where} edit {index}: occurrences of {_excerpt(edit['old'])} in "
+                              f"{edit['file']} overlap one another, so the site is ambiguous. Name "
+                              f"more of the text around it.")
         if len(hits) != expected:
             after = f" as edit(s) {', '.join(str(n) for n in sorted({s[2] for s in spans}))} leave it" if spans else ""
             raise Refused(f"{where} edit {index}: {_excerpt(edit['old'])} occurs {len(hits)} time(s) in "
@@ -222,32 +259,60 @@ def apply(spec, where):
                     raise Refused(f"{where} edit {index}: {_excerpt(edit['old'])} in {edit['file']} overlaps "
                                   f"text edit {by} wrote. An edit to another edit's output is not an edit "
                                   f"to the code the test is about; name the final text in one edit.")
-        pieces, moved, cursor, grown = [], [list(span) for span in spans], 0, 0
-        for start, end in hits:
+        # Every hit and every earlier span is a position in the text as it stands before this edit,
+        # and a span moves by the change in length of the hits that end at or before it: no hit
+        # overlaps a span (checked above), so each is wholly before it or wholly after it.
+        delta = len(edit["new"]) - len(edit["old"])
+        moved = []
+        for first, last, by in spans:
+            shift = delta * sum(1 for _, end in hits if end <= first)
+            moved.append((first + shift, last + shift, by))
+        pieces, cursor = [], 0
+        for number, (start, end) in enumerate(hits):
             pieces += [text[cursor:start], edit["new"]]
             cursor = end
-            delta = len(edit["new"]) - (end - start)
-            for span in moved:
-                if span[2] != index and span[0] >= end:
-                    span[0] += delta
-                    span[1] += delta
-            moved.append([start + grown, start + grown + len(edit["new"]), index])
-            grown += delta
+            where_it_lands = start + delta * number
+            moved.append((where_it_lands, where_it_lands + len(edit["new"]), index))
         pieces.append(text[cursor:])
-        texts[path], written[path] = "".join(pieces), moved
+        texts[identity], written[identity] = "".join(pieces), moved
 
-    for path, mutated in texts.items():
-        path.write_text(mutated, encoding="utf-8")
-    return list(originals.items())
+    # Encoded before anything is written, so text that cannot be (a lone surrogate in `new`) is a
+    # refusal and not a file truncated half way through its write.
+    planned = []
+    for identity, mutated in texts.items():
+        try:
+            planned.append((paths[identity], originals[identity], mutated.encode("utf-8")))
+        except ValueError as error:
+            raise Refused(f"{where}: the edited text of {paths[identity].relative_to(ROOT)} cannot be "
+                          f"written as UTF-8 ({error}); nothing was written")
+
+    done = []
+    for path, original, mutated in planned:
+        try:
+            path.write_bytes(mutated)
+        except OSError as error:
+            # The file that failed is put back too if the failed write changed it (a write can
+            # truncate and then fail), and left alone if it did not: it may be unwritable.
+            touched = done + ([(path, original)] if _bytes_of(path) != original else [])
+            failed = restore(touched)
+            if failed:
+                raise NotRestored(
+                    f"{where}: writing {path.relative_to(ROOT)} failed ({error}), and these files were "
+                    f"mutated and could not be restored -- fix them before anything else:\n  "
+                    + "\n  ".join(str(p) for p in failed))
+            raise Refused(f"{where}: writing {path.relative_to(ROOT)} failed ({error}); the files "
+                          f"already written were put back and nothing is left mutated")
+        done.append((path, original))
+    return [(path, original) for path, original, _ in planned]
 
 
 def restore(pairs):
-    """Put every file back and prove it went back. Returns the paths that did not."""
+    """Put every file back, byte for byte, and prove it went back. Returns the paths that did not."""
     failed = []
     for path, original in pairs:
         try:
-            path.write_text(original, encoding="utf-8")
-            if path.read_text(encoding="utf-8") != original:
+            path.write_bytes(original)
+            if path.read_bytes() != original:
                 failed.append(path)
         except OSError:
             failed.append(path)
@@ -277,6 +342,13 @@ def run_test(solution, test, configuration):
     if "No test matches" in out or "no test is available" in out.lower():
         return NO_TEST, "no test matched the filter"
     return NO_TEST, (lines[-1].strip() if lines else f"dotnet test exited {result.returncode} and said nothing")
+
+
+def _bytes_of(path):
+    try:
+        return path.read_bytes()
+    except OSError:
+        return None
 
 
 def _within(path, root):
@@ -333,6 +405,9 @@ def main(argv=None):
         restore_pairs = []
         try:
             restore_pairs = apply(spec, f"spec {number}")
+        except NotRestored as error:
+            print(f"REFUSED: {error}", file=sys.stderr)
+            return 1
         except Refused as error:
             print(f"[{number}/{len(specs)}] {label}\n    REFUSED: {error}", file=sys.stderr, flush=True)
             results.append((label, "REFUSED", str(error)))

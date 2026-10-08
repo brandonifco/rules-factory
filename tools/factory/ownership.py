@@ -401,7 +401,7 @@ RECIPE_SHA256 = {
         26: "8be45eef569c2a2e46dfaac0b564798431f688bba229c850d7ac73f95d0b70d0",
         27: "0fc0caeb0b289d9a4ed6c3cc397529b746f07ed7ac3bebbd8cc219f85e5f51f0",
         28: "c764a5a4d78e8cf475847fd7143fbd35c3aac652285908065f22768f3a34c8a8",
-        29: "da9bbbe3bd57dd3fe5baad87e6be6b35832070ddfa4290869f4b368ea7c40645",
+        29: "d9894e0b7faebfeba56a2f5534928ecb782bf4226396ce18b15c8ec0c81d0a0c",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -442,7 +442,7 @@ RECIPE_SHA256 = {
     },
     "tools/mutate.py": {
         1: "d33f7ddedc923388af4582ffb6c04a1434c09f695738ca34f191839f21847901",
-        2: "a4cafcbafcb24e796acfd38ca7bcaaabd6dfd578214f71b19d5f41e9774202e3",
+        2: "6e3667a82b17a1c04fe0f7503417da332e7a4f187ed8dab2fad0b9214235cd2c",
     },
     "tools/re-produce.sh": {
         1: "2a281f94f81ce141733494a94744caa96c88af3cd9fa848cec21c13e73739499",
