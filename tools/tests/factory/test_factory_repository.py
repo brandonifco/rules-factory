@@ -217,22 +217,29 @@ class TestEveryRecipeSelectsItsRunnerThroughOneVariable(unittest.TestCase):
             self.assertEqual([repository.RUNS_ON_LINE], runs_on_lines(recipes[relative]), relative)
             self.assertNotIn("ubuntu-latest", re.sub(r"(?m)^\s*#.*$", "", recipes[relative]), relative)
 
+    def recipe_lines(self):
+        """The one runs-on line of each recipe as shipped, not the constant: what GitHub would read."""
+        return {relative: runs_on_lines(text)[0] for relative, text in repository.recipes(NAME).items() if relative in WORKFLOWS}
+
     def test_a_repository_without_the_variable_runs_on_the_pinned_hosted_release(self):
-        for variable in (None, ""):
-            name, runner = evaluate_runs_on(repository.RUNS_ON_LINE, variable)
-            self.assertEqual("FACTORY_RUNS_ON", name)
-            self.assertEqual("ubuntu-24.04", runner, f"{variable!r} is unset: the hosted release, as before")
+        for relative, line in self.recipe_lines().items():
+            for variable in (None, ""):
+                name, runner = evaluate_runs_on(line, variable)
+                self.assertEqual("FACTORY_RUNS_ON", name, relative)
+                self.assertEqual("ubuntu-24.04", runner, f"{relative}: {variable!r} is unset: the hosted release, as before")
 
     def test_a_repository_with_the_variable_runs_on_the_labels_it_names(self):
         labels = ["self-hosted", "linux", "x64", "factory-ci"]
-        name, runner = evaluate_runs_on(repository.RUNS_ON_LINE, json.dumps(labels, separators=(",", ":")))
-        self.assertEqual("FACTORY_RUNS_ON", name)
-        self.assertEqual(labels, runner)
+        for relative, line in self.recipe_lines().items():
+            name, runner = evaluate_runs_on(line, json.dumps(labels, separators=(",", ":")))
+            self.assertEqual("FACTORY_RUNS_ON", name, relative)
+            self.assertEqual(labels, runner, relative)
 
     def test_a_malformed_variable_fails_and_does_not_fall_back_to_a_hosted_runner(self):
-        for variable in ("self-hosted", "[\"self-hosted\",", "{'a': 1}"):
-            with self.assertRaises(ValueError, msg=variable):
-                evaluate_runs_on(repository.RUNS_ON_LINE, variable)
+        for relative, line in self.recipe_lines().items():
+            for variable in ("self-hosted", "[\"self-hosted\",", "{'a': 1}"):
+                with self.assertRaises(ValueError, msg=f"{relative}: {variable}"):
+                    evaluate_runs_on(line, variable)
 
     def test_the_default_comes_from_the_recipe_s_own_line(self):
         other = repository.RUNS_ON_LINE.replace("ubuntu-24.04", "ubuntu-26.04")
