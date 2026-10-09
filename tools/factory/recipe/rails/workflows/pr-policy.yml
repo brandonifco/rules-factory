@@ -24,7 +24,10 @@ permissions:
 
 jobs:
   pr-policy:
-    runs-on: ubuntu-24.04
+    # The runner is the repository variable FACTORY_RUNS_ON, a JSON label or list of labels
+    # (decision 0079). Unset or empty it is the hosted ubuntu-24.04; a malformed value fails the
+    # workflow, and it never falls back to a hosted runner.
+    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 10
     steps:
       - name: Checkout

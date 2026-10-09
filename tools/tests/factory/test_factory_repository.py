@@ -32,6 +32,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -179,6 +180,66 @@ class TestAnEmbeddedEngineIsRefusedUndeclared(RepositoryCase):
         self.assertIn("does not contain --out", output)
 
 
+def runs_on_lines(text):
+    """Every `runs-on:` line of a workflow, whatever its indentation: the check that there is one."""
+    return [line for line in text.split("\n") if re.match(r"\s*runs-on:", line)]
+
+
+def evaluate_runs_on(line, variable):
+    """What GitHub makes of `runs-on: ${{ fromJSON(vars.NAME || '<default>') }}`, modelled.
+
+    `vars.NAME` is a string, empty when the variable is unset. `||` yields its left side when that
+    is a non-empty string and its right otherwise; `fromJSON` parses the result and a value that is
+    not JSON fails the workflow. Inside an expression a string literal is single-quoted and `''` is
+    a quote, so the default's JSON text is the literal with those unescaped. Parsed out of the
+    recipe's own line, so the test follows the line and not a copy of it.
+    """
+    found = re.fullmatch(r"\s*runs-on: \$\{\{ fromJSON\(vars\.([A-Za-z_][A-Za-z0-9_]*) \|\| '((?:[^']|'')*)'\) \}\}", line)
+    if found is None:
+        raise AssertionError(f"not the runs-on expression the factory emits: {line!r}")
+    name, literal = found.groups()
+    default = literal.replace("''", "'")
+    return name, json.loads(variable or default)
+
+
+class TestEveryRecipeSelectsItsRunnerThroughOneVariable(unittest.TestCase):
+    """Runner selection is the repository's, through `FACTORY_RUNS_ON` (decision 0079)."""
+
+    def test_the_line_is_held_in_one_place_and_says_what_it_means(self):
+        self.assertEqual("FACTORY_RUNS_ON", repository.RUNS_ON_VARIABLE)
+        self.assertEqual("ubuntu-24.04", repository.RUNS_ON_DEFAULT)
+        self.assertEqual("    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '\"ubuntu-24.04\"') }}", repository.RUNS_ON_LINE)
+
+    def test_each_of_the_four_recipes_carries_exactly_that_line_and_no_other_runs_on(self):
+        recipes = repository.recipes(NAME)
+        self.assertEqual(sorted(WORKFLOWS), sorted(relative for relative in recipes if relative in WORKFLOWS))
+        for relative in WORKFLOWS:
+            self.assertEqual([repository.RUNS_ON_LINE], runs_on_lines(recipes[relative]), relative)
+            self.assertNotIn("ubuntu-latest", re.sub(r"(?m)^\s*#.*$", "", recipes[relative]), relative)
+
+    def test_a_repository_without_the_variable_runs_on_the_pinned_hosted_release(self):
+        for variable in (None, ""):
+            name, runner = evaluate_runs_on(repository.RUNS_ON_LINE, variable)
+            self.assertEqual("FACTORY_RUNS_ON", name)
+            self.assertEqual("ubuntu-24.04", runner, f"{variable!r} is unset: the hosted release, as before")
+
+    def test_a_repository_with_the_variable_runs_on_the_labels_it_names(self):
+        labels = ["self-hosted", "linux", "x64", "factory-ci"]
+        name, runner = evaluate_runs_on(repository.RUNS_ON_LINE, json.dumps(labels, separators=(",", ":")))
+        self.assertEqual("FACTORY_RUNS_ON", name)
+        self.assertEqual(labels, runner)
+
+    def test_a_malformed_variable_fails_and_does_not_fall_back_to_a_hosted_runner(self):
+        for variable in ("self-hosted", "[\"self-hosted\",", "{'a': 1}"):
+            with self.assertRaises(ValueError, msg=variable):
+                evaluate_runs_on(repository.RUNS_ON_LINE, variable)
+
+    def test_the_default_comes_from_the_recipe_s_own_line(self):
+        other = repository.RUNS_ON_LINE.replace("ubuntu-24.04", "ubuntu-26.04")
+        self.assertEqual("ubuntu-26.04", evaluate_runs_on(other, None)[1],
+                         "the model reads the literal out of the line it is given")
+
+
 class TestAnEmbeddedEngineTakesItsRailsFromTheRoot(RepositoryCase):
     def embedded(self, path="engine"):
         host = init(os.path.join(self.tmp, "host"))
@@ -210,6 +271,22 @@ class TestAnEmbeddedEngineTakesItsRailsFromTheRoot(RepositoryCase):
                       "the command is the engine's own and is not rewritten: the working directory carries it")
         self.assertIn('scripts/engine-gate.py repository --root "$GITHUB_WORKSPACE"', gate,
                       "the root's copies are held to the engine's record by the engine's own gate")
+
+    def test_the_runner_line_is_kept_whole_below_the_working_directory_and_written_byte_for_byte(self):
+        """0079 in an embedded engine: `defaults` goes above the one runs-on line, which is not touched."""
+        host, _engine, _ = self.embedded()
+        record = {item["path"]: item["sha256"] for item in self.record(os.path.join(host, "engine"))["repository"]["automation"]}
+        recipes = repository.recipes(NAME)
+        for relative in WORKFLOWS:
+            data = read(os.path.join(host, *relative.split("/")))
+            text = data.decode("utf-8")
+            self.assertEqual([repository.RUNS_ON_LINE], runs_on_lines(text), relative)
+            self.assertIn("        working-directory: engine\n" + repository.RUNS_ON_LINE + "\n", text,
+                          f"{relative}: the defaults block is immediately above the runner, which is unchanged")
+            self.assertEqual(repository.render(recipes[relative], "engine", relative).encode("utf-8"), data,
+                             f"{relative}: the root holds the rendering, byte for byte")
+            self.assertEqual(repository._sha256(data), record[relative], f"{relative}: the record hashes these bytes")
+            self.assertEqual("FACTORY_RUNS_ON", evaluate_runs_on(runs_on_lines(text)[0], None)[0])
 
     def test_a_deeper_engine_path_is_rendered_with_that_path(self):
         host, _engine, _ = self.embedded("products/engine")

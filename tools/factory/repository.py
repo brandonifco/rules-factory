@@ -53,6 +53,17 @@ WORKFLOWS = (".github/workflows/validate.yml",
              ".github/workflows/conformance-gate.yml",
              ".github/workflows/verdict-requeue.yml")
 
+#: The runner every recipe's job selects, in one place (decision 0079). A repository chooses its
+#: runner through this GitHub Actions *repository variable*, whose value is JSON: a label
+#: (`"ubuntu-24.04"`) or a list of labels (`["self-hosted","linux","x64","factory-ci"]`). Unset or
+#: empty, the expression's right-hand side applies: the pinned hosted release, as before. A value
+#: that is not JSON fails the workflow where it can be seen; there is deliberately no fallback to a
+#: hosted runner, because a private repository whose own runner is offline must wait or fail and
+#: never spend a billable one. Each recipe carries `RUNS_ON_LINE` exactly, as its only `runs-on`.
+RUNS_ON_VARIABLE = "FACTORY_RUNS_ON"
+RUNS_ON_DEFAULT = "ubuntu-24.04"
+RUNS_ON_LINE = ("    runs-on: ${{ fromJSON(vars." + RUNS_ON_VARIABLE + " || '\"" + RUNS_ON_DEFAULT + "\"') }}")
+
 #: The pull request template. GitHub reads one only from the repository root (or `docs/`, or the
 #: root itself), so an embedded engine's copy is as unread as its workflows were: every pull request
 #: opened against the repository arrives with an empty body, and `tools/pr-policy.py` -- the check
