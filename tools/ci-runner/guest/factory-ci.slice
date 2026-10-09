@@ -1,0 +1,10 @@
+[Unit]
+Description=All factory-ci GitHub Actions runners together
+Before=slices.target
+
+[Slice]
+# The guest keeps the rest for itself (sshd, journald, the guest agent): a runaway job is killed
+# inside the slice rather than taking the VM down.
+MemoryHigh=10G
+MemoryMax=11G
+TasksMax=8192

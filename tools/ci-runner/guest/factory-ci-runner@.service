@@ -1,0 +1,41 @@
+[Unit]
+Description=GitHub Actions runner for %i (factory-ci)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/srv/factory-ci/%i/runner/.runner
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+WorkingDirectory=/srv/factory-ci/%i/runner
+# runsvc.sh turns SIGTERM into the listener's graceful stop: a running job is allowed to finish
+# within TimeoutStopSec, and the runner's own self-update restarts happen inside it.
+ExecStart=/bin/bash /srv/factory-ci/%i/runner/bin/runsvc.sh
+Restart=always
+RestartSec=15
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=25min
+Slice=factory-ci.slice
+UMask=0077
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/factory-ci/%i /run/factory-ci
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=multi-user.target
