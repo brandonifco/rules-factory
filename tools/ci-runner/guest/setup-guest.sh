@@ -36,6 +36,22 @@ for v in $DOTNET_SDKS; do
   fi
 done
 
+for v in $DOTNET_RUNTIMES; do
+  if [[ ! -d /opt/factory-ci/dotnet/shared/Microsoft.NETCore.App/$v ]]; then
+    var="DOTNET_RUNTIME_SHA512_${v//./_}"
+    f=/opt/factory-ci/dist/dotnet-runtime-$v-linux-x64.tar.gz
+    fetch "https://builds.dotnet.microsoft.com/dotnet/Runtime/$v/dotnet-runtime-$v-linux-x64.tar.gz" "$f" sha512 "${!var}"
+    tar -xzf "$f" -C /opt/factory-ci/dotnet && rm -f "$f"
+  fi
+done
+
+if [[ "$(/opt/factory-ci/gh/bin/gh --version 2>/dev/null | head -1)" != "gh version $GH_VERSION"* ]]; then
+  f=/opt/factory-ci/dist/gh_${GH_VERSION}_linux_amd64.tar.gz
+  fetch "https://github.com/cli/cli/releases/download/v$GH_VERSION/gh_${GH_VERSION}_linux_amd64.tar.gz" "$f" sha256 "$GH_SHA256"
+  rm -rf /opt/factory-ci/gh && install -d -m 0755 /opt/factory-ci/gh
+  tar -xzf "$f" -C /opt/factory-ci/gh --strip-components=1 && rm -f "$f"
+fi
+
 # Node (GitHub's hosted image ships one; reykholt-web's CI uses it).
 if [[ "$(/opt/factory-ci/node/bin/node --version 2>/dev/null)" != "v$NODE_VERSION" ]]; then
   f=/opt/factory-ci/dist/node-v$NODE_VERSION-linux-x64.tar.xz
@@ -60,8 +76,8 @@ f=/opt/factory-ci/dist/actions-runner-linux-x64-$RUNNER_VERSION.tar.gz
 ln -sfn "$f" /opt/factory-ci/dist/actions-runner-linux-x64.tar.gz
 
 # Job hooks and the slot holder.
-install -m 0755 "$here/job-started.sh" /opt/factory-ci/bin/job-started
-install -m 0755 "$here/job-completed.sh" /opt/factory-ci/bin/job-completed
+install -m 0755 "$here/job-started.sh" /opt/factory-ci/bin/job-started.sh
+install -m 0755 "$here/job-completed.sh" /opt/factory-ci/bin/job-completed.sh
 install -m 0755 "$here/slot-hold.sh" /opt/factory-ci/bin/slot-hold
 install -m 0700 "$here/register.sh" /opt/factory-ci/bin/register
 install -m 0644 "$here/runner.env" /etc/factory-ci/runner.env
@@ -86,4 +102,4 @@ done
 for u in $(systemctl list-units --plain --no-legend 'factory-ci-runner@*' | awk '{print $1}'); do
   systemctl restart "$u"
 done
-echo "factory-ci guest ready: runner $RUNNER_VERSION, .NET $DOTNET_SDKS, node $NODE_VERSION, python toolcache $PYTHON_TOOLCACHE_VERSION, slots $(cat /etc/factory-ci/slots)"
+echo "factory-ci guest ready: runner $RUNNER_VERSION, .NET $DOTNET_SDKS (+ runtimes $DOTNET_RUNTIMES), gh $GH_VERSION, node $NODE_VERSION, python toolcache $PYTHON_TOOLCACHE_VERSION, slots $(cat /etc/factory-ci/slots)"

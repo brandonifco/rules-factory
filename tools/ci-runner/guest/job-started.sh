@@ -19,6 +19,17 @@ while [[ $pid -gt 1 ]]; do
 done
 [[ -n $worker ]] || { echo "::error::factory-ci: no Runner.Worker above the job-started hook"; exit 1; }
 
+# A job killed with the VM never ran job-completed: empty what it may have left before this one.
+case "${GITHUB_WORKSPACE:-}" in
+  "$HOME"/runner/_work/?*)
+    if [[ -d $GITHUB_WORKSPACE ]] && [[ -n "$(ls -A "$GITHUB_WORKSPACE" 2>/dev/null)" ]]; then
+      chmod -R u+rwX "$GITHUB_WORKSPACE" 2>/dev/null
+      find "$GITHUB_WORKSPACE" -mindepth 1 -delete 2>/dev/null
+      echo "factory-ci: emptied a workspace an interrupted job left behind"
+    fi
+    ;;
+esac
+
 started=$SECONDS last=-1
 while :; do
   for i in $(seq 1 "$slots"); do
