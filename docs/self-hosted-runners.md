@@ -14,7 +14,7 @@ plus the guest baseline it installs. Nothing in it is a credential.
 
 | Repository | Runner | Why |
 |---|---|---|
-| Private engines and their private companions | `factory-ci` VM | Hosted minutes on private repositories are billed. |
+| Private engines and their private companions (since 2026-10-09: reykholt, reykholt-web, reykholt-art, hallertau) | `factory-ci` VM | Hosted minutes on private repositories are billed. |
 | Public repositories, including this one | GitHub-hosted | Hosted runs are free there. These repositories accept contributions from anyone, and a pull request's code must never run on the owner's hardware. **Never set `FACTORY_RUNS_ON` on a public repository**: this is a deliberate exception, not a migration left unfinished. `factory-ci enable` refuses a public repository. |
 
 There is **no fallback**. When the VM is down, a private repository's jobs wait in GitHub's
@@ -35,7 +35,7 @@ Moving a repository back to hosted runners is a deliberate act, described below.
 | Runners | One system account per repository, `fci-<repo>`, home `/srv/factory-ci/fci-<repo>` (0700). No sudo, no login shell, no SSH key. Service `factory-ci-runner@fci-<repo>`: systemd-hardened (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`), and in `factory-ci.slice`, which caps all runners together at 11 GiB. |
 | Concurrency | `/etc/factory-ci/slots`, which is 2 (measured; see Everyday operation). GitHub cannot share one runner registration between personal repositories, so each repository's listener could take a job at the same moment. The job-started hook takes one of N slot locks before the first step and keeps it until the job's worker exits. A job that waits says so in its log, and the wait counts against its `timeout-minutes`. |
 | Workspaces | The job-completed hook empties the checkout and `_temp`. The job-started hook empties whatever a job killed with the VM left behind. Every job starts from a fresh clone. |
-| Kept between jobs | Only each repository's own caches in its own home: NuGet's global packages folder, and the runner's tool cache. Lock files and `--locked-mode` still verify every package. No cache is shared between repositories. |
+| Kept between jobs | Only each repository's own NuGet global packages folder, in its own home. The engines' locked restore still verifies every package against its lock file. No cache is shared between repositories, and the shared toolchain is read-only. |
 
 ### Residual risks of a persistent VM
 
