@@ -81,7 +81,8 @@ install -m 0755 "$here/job-completed.sh" /opt/factory-ci/bin/job-completed.sh
 install -m 0755 "$here/slot-hold.sh" /opt/factory-ci/bin/slot-hold
 install -m 0700 "$here/register.sh" /opt/factory-ci/bin/register
 install -m 0644 "$here/runner.env" /etc/factory-ci/runner.env
-[[ -f /etc/factory-ci/slots ]] || echo 1 > /etc/factory-ci/slots
+# Two job slots, as measured on 2026-10-09 (docs/self-hosted-runners.md, Everyday operation).
+[[ -f /etc/factory-ci/slots ]] || echo 2 > /etc/factory-ci/slots
 
 # Shared job-slot locks. The group lets runner accounts take a slot; nothing else is shared.
 getent group factory-ci >/dev/null || groupadd --system factory-ci
