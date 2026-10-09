@@ -31,10 +31,10 @@ Moving a repository back to hosted runners is a deliberate act, described below.
 | Network | libvirt network `factory-ci`: NAT, bridge `virbr-fci`, 192.168.150.0/24, guest at .11 |
 | Egress | nwfilter `factory-ci-egress` on the guest's NIC. Allowed: DHCP; DNS to the gateway; outbound TCP 80/443 and NTP to public addresses. Dropped: everything else, including the host, the LAN, every RFC 1918, link-local and CGNAT range, other libvirt networks, and IPv6. Only the host may open SSH to the guest. |
 | Admin | `ciadmin`, key-only SSH from the host (`~/.ssh/factory-ci_ed25519`, made for this VM and used for nothing else); passwordless sudo |
-| Toolchain | `/opt/factory-ci` (root-owned, read-only to jobs): the .NET SDKs the engines pin, Node, and the runner distribution. All are pinned with hashes in [`guest/versions.env`](../tools/ci-runner/guest/versions.env). `actions/setup-dotnet` finds the pinned SDK there and downloads nothing. |
+| Toolchain | `/opt/factory-ci` (root-owned, read-only to jobs): the .NET SDK the engines pin (10.0.112) and the .NET 8 runtime their tests also target, the GitHub CLI (the engines' `pr-policy` and `conformance-gate` call `gh`), Node, and the runner distribution. `/opt/hostedtoolcache` holds Python 3.12 in the hosted image's layout, for `actions/setup-python`. The Ubuntu packages a job would otherwise `sudo apt-get` (poppler-utils and others) are installed. All are pinned with hashes in [`guest/versions.env`](../tools/ci-runner/guest/versions.env). `actions/setup-dotnet` and `setup-python` find what they need and download nothing. A version that is not there fails the job, rather than being written into a cache another job could change. |
 | Runners | One system account per repository, `fci-<repo>`, home `/srv/factory-ci/fci-<repo>` (0700). No sudo, no login shell, no SSH key. Service `factory-ci-runner@fci-<repo>`: systemd-hardened (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`), and in `factory-ci.slice`, which caps all runners together at 11 GiB. |
-| Concurrency | `/etc/factory-ci/slots`, which is 1. GitHub cannot share one runner registration between personal repositories, so each repository's listener could take a job at the same moment. The job-started hook takes one of N slot locks before the first step and keeps it until the job's worker exits. A job that waits says so in its log, and the wait counts against its `timeout-minutes`. |
-| Workspaces | The job-completed hook empties the checkout and `_temp`. The next job starts from a fresh clone. |
+| Concurrency | `/etc/factory-ci/slots`, which is 2 (measured; see Everyday operation). GitHub cannot share one runner registration between personal repositories, so each repository's listener could take a job at the same moment. The job-started hook takes one of N slot locks before the first step and keeps it until the job's worker exits. A job that waits says so in its log, and the wait counts against its `timeout-minutes`. |
+| Workspaces | The job-completed hook empties the checkout and `_temp`. The job-started hook empties whatever a job killed with the VM left behind. Every job starts from a fresh clone. |
 | Kept between jobs | Only each repository's own caches in its own home: NuGet's global packages folder, and the runner's tool cache. Lock files and `--locked-mode` still verify every package. No cache is shared between repositories. |
 
 ### Residual risks of a persistent VM
@@ -82,9 +82,11 @@ credentials were revoked, `register` again. A runner's own diagnostics are in
 
 **Host restart.** Nothing is needed. With the host's libvirt-guests defaults (not changed for
 this), the host saves the VM's memory at shutdown and resumes it at boot, and the listener
-reconnects by itself. A VM that was off is autostarted, and its runner services are enabled. A
-job running at the moment of the shutdown may fail; if it does, it fails visibly and is re-run with `gh run rerun`.
-Check with `status` afterwards.
+reconnects by itself. A VM that was off is autostarted, and its runner services are enabled. After
+a cold start the listeners were back in about two minutes. If the VM dies under a job, the job
+fails and GitHub says so. A hard power-off in the middle of `validate` was reported about ten
+minutes later as "The self-hosted runner lost communication with the server", and nothing moved to
+a hosted runner. Re-run the job with `gh run rerun <id>`. Check with `status` afterwards.
 
 **Updating.** The runner updates itself; GitHub stops sending jobs to a runner that falls too far
 behind. Ubuntu security updates install automatically (unattended-upgrades). To move a pinned
@@ -93,8 +95,17 @@ toolchain, such as a new .NET SDK that an engine's `global.json` pins: edit
 sudo apt-get -y upgrade'` for everything else. `setup` is idempotent. It restarts runners only
 between jobs, because the unit lets a running job finish.
 
-**Resources and concurrency.** `factory-ci slots N` (1–4) lets N jobs run at once. Raise it only
-after measuring: watch `factory-ci ssh 'sar -u -r 5'` during a validate run. To resize the VM:
+**Resources and concurrency.** `factory-ci slots N` (1–4) lets N jobs run at once. It is 2 because
+of what was measured on 2026-10-09 with `sar` in the guest:
+
+- Reykholt's `validate` alone took 145 s. It used 61% of the 6 vCPU on average, with an 88% peak,
+  and at most 1.7 GB of memory.
+- Run beside reykholt-web's `validate`, it took 155 s; reykholt-web's took 73 s (82 s alone).
+  Together they peaked at 96% CPU and 2.3 GB, and both finished in 155 s instead of 227 s one after
+  the other.
+
+CPU is the limit, so a third heavy job would only slow the other two. Re-measure before raising it,
+with `factory-ci ssh 'sar -u -r 5'` during the runs. To resize the VM:
 shut it down, then `virsh -c qemu:///system setvcpus factory-ci-1 N --config --maximum` (and
 `setvcpus ... --config`) and `setmaxmem`/`setmem ... --config`. Raise `MemoryMax` in
 `guest/factory-ci.slice` to match, then run `setup`.
@@ -104,7 +115,8 @@ shut it down, then `virsh -c qemu:///system setvcpus factory-ci-1 N --config --m
 1. It must be private. Public repositories stay hosted.
 2. Its workflows must read `FACTORY_RUNS_ON`. A produced engine does once it is produced from a
    factory release that contains decision 0079: re-produce it on its own issue
-   (`tools/re-produce.sh` after moving `factory.commit`). A repository's own hand-written workflow
+   (`tools/re-produce.sh` after moving `factory.commit`). An engine produced before factory 1.3
+   first needs a rules-corpus build definition beside each corpus (decision 0074). A repository's own hand-written workflow
    uses the same line: `runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}`.
    The default it falls back to is that file's existing runner.
 3. Its jobs must not need `sudo`. Anything a job installs with `apt-get` belongs in
@@ -157,6 +169,11 @@ repository's old runner on GitHub.
 - **Which runner ran a job:** `gh api repos/O/R/actions/runs/<id>/jobs --jq '.jobs[].runner_name'`.
   `factory-ci-1` means self-hosted, and self-hosted minutes are never billed. `GitHub Actions N`
   means hosted.
+- **Why this matters:** on 2026-10-09 the account's hosted budget for private repositories ran out
+  mid-migration. Every hosted job then failed before it started, with "The job was not started
+  because recent account payments have failed or your spending limit needs to be increased". A
+  private repository whose workflows still pin a hosted runner cannot run CI at all until the owner
+  raises the limit.
 - **Billed minutes:** Settings → Billing → Usage on github.com, or
   `gh api /users/<owner>/settings/billing/usage`. That API needs a token with the `user` scope
   (`gh auth refresh -h github.com -s user`).
