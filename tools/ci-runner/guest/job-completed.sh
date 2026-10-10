@@ -12,7 +12,7 @@ for d in "${GITHUB_WORKSPACE:-}" "${RUNNER_TEMP:-}"; do
       ;;
   esac
 done
-if read -r pid slot _ <"/run/factory-ci/hold-$me" 2>/dev/null; then
+if read -r pid slot _ 2>/dev/null <"/run/factory-ci/hold-$me"; then
   kill "$pid" 2>/dev/null
   rm -f "/run/factory-ci/hold-$me"
   echo "factory-ci: slot $slot released"

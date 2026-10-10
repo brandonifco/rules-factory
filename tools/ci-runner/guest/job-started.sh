@@ -21,15 +21,22 @@ done
 
 # A repository served by trusted dispatch is public (decision 0080). Its jobs reach this VM only on
 # a one-job runner the host's dispatcher started, and only for a run it admitted, recorded where
-# no runner account can write. Anything else stops here, before the job's first step: a runner
-# that is not one of those, a run of another repository, or a run nobody admitted.
+# no runner account can write. Anything else stops here: a runner that is not one of those, a run
+# of another repository, or a run nobody admitted. Failing this hook is not enough to stop it: the
+# runner still runs every action's `pre:` and `post:` step after a failed job-started hook (seen
+# on 2026-10-10, runner 2.338.0), as it would a step marked `if: always()`, and a fork writes both.
+# So a refusal kills the job's Runner.Worker, which runs every step there is, before it returns;
+# GitHub then has no log for the job, so the refusal goes to the guest's journal too. (A job's
+# `env:` does not reach this hook: neither a forged GITHUB_RUN_ID nor BASH_ENV did, same day.)
 if [[ -e /etc/factory-ci/dispatch/$me ]]; then
   run="${GITHUB_RUN_ID:-}" attempt="${GITHUB_RUN_ATTEMPT:-}"
   exe="$(readlink "/proc/$worker/exe" 2>/dev/null || true)"
   if [[ $exe != "$HOME"/jit/*/bin/Runner.Worker ]] || [[ ! $run =~ ^[0-9]+$ ]] || [[ ! $attempt =~ ^[0-9]+$ ]] ||
      [[ "${GITHUB_REPOSITORY:-}" != "$(cat "/etc/factory-ci/dispatch/$me")" ]] ||
      [[ ! -f /run/factory-ci-trust/$me/$run-$attempt ]]; then
-    echo "::error::factory-ci: run ${run:-?} attempt ${attempt:-?} of ${GITHUB_REPOSITORY:-?} was not admitted by the trusted dispatcher; refused before its first step (decision 0080)"
+    echo "::error::factory-ci: run ${run:-?} attempt ${attempt:-?} of ${GITHUB_REPOSITORY:-?} was not admitted by the trusted dispatcher; refused, and its worker killed before any step (decision 0080)"
+    logger -t factory-ci "refused run ${run:-?} attempt ${attempt:-?} of ${GITHUB_REPOSITORY:-?} on $me: not admitted"
+    kill -KILL "$worker"
     exit 1
   fi
   echo "factory-ci: run $run attempt $attempt of $GITHUB_REPOSITORY admitted by the trusted dispatcher"

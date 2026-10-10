@@ -39,10 +39,12 @@ permissions:
 
 jobs:
   validate:
-    # A fixed release, not the ubuntu-latest alias: that alias has jumped Ubuntu releases
-    # before, and a corpus checker whose answers depend on the Python it met is worse than
-    # no checker.
-    runs-on: ubuntu-24.04
+    # The hosted default is a fixed release, not the ubuntu-latest alias: that alias has jumped
+    # Ubuntu releases before, and a corpus checker whose answers depend on the Python it met is
+    # worse than no checker. The owner's own runs go to the factory-ci VM when
+    # FACTORY_RUNS_ON_TRUSTED is set, through the trusted dispatcher; everyone else's, a fork's
+    # pull request above all, stay hosted (decision 0080, docs/self-hosted-runners.md).
+    runs-on: ${{ fromJSON(github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && (github.event.pull_request.head.repo.full_name || !github.event.pull_request && github.repository) == github.repository && vars.FACTORY_RUNS_ON_TRUSTED || vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}
     # 20, as the engine job: since 0074 every corpus a test builds is built and verified by
     # rules-corpus through `dotnet run`. On four workers locally the suite went from 1m54s to
     # 3m29s, and this job already took about 6.4 minutes of its 10. A timeout is a hang detector,
@@ -102,8 +104,9 @@ jobs:
 
   engine:
     # Separate from `validate` because it needs the .NET SDK and nuget.org, and because a
-    # skipped dotnet test inside pytest is exactly what this job exists to replace.
-    runs-on: ubuntu-24.04
+    # skipped dotnet test inside pytest is exactly what this job exists to replace. The runner is
+    # chosen as for `validate` (decision 0080).
+    runs-on: ${{ fromJSON(github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && (github.event.pull_request.head.repo.full_name || !github.event.pull_request && github.repository) == github.repository && vars.FACTORY_RUNS_ON_TRUSTED || vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 20
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'

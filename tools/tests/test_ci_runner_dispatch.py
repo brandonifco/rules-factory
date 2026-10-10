@@ -215,11 +215,33 @@ class TestTheGuestRefusesWhatWasNotAdmitted(unittest.TestCase):
         self.assertLess(check, hook.index("slot-hold"), "before a slot is taken")
         self.assertIn("/run/factory-ci-trust/$me/$run-$attempt", hook[check:])
         self.assertIn('"$HOME"/jit/*/bin/Runner.Worker', hook[check:], "only a one-job runner serves a dispatch account")
+        refusal = hook[check:hook.index("fi", hook.index("::error::", check))]
+        self.assertIn('kill -KILL "$worker"', refusal,
+                      "a failed hook does not stop the job: the runner still runs actions' pre and post steps")
 
     def test_admissions_live_where_no_runner_account_can_write(self):
         with open(os.path.join(os.path.dirname(PATH), "guest", "factory-ci.tmpfiles"), encoding="utf-8") as handle:
             self.assertIn("d /run/factory-ci-trust 0755 root root -", handle.read())
 
+
+
+class TestThisRepositoryAsksForTheVmOnlyThroughTheContract(unittest.TestCase):
+    """rules-factory is public: a literal self-hosted label in its workflows would be the direct path."""
+
+    def test_every_runs_on_is_the_contract_line_or_the_pinned_hosted_release(self):
+        sys.path.insert(0, os.path.join(os.path.dirname(HERE), "factory"))
+        import repository
+        workflows = os.path.join(os.path.dirname(os.path.dirname(HERE)), ".github", "workflows")
+        seen = {}
+        for name in sorted(os.listdir(workflows)):
+            with open(os.path.join(workflows, name), encoding="utf-8") as handle:
+                for line in handle.read().split("\n"):
+                    if line.lstrip().startswith("runs-on:"):
+                        self.assertIn(line, (repository.RUNS_ON_LINE, "    runs-on: ubuntu-24.04"), name)
+                        seen.setdefault(name, []).append(line == repository.RUNS_ON_LINE)
+        self.assertEqual([True, True], seen["validate.yml"], "validate and engine take the contract")
+        self.assertEqual([True], seen["documentation.yml"])
+        self.assertEqual([False, False], seen["publish-map.yml"], "publishing stays hosted: it holds the NuGet key")
 
 if __name__ == "__main__":
     unittest.main()

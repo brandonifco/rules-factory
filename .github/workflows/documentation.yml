@@ -22,7 +22,8 @@ permissions:
 
 jobs:
   documentation:
-    runs-on: ubuntu-24.04
+    # The owner's runs on the factory-ci VM, everyone else's hosted (decision 0080).
+    runs-on: ${{ fromJSON(github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && (github.event.pull_request.head.repo.full_name || !github.event.pull_request && github.repository) == github.repository && vars.FACTORY_RUNS_ON_TRUSTED || vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 5
     steps:
       - name: Checkout
