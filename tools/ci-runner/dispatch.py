@@ -35,6 +35,15 @@ Usage:
   dispatch.py audit                    the boundary as one: registrations, visibility, variables,
                                        fork approval; exit 1 on any finding (factory-ci audit)
   dispatch.py timings OWNER/REPO [N]   queue and run time of the last N runs' jobs, by runner
+  dispatch.py check                    prove the dispatcher's token file can do everything the
+                                       dispatcher does, on every served repository
+
+The dispatcher authenticates with the token in TOKEN_FILE (~/.config/factory-ci/dispatch-token, or
+$FACTORY_CI_DISPATCH_TOKEN_FILE) when that file exists, and with the owner's `gh` login otherwise.
+`gh` keeps its token in the desktop keyring, which is locked until a graphical login, so a service
+that starts at boot needs the file: a fine-grained token scoped to the served repositories, with
+Actions read/write, Administration read/write, Contents read and Metadata read. `audit` and
+`timings` read every repository and always use `gh`.
 Standard library only.
 """
 import json
@@ -42,6 +51,7 @@ import os
 import re
 import secrets
 import shlex
+import stat
 import statistics
 import subprocess
 import sys
@@ -61,6 +71,7 @@ IDLE_MAX = 60
 STARTING = 120
 PENDING_GRACE = 120
 API = "https://api.github.com"
+TOKEN_FILE = os.environ.get("FACTORY_CI_DISPATCH_TOKEN_FILE", os.path.expanduser("~/.config/factory-ci/dispatch-token"))
 
 #: Events whose workflow and code are the repository's own revision. Excluded on purpose: the
 #: events that run a trusted workflow for somebody else's change (`pull_request_target`,
@@ -146,17 +157,38 @@ def log(message):
     print(f"{datetime.now(timezone.utc):%Y-%m-%dT%H:%M:%SZ} {message}", flush=True)
 
 
-class GitHub:
-    """The REST API as the owner. List reads are conditional: GitHub does not count a 304."""
+def read_token_file(path):
+    """The token in `path`, or None when there is no such file. A credential: refused unless it is a
+    regular file of the running user's that no one else can read or write."""
+    try:
+        found = os.lstat(path)
+    except FileNotFoundError:
+        return None
+    if not stat.S_ISREG(found.st_mode) or found.st_uid != os.getuid() or found.st_mode & 0o077:
+        raise PermissionError(f"{path} must be a regular file of yours with mode 0600 (chmod 600 {path})")
+    with open(path, encoding="utf-8") as handle:
+        token = handle.read().strip()
+    if not token or any(c.isspace() for c in token):
+        raise ValueError(f"{path} must hold one token and nothing else")
+    return token
 
-    def __init__(self):
+
+class GitHub:
+    """The REST API as the owner. List reads are conditional: GitHub does not count a 304.
+
+    With `token_file`, the token is read from that file when it exists (see the module's note);
+    otherwise, and always without it, from the owner's `gh` login."""
+
+    def __init__(self, token_file=None):
+        self.token_file = token_file
         self.token = self._token()
         self.etags = {}
         self.link = ""
 
-    @staticmethod
-    def _token():
-        return subprocess.run(["gh", "auth", "token"], check=True, capture_output=True, text=True).stdout.strip()
+    def _token(self):
+        token = read_token_file(self.token_file) if self.token_file else None
+        self.source = self.token_file if token else "the gh login"
+        return token or subprocess.run(["gh", "auth", "token"], check=True, capture_output=True, text=True).stdout.strip()
 
     def call(self, method, path, body=None, cache=False):
         url = path if path.startswith("http") else API + path
@@ -254,7 +286,7 @@ def parse_inventory(text):
 
 class Dispatcher:
     def __init__(self, github=None, guest=None):
-        self.github = github or GitHub()
+        self.github = github or GitHub(token_file=TOKEN_FILE)
         self.guest = guest or Guest()
         self.verdicts = {}      # (repository, run id, attempt) -> (verdict, why, first seen)
         self.cancels = {}       # (repository, run id, attempt) -> cancel requests made
@@ -467,7 +499,8 @@ class Dispatcher:
 
 def run_forever():
     dispatcher = Dispatcher()
-    log(f"dispatcher up: VM {VM}, labels {','.join(LABELS)}, poll {POLL}s, at most {JIT_MAX} one-job runners")
+    log(f"dispatcher up: VM {VM}, labels {','.join(LABELS)}, poll {POLL}s, at most {JIT_MAX} one-job runners, "
+        f"token from {dispatcher.github.source}")
     while True:
         started = time.monotonic()
         try:
@@ -558,11 +591,63 @@ def timings(repository, count=10):
     return 0
 
 
+def check(guest=None):
+    """Everything the dispatcher asks of GitHub, asked with the token file, on every served repository.
+
+    Reads are read; the two writes are proven without effect: a cancel of a finished run (GitHub
+    answers 409 when it may cancel, 403 or 404 when it may not), and a one-job runner created and
+    deleted at once, never started, so it never takes a job."""
+    token = read_token_file(TOKEN_FILE)
+    if token is None:
+        print(f"no token file at {TOKEN_FILE}: the dispatcher uses the gh login, which a boot cannot unlock")
+        return 1
+    github = GitHub(token_file=TOKEN_FILE)
+    served = (guest or Guest()).inventory()["dispatch"]
+    failures = 0
+
+    def step(repository, what, call, accept=()):
+        nonlocal failures
+        try:
+            call()
+            print(f"  ok  {repository}: {what}")
+        except urllib.error.HTTPError as error:
+            if error.code in accept:
+                print(f"  ok  {repository}: {what} (HTTP {error.code}, as expected)")
+            else:
+                failures += 1
+                print(f"  X   {repository}: {what}: HTTP {error.code} {error.reason}")
+
+    for name, repository in sorted(served.items()):
+        runs = []
+        step(repository, "read workflow runs (Actions: read)",
+             lambda: runs.extend(github.get(f"/repos/{repository}/actions/runs?status=completed&per_page=1")["workflow_runs"]))
+        if runs:
+            step(repository, "read a run's jobs (Actions: read)",
+                 lambda: github.get(f"/repos/{repository}/actions/runs/{runs[0]['id']}/jobs?per_page=1"))
+            step(repository, "cancel a run (Actions: write)",
+                 lambda: github.call("POST", f"/repos/{repository}/actions/runs/{runs[0]['id']}/cancel"), accept=(409,))
+        step(repository, "read the activity log (Contents: read)",
+             lambda: github.get(f"/repos/{repository}/activity?per_page=1"))
+        step(repository, "read runners (Administration: read)",
+             lambda: github.get(f"/repos/{repository}/actions/runners?per_page=1"))
+
+        def runner():
+            created = github.call("POST", f"/repos/{repository}/actions/runners/generate-jitconfig",
+                                  {"name": f"{VM}-jit-check{secrets.token_hex(3)}", "runner_group_id": 1,
+                                   "labels": list(LABELS), "work_folder": "_work"})
+            github.call("DELETE", f"/repos/{repository}/actions/runners/{created['runner']['id']}")
+        step(repository, "create and delete a one-job runner (Administration: write)", runner)
+    print(f"token file {TOKEN_FILE}: {failures} failure(s) over {len(served)} served repositories")
+    return 1 if failures else 0
+
+
 def main(argv):
     if argv[:1] == ["run"]:
         run_forever()
     if argv[:1] == ["audit"]:
         return audit()
+    if argv[:1] == ["check"]:
+        return check()
     if argv[:1] == ["timings"] and len(argv) in (2, 3):
         return timings(argv[1], int(argv[2]) if len(argv) == 3 else 10)
     print(__doc__.split("Usage:", 1)[1], file=sys.stderr)
