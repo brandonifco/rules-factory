@@ -34,13 +34,14 @@ done
 exe="$(readlink "/proc/$worker/exe" 2>/dev/null || true)"
 if [[ $exe == /srv/factory-ci-jit/* || -e /etc/factory-ci/dispatch-accounts/$me || ! -r /etc/factory-ci/dispatch-accounts ]]; then
   run="${GITHUB_RUN_ID:-}" attempt="${GITHUB_RUN_ATTEMPT:-}" why=
-  id="$(sed -n 's#^/srv/factory-ci-jit/\([0-9]\{1,19\}\)/bin/Runner.Worker$#\1#p' <<<"$exe")"
+  id="$(sed -n 's#^/srv/factory-ci-jit/\([a-z0-9][a-z0-9-]*-[0-9]\{1,19\}\)/bin/Runner.Worker$#\1#p' <<<"$exe")"
   owner= name= deadline=
   [[ -n $id ]] && read -r owner name deadline _ 2>/dev/null </run/factory-ci-trust/runners/"$id" || true
   if [[ -z $id ]]; then why="not a one-job runner"
   elif [[ $owner != "$me" ]]; then why="runner $id was not started for $me"
   elif [[ ! $deadline =~ ^[0-9]+$ ]] || (( $(date +%s) > deadline )); then why="runner $id got its job after its lease"
-  elif [[ ! $name =~ ^[a-z0-9][a-z0-9-]{0,23}$ ]] || [[ "$(cat "/etc/factory-ci/dispatch-accounts/$me" 2>/dev/null)" != "$name" ]]; then why="$me does not serve $name"
+  elif [[ ! $name =~ ^[a-z0-9][a-z0-9-]{0,23}$ ]] || [[ $id != "$name"-* ]] ||
+       [[ "$(cat "/etc/factory-ci/dispatch-accounts/$me" 2>/dev/null)" != "$name" ]]; then why="$me does not serve $name"
   elif [[ "${GITHUB_REPOSITORY:-}" != "$(head -1 "/etc/factory-ci/dispatch/$name" 2>/dev/null)" ]]; then why="the job is not of the repository $name serves"
   elif [[ ! $run =~ ^[0-9]+$ ]] || [[ ! $attempt =~ ^[0-9]+$ ]] || [[ ! -f /run/factory-ci-trust/$name/$run-$attempt ]]; then why="run ${run:-?} attempt ${attempt:-?} was not admitted"
   fi

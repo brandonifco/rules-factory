@@ -225,7 +225,10 @@ class Guest:
 
 
 def parse_inventory(text):
-    """{"dispatch": {name: repo}, "persistent": {account: url}, "jit": {runner id: (account, state)}}.
+    """{"dispatch": {name: repo}, "persistent": {account: url}, "jit": {(name, runner id): (account, state)}}.
+
+    GitHub numbers runners per repository, so a guest runner is known by its repository's name and
+    its id together.
 
     One JSON object per line; a line that is not one, or whose fields do not have their shape, is
     dropped. A persistent runner's URL comes from a file its account can write, so it is data here
@@ -243,9 +246,9 @@ def parse_inventory(text):
             found["dispatch"][item["name"]] = item["repo"]
         elif kind == "persistent" and re.fullmatch(r"fci-[a-z0-9][a-z0-9-]{0,23}", str(item.get("account"))):
             found["persistent"][item["account"]] = str(item.get("url"))
-        elif kind == "jit" and re.fullmatch(r"[0-9]{1,19}", str(item.get("id"))) \
+        elif kind == "jit" and re.fullmatch(r"[0-9]{1,19}", str(item.get("id"))) and NAME.fullmatch(str(item.get("name"))) \
                 and re.fullmatch(r"fc[ij]-[a-z0-9][a-z0-9-]{0,23}", str(item.get("account"))):
-            found["jit"][int(item["id"])] = (item["account"], str(item.get("state")))
+            found["jit"][(item["name"], int(item["id"]))] = (item["account"], str(item.get("state")))
     return found
 
 
@@ -256,9 +259,9 @@ class Dispatcher:
         self.verdicts = {}      # (repository, run id, attempt) -> (verdict, why, first seen)
         self.cancels = {}       # (repository, run id, attempt) -> cancel requests made
         self.admitted = {}      # name -> the run-attempts last written into the guest
-        self.spawned = {}       # runner id -> (repository, account, monotonic time started)
-        self.seen = set()       # runner ids this program started that GitHub has listed
-        self.idle_since = {}    # runner id -> monotonic time first seen online and idle
+        self.spawned = {}       # (name, runner id) -> (repository, account, monotonic time started)
+        self.seen = set()       # (name, runner id) this program started that GitHub has listed
+        self.idle_since = {}    # (name, runner id) -> monotonic time first seen online and idle
         self.inventory = None
         self.inventory_at = 0.0
 
@@ -336,7 +339,7 @@ class Dispatcher:
         mine = {r["id"]: r for r in runners if r["name"].startswith(f"{VM}-jit-")}
         foreign = [r["name"] for r in runners if r["id"] not in mine]
         if foreign:
-            self.retire_waiting(repository, mine, "a runner registered outside dispatch")
+            self.retire_waiting(name, repository, mine, "a runner registered outside dispatch")
             log(f"{repository}: NOT SERVED: runner(s) {', '.join(foreign)} registered outside dispatch; "
                 f"a public repository has none (factory-ci audit)")
             return 0
@@ -355,34 +358,34 @@ class Dispatcher:
             self.guest.call("admit", name, *sorted(admitted))
         self.admitted[name] = admitted
         now = time.monotonic()
-        accounts = dict((account, lane) for lane, account in self.lanes(name))
-        up = {runner_id for runner_id, (account, state) in self.inventory["jit"].items()
-              if account in accounts and state == "active"}
-        up |= {runner_id for runner_id, (repo, _, started) in self.spawned.items()
-               if repo == repository and runner_id not in self.seen and now - started < STARTING}
-        self.seen |= set(mine) & set(self.spawned)
+        up = {runner_id for (owner, runner_id), (account, state) in self.inventory["jit"].items()
+              if owner == name and state == "active"}
+        up |= {runner_id for (owner, runner_id), (_, _, started) in self.spawned.items()
+               if owner == name and (name, runner_id) not in self.seen and now - started < STARTING}
+        self.seen |= {(name, runner_id) for runner_id in mine} & set(self.spawned)
         supply = 0
         for runner_id, runner in mine.items():
             if runner.get("busy"):
-                self.idle_since.pop(runner_id, None)
+                self.idle_since.pop((name, runner_id), None)
             elif runner.get("status") == "online":
                 supply += 1
-                self.idle_since.setdefault(runner_id, now)
+                self.idle_since.setdefault((name, runner_id), now)
             elif runner_id in up:
                 supply += 1
-        supply += sum(1 for runner_id, (repo, _, started) in self.spawned.items()
-                      if repo == repository and runner_id not in mine and runner_id not in self.seen
+        supply += sum(1 for (owner, runner_id), (_, _, started) in self.spawned.items()
+                      if owner == name and runner_id not in mine and (name, runner_id) not in self.seen
                       and now - started < STARTING)
         if blocked:
-            self.retire_waiting(repository, mine, "a job that was not admitted is unfinished")
+            self.retire_waiting(name, repository, mine, "a job that was not admitted is unfinished")
             if demand:
                 log(f"{repository}: {demand} admitted job(s) wait: no runner starts while a job that was not admitted is unfinished")
             return 0
-        for runner_id in [r for r in self.idle_since if r in mine and demand <= supply - 1 and now - self.idle_since[r] > IDLE_MAX]:
-            self.retire(repository, runner_id, f"idle for {IDLE_MAX}s with nothing admitted for it")
+        for runner_id in [r for (owner, r) in self.idle_since
+                          if owner == name and r in mine and demand <= supply - 1 and now - self.idle_since[(owner, r)] > IDLE_MAX]:
+            self.retire(name, repository, runner_id, f"idle for {IDLE_MAX}s with nothing admitted for it")
             supply -= 1
-        busy_accounts = {self.spawned.get(r, (None, None))[1] for r in up} | {
-            account for runner_id, (account, state) in self.inventory["jit"].items() if state == "active"}
+        busy_accounts = {self.spawned.get((name, r), (None, None))[1] for r in up} | {
+            account for (account, state) in self.inventory["jit"].values() if state == "active"}
         free = [(lane, account) for lane, account in self.lanes(name) if account not in busy_accounts]
         wanted = free[:max(0, min(demand - supply, JIT_MAX - live))]
         if wanted:  # again, so an admission lost with a guest reboot is back before a runner starts
@@ -403,47 +406,47 @@ class Dispatcher:
         except Exception:
             self.github.call("DELETE", f"/repos/{repository}/actions/runners/{runner_id}")
             raise
-        self.spawned[runner_id] = (repository, account, time.monotonic())
+        self.spawned[(name, runner_id)] = (repository, account, time.monotonic())
         log(f"{repository}: started one-job runner {runner_name} (id {runner_id}) as {account}")
 
-    def retire_waiting(self, repository, mine, why):
+    def retire_waiting(self, name, repository, mine, why):
         """Every runner of `repository` not running a job goes: none waits beside a refused job."""
         for runner_id, runner in mine.items():
             if not runner.get("busy"):
-                self.retire(repository, runner_id, why)
+                self.retire(name, repository, runner_id, why)
 
-    def retire(self, repository, runner_id, why):
+    def retire(self, name, repository, runner_id, why):
         try:
             self.github.call("DELETE", f"/repos/{repository}/actions/runners/{runner_id}")
         except urllib.error.HTTPError as error:
             if error.code != 404:
                 log(f"{repository}: could not delete runner {runner_id}: HTTP {error.code}")
                 return
-        self.guest.call("stop", str(runner_id))
-        self.spawned.pop(runner_id, None)
-        self.idle_since.pop(runner_id, None)
+        self.guest.call("stop", name, str(runner_id))
+        self.spawned.pop((name, runner_id), None)
+        self.idle_since.pop((name, runner_id), None)
         log(f"{repository}: retired one-job runner {runner_id} ({why})")
 
     def reconcile(self):
         """A guest runner GitHub no longer knows is stopped; a finished one is reaped."""
         now = time.monotonic()
-        known = set()
         for name, repository in self.inventory["dispatch"].items():
             runners = self.github.every(f"/repos/{repository}/actions/runners", "runners")
-            known |= {r["id"] for r in runners}
+            known = {r["id"] for r in runners}
             for r in runners:
-                if r["name"].startswith(f"{VM}-jit-") and r["id"] not in self.inventory["jit"] \
-                        and now - self.spawned.get(r["id"], ("", "", 0.0))[2] > STARTING and r.get("status") != "online":
-                    self.retire(repository, r["id"], "no guest runner")
-        for runner_id, (account, state) in self.inventory["jit"].items():
-            if state == "active" and runner_id not in known and now - self.spawned.get(runner_id, ("", "", 0.0))[2] > STARTING:
-                self.guest.call("stop", str(runner_id))
-                log(f"{account}: stopped guest runner {runner_id}, which GitHub no longer knows")
+                if r["name"].startswith(f"{VM}-jit-") and (name, r["id"]) not in self.inventory["jit"] \
+                        and now - self.spawned.get((name, r["id"]), ("", "", 0.0))[2] > STARTING and r.get("status") != "online":
+                    self.retire(name, repository, r["id"], "no guest runner")
+            for (owner, runner_id), (account, state) in self.inventory["jit"].items():
+                if owner == name and state == "active" and runner_id not in known \
+                        and now - self.spawned.get((name, runner_id), ("", "", 0.0))[2] > STARTING:
+                    self.guest.call("stop", name, str(runner_id))
+                    log(f"{account}: stopped guest runner {runner_id} of {repository}, which GitHub no longer knows")
         if any(state != "active" for _, state in self.inventory["jit"].values()):
             self.guest.call("reap")
-        for runner_id in [r for r, (_, _, t) in self.spawned.items() if now - t > 8 * 3600]:
-            self.spawned.pop(runner_id, None)
-            self.seen.discard(runner_id)
+        for key in [k for k, (_, _, t) in self.spawned.items() if now - t > 8 * 3600]:
+            self.spawned.pop(key, None)
+            self.seen.discard(key)
 
     def cycle(self):
         self.refresh()
@@ -455,7 +458,7 @@ class Dispatcher:
                 log(f"{repository}: this cycle failed, so its waiting runners go: {error}")
                 try:
                     runners = self.github.every(f"/repos/{repository}/actions/runners", "runners")
-                    self.retire_waiting(repository, {r["id"]: r for r in runners if r["name"].startswith(f"{VM}-jit-")},
+                    self.retire_waiting(name, repository, {r["id"]: r for r in runners if r["name"].startswith(f"{VM}-jit-")},
                                         "the cycle could not judge everything")
                 except Exception as again:  # the guest's lease is the backstop
                     log(f"{repository}: could not retire waiting runners: {again}")

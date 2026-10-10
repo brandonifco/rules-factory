@@ -199,7 +199,7 @@ class TestServe(unittest.TestCase):
         _, github, guest = self.serve([run(run_id=7), run(run_id=8, **FORK)], {7: [job()], 8: [job()]}, runners=[idle, working])
         self.assertIn(("DELETE", f"/repos/{REPO}/actions/runners/50"), github.posts)
         self.assertNotIn(("DELETE", f"/repos/{REPO}/actions/runners/51"), github.posts, "a running job is left alone")
-        self.assertIn(("stop", "50"), guest.calls)
+        self.assertIn(("stop", "rules-factory", "50"), guest.calls)
 
     def test_a_fork_job_past_the_first_page_is_still_seen(self):
         """Codex 2026-10-10 (P1): a fork hid its self-hosted job behind a hundred hosted ones."""
@@ -248,7 +248,7 @@ class TestServe(unittest.TestCase):
         """Codex 2026-10-10 (P2): reusing a waiting runner wrote no admission, so the hook killed the job."""
         idle = {"id": 50, "name": "factory-ci-1-jit-abcd", "status": "online", "busy": False}
         started, _, guest = self.serve([run(run_id=7)], {7: [job()]}, runners=[idle],
-                                       guest_units={50: ("fci-rules-factory", "active")})
+                                       guest_units={("rules-factory", 50): ("fci-rules-factory", "active")})
         self.assertEqual(0, started)
         self.assertIn(("admit", "rules-factory", "7-1"), guest.calls)
 
@@ -257,7 +257,7 @@ class TestServe(unittest.TestCase):
         started, _, guest = self.serve([run(run_id=i) for i in (1, 2, 3)], {i: [job()] for i in (1, 2, 3)})
         self.assertEqual(2, started, "one per lane")
         self.assertEqual({"a", "b"}, {c[2] for c in self.starts(guest)})
-        busy = {60: ("fci-rules-factory", "active")}
+        busy = {("rules-factory", 60): ("fci-rules-factory", "active")}
         working = {"id": 60, "name": "factory-ci-1-jit-x", "status": "online", "busy": True}
         started, _, guest = self.serve([run(run_id=i) for i in (1, 2, 3)], {i: [job()] for i in (1, 2, 3)},
                                        runners=[working], guest_units=busy)
@@ -268,22 +268,29 @@ class TestServe(unittest.TestCase):
         dispatcher = dispatch.Dispatcher(github=None, guest=None)
         first, _, _ = self.serve([run(run_id=7)], {7: [job()]}, dispatcher=dispatcher)
         self.assertEqual(1, first)
-        runner_id = next(iter(dispatcher.spawned))
+        runner_id = next(iter(dispatcher.spawned))[1]
         listed = {"id": runner_id, "name": "factory-ci-1-jit-x", "status": "online", "busy": True}
         self.serve([run(run_id=7)], {7: [job(status="in_progress")]}, runners=[listed], dispatcher=dispatcher,
-                   guest_units={runner_id: ("fci-rules-factory", "active")})
+                   guest_units={("rules-factory", runner_id): ("fci-rules-factory", "active")})
         second, _, _ = self.serve([run(run_id=8)], {8: [job()]}, dispatcher=dispatcher,
-                                  guest_units={runner_id: ("fci-rules-factory", "inactive")})
+                                  guest_units={("rules-factory", runner_id): ("fci-rules-factory", "inactive")})
         self.assertEqual(1, second, "the next admitted job gets a runner at once")
 
     def test_a_connecting_runner_whose_guest_unit_is_up_is_supply(self):
         connecting = {"id": 60, "name": "factory-ci-1-jit-y", "status": "offline", "busy": False}
         started, _, _ = self.serve([run(run_id=7)], {7: [job()]}, runners=[connecting],
-                                   guest_units={60: ("fci-rules-factory", "active")})
+                                   guest_units={("rules-factory", 60): ("fci-rules-factory", "active")})
         self.assertEqual(0, started)
         started, _, _ = self.serve([run(run_id=7)], {7: [job()]}, runners=[connecting],
-                                   guest_units={60: ("fci-rules-factory", "inactive")})
+                                   guest_units={("rules-factory", 60): ("fci-rules-factory", "inactive")})
         self.assertEqual(1, started, "an offline runner whose unit is down will never take it")
+
+    def test_another_repository_s_runner_with_the_same_id_is_not_this_one(self):
+        """Seen 2026-10-10: GitHub numbers runners per repository, and faa-part-107's 21 met another's 21."""
+        connecting = {"id": 60, "name": "factory-ci-1-jit-y", "status": "offline", "busy": False}
+        started, _, guest = self.serve([run(run_id=7)], {7: [job()]}, runners=[connecting],
+                                       guest_units={("faa-part-107", 60): ("fci-faa-part-107", "active")})
+        self.assertEqual(1, started, "faa-part-107's unit up says nothing about this repository's runner 60")
 
     def test_never_past_the_cap(self):
         github, guest = FakeGitHub([run(run_id=1)], {1: [job()]}, [placed()]), FakeGuest()
@@ -304,10 +311,12 @@ class TestTheGuestIsSpokenToSafely(unittest.TestCase):
                   'dispatch fci-$(touch /tmp/p) brandonifco/rules-factory\n'
                   '{"kind":"dispatch","name":"$(id)","repo":"a/b"}\n'
                   '{"kind":"dispatch","name":"rules-factory","repo":"brandonifco/rules-factory"}\n'
-                  '{"kind":"jit","id":"7","account":"fci-rules-factory","state":"active"}\n')
+                  '{"kind":"jit","name":"rules-factory","id":"7","account":"fci-rules-factory","state":"active"}\n'
+                  '{"kind":"jit","id":"8","account":"fci-rules-factory","state":"active"}\n')
         found = dispatch.parse_inventory(forged)
         self.assertEqual({"rules-factory": "brandonifco/rules-factory"}, found["dispatch"])
-        self.assertEqual({7: ("fci-rules-factory", "active")}, found["jit"])
+        self.assertEqual({("rules-factory", 7): ("fci-rules-factory", "active")}, found["jit"],
+                         "a runner is known by its repository and id together; one without a repository is dropped")
         self.assertEqual(["fci-x"], list(found["persistent"]), "the URL is data, never acted on")
 
     def test_an_argument_with_shell_in_it_is_never_sent(self):
@@ -345,7 +354,7 @@ class TestTheGuestRefusesWhatWasNotAdmitted(unittest.TestCase):
         """Codex 2026-10-10 (P0): root's `install -d` followed a link a job left in its home."""
         start = self.read("dispatch-guest.sh")
         start = start[start.index("cmd_start() {"):start.index("cmd_stop()")]
-        self.assertIn('dir="$jits/$id"', start)
+        self.assertIn('dir="$jits/$key"', start)
         self.assertLess(start.index('mkdir -m 0700 "$dir"'), start.index('chown -R "$user:$user" "$dir"'))
         self.assertLess(start.index('.jitconfig"; chmod 0600'), start.index('chown -R'), "filled before it is handed over")
         self.assertNotIn("runuser", start, "nothing is done as the account before the handover")
