@@ -7,8 +7,10 @@
 #   untrust NAME                  stop serving it; its one-job runners are stopped
 #   admit NAME RUN-ATTEMPT...     let these runs' jobs past the job-started hook
 #   start NAME LANE RUNNER_ID     start a one-job runner (LANE a: fci-NAME, b: fcj-NAME) from the
-#                                 JIT configuration on stdin; refused while that account has one
-#   stop RUNNER_ID                stop one (an idle listener exits; a running job may finish)
+#                                 JIT configuration on stdin; refused while that account has one.
+#                                 GitHub numbers runners per repository, so a runner is known here
+#                                 as NAME-RUNNER_ID: its directory, unit and lease all carry both
+#   stop NAME RUNNER_ID           stop one (an idle listener exits; a running job may finish)
 #   reap                          remove finished one-job runners and admissions older than a day
 #   inventory                     one JSON object per line: dispatch, persistent and jit entries
 #
@@ -86,9 +88,10 @@ cmd_start() {
   case "${2:-}" in a) user="fci-$name" ;; b) user="fcj-$name" ;; *) die "lane is a or b" ;; esac
   [[ -f $accounts/$user ]] || die "$user is not one of $name's accounts"
   busy "$user" && die "$user already has a one-job runner up; one per account at a time"
-  dir="$jits/$id" unit="factory-ci-jit-$id"
+  local key="$name-$id"
+  dir="$jits/$key" unit="factory-ci-jit-$key"
   IFS= read -r config; [[ $config =~ ^[A-Za-z0-9+/=]+$ ]] || die "no JIT configuration on stdin"
-  [[ -e $dir || -e $units/$unit.service ]] && die "runner $id exists already"
+  [[ -e $dir || -e $units/$unit.service ]] && die "runner $key exists already"
   install -d -m 0755 "$jits"
   # Made and filled as root, in a directory only root can write, then handed over whole: there is
   # no moment at which the account can put a link where root is about to write.
@@ -99,10 +102,10 @@ cmd_start() {
   sed -n 's/^PATH=//p' /etc/factory-ci/runner.env >"$dir/.path"; chmod 0600 "$dir/.path"
   printf '%s' "$config" >"$dir/.jitconfig"; chmod 0600 "$dir/.jitconfig"
   chown -R "$user:$user" "$dir"
-  printf '%s %s %s\n' "$user" "$name" "$(( $(date +%s) + LEASE ))" >"$trust/runners/$id"; chmod 0644 "$trust/runners/$id"
+  printf '%s %s %s\n' "$user" "$name" "$(( $(date +%s) + LEASE ))" >"$trust/runners/$key"; chmod 0644 "$trust/runners/$key"
   # The standing runners' unit, with its hardening, for one job: one place states the sandbox.
   sed -e "s#%i#$user#g" \
-      -e "s#^Description=.*#Description=One-job GitHub Actions runner $id for $user (factory-ci, decision 0080)#" \
+      -e "s#^Description=.*#Description=One-job GitHub Actions runner $id of $name for $user (factory-ci, decision 0080)#" \
       -e "s#^ConditionPathExists=.*#ConditionPathExists=$dir/.jitconfig#" \
       -e "s#^WorkingDirectory=.*#WorkingDirectory=$dir#" \
       -e "s#^ExecStart=.*#ExecStart=/opt/factory-ci/bin/jit-run#" \
@@ -122,15 +125,15 @@ cmd_start() {
   echo "started $unit as $user"
 }
 
-cmd_stop() { id_ok "${1:-}"; systemctl stop "factory-ci-jit-$1" 2>/dev/null || true; }
+cmd_stop() { name_ok "${1:-}"; id_ok "${2:-}"; systemctl stop "factory-ci-jit-$1-$2" 2>/dev/null || true; }
 
 cmd_reap() {
-  local f unit id changed=
+  local f unit key changed=
   for f in "$units"/factory-ci-jit-*.service; do
     [[ -f $f ]] || continue
-    unit="$(basename "$f" .service)" id="${unit#factory-ci-jit-}"
+    unit="$(basename "$f" .service)" key="${unit#factory-ci-jit-}"
     systemctl is-active --quiet "$unit" && continue
-    [[ $id =~ ^[0-9]+$ ]] && rm -rf "${jits:?}/$id" && rm -f "$trust/runners/$id"
+    [[ $key =~ ^[a-z0-9][a-z0-9-]{0,23}-[0-9]{1,19}$ ]] && rm -rf "${jits:?}/$key" && rm -f "$trust/runners/$key"
     systemctl reset-failed "$unit" 2>/dev/null || true
     rm -f "$f"; changed=1
   done
@@ -157,8 +160,9 @@ cmd_inventory() {
   for f in "$units"/factory-ci-jit-*.service; do
     [[ -f $f ]] || continue
     unit="$(basename "$f" .service)"
-    jq -cn --arg id "${unit#factory-ci-jit-}" --arg account "$(unit_user "$f")" \
-      --arg state "$(systemctl is-active "$unit" || true)" '{kind:"jit",id:$id,account:$account,state:$state}'
+    [[ ${unit#factory-ci-jit-} =~ ^([a-z0-9][a-z0-9-]{0,23})-([0-9]{1,19})$ ]] || continue
+    jq -cn --arg name "${BASH_REMATCH[1]}" --arg id "${BASH_REMATCH[2]}" --arg account "$(unit_user "$f")" \
+      --arg state "$(systemctl is-active "$unit" || true)" '{kind:"jit",name:$name,id:$id,account:$account,state:$state}'
   done
 }
 
