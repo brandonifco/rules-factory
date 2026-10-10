@@ -185,30 +185,135 @@ def runs_on_lines(text):
     return [line for line in text.split("\n") if re.match(r"\s*runs-on:", line)]
 
 
-def evaluate_runs_on(line, variable):
-    """What GitHub makes of `runs-on: ${{ fromJSON(vars.NAME || '<default>') }}`, modelled.
+_TOKEN = re.compile(r"\s*(?:(?P<string>'(?:[^']|'')*')|(?P<op>&&|\|\||==|!=|!|\(|\)|,)|(?P<name>[A-Za-z_][A-Za-z0-9_.\-]*))")
 
-    `vars.NAME` is a string, empty when the variable is unset. `||` yields its left side when that
-    is a non-empty string and its right otherwise; `fromJSON` parses the result and a value that is
-    not JSON fails the workflow. Inside an expression a string literal is single-quoted and `''` is
-    a quote, so the default's JSON text is the literal with those unescaped. Parsed out of the
-    recipe's own line, so the test follows the line and not a copy of it.
+
+def evaluate_expression(text, context):
+    """What GitHub makes of an expression in the subset the runs-on line uses, modelled.
+
+    Literals are single-quoted strings, with `''` for a quote; a name is a dotted context path, and
+    a path through a missing key or a null is null. `!` binds tightest, then `==` and `!=` (strings
+    compared ignoring case, as GitHub compares them), then `&&`, then `||`. `a && b` is `a` when
+    `a` is falsy and `b` otherwise; `a || b` is `a` when it is truthy and `b` otherwise; the falsy
+    values are null, false, 0 and the empty string. `fromJSON` parses its argument, and a value
+    that is not JSON fails the workflow, here as ValueError. Anything else is refused rather than
+    guessed at, so the line cannot grow a construct the model silently misreads.
     """
-    found = re.fullmatch(r"\s*runs-on: \$\{\{ fromJSON\(vars\.([A-Za-z_][A-Za-z0-9_]*) \|\| '((?:[^']|'')*)'\) \}\}", line)
+    tokens, at = [], 0
+    while at < len(text):
+        found = _TOKEN.match(text, at)
+        if found is None or found.end() == at:
+            if text[at:].strip():
+                raise AssertionError(f"the model does not read {text[at:]!r}")
+            break
+        tokens.append((found.lastgroup, found.group(found.lastgroup)))
+        at = found.end()
+    position = [0]
+
+    def peek():
+        return tokens[position[0]] if position[0] < len(tokens) else (None, None)
+
+    def take(value=None):
+        kind, got = peek()
+        if value is not None and got != value:
+            raise AssertionError(f"expected {value!r} at {got!r}")
+        position[0] += 1
+        return kind, got
+
+    def truthy(value):
+        return value not in (None, False, 0, "")
+
+    def primary():
+        kind, got = take()
+        if kind == "string":
+            return got[1:-1].replace("''", "'")
+        if got == "(":
+            value = disjunction()
+            take(")")
+            return value
+        if got == "!":
+            return not truthy(primary())
+        if kind == "name" and got == "fromJSON":
+            take("(")
+            value = disjunction()
+            take(")")
+            return json.loads(value)
+        if kind == "name":
+            value = context
+            for part in got.split("."):
+                value = value.get(part) if isinstance(value, dict) else None
+            return value
+        raise AssertionError(f"the model does not read {got!r}")
+
+    def comparison():
+        left = primary()
+        while peek()[1] in ("==", "!="):
+            operator = take()[1]
+            right = primary()
+            same = (left.casefold() == right.casefold() if isinstance(left, str) and isinstance(right, str)
+                    else left == right)
+            left = same if operator == "==" else not same
+        return left
+
+    def conjunction():
+        left = comparison()
+        while peek()[1] == "&&":
+            take()
+            right = comparison()
+            left = right if truthy(left) else left
+        return left
+
+    def disjunction():
+        left = conjunction()
+        while peek()[1] == "||":
+            take()
+            right = conjunction()
+            left = left if truthy(left) else right
+        return left
+
+    value = disjunction()
+    if position[0] != len(tokens):
+        raise AssertionError(f"the model stopped at {peek()[1]!r}")
+    return value
+
+
+def evaluate_runs_on(line, context):
+    """The runner GitHub would pick from a recipe's own `runs-on:` line, in `context`."""
+    found = re.fullmatch(r"\s*runs-on: \$\{\{ (.*) \}\}", line)
     if found is None:
-        raise AssertionError(f"not the runs-on expression the factory emits: {line!r}")
-    name, literal = found.groups()
-    default = literal.replace("''", "'")
-    return name, json.loads(variable or default)
+        raise AssertionError(f"not a runs-on expression: {line!r}")
+    return evaluate_expression(found.group(1), context)
 
 
-class TestEveryRecipeSelectsItsRunnerThroughOneVariable(unittest.TestCase):
-    """Runner selection is the repository's, through `FACTORY_RUNS_ON` (decision 0079)."""
+OWNER = "brandonifco"
+REPOSITORY = f"{OWNER}/engine"
+LABELS = ["self-hosted", "linux", "x64", "factory-ci"]
+
+
+def run_context(actor=OWNER, triggering_actor=None, head=REPOSITORY, event="push", variables=None):
+    """The `github` and `vars` contexts of one run: `head` is the pull request's head repository
+    (None for a pull request whose head repository was deleted); any event but a pull request has
+    no `github.event.pull_request` at all."""
+    payload = {}
+    if event in ("pull_request", "pull_request_target"):
+        payload["pull_request"] = {"head": {"repo": {"full_name": head} if head else None}}
+    return {"github": {"actor": actor, "triggering_actor": triggering_actor or actor, "repository": REPOSITORY,
+                       "repository_owner": OWNER, "event_name": event, "event": payload},
+            "vars": dict(variables or {})}
+
+
+class TestEveryRecipeSelectsItsRunnerThroughOneLine(unittest.TestCase):
+    """Runner selection is the repository's (0079), and trust decides which variable applies (0080)."""
 
     def test_the_line_is_held_in_one_place_and_says_what_it_means(self):
         self.assertEqual("FACTORY_RUNS_ON", repository.RUNS_ON_VARIABLE)
+        self.assertEqual("FACTORY_RUNS_ON_TRUSTED", repository.RUNS_ON_TRUSTED_VARIABLE)
         self.assertEqual("ubuntu-24.04", repository.RUNS_ON_DEFAULT)
-        self.assertEqual("    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '\"ubuntu-24.04\"') }}", repository.RUNS_ON_LINE)
+        self.assertEqual(
+            "    runs-on: ${{ fromJSON(github.actor == github.repository_owner && github.triggering_actor == "
+            "github.repository_owner && (github.event.pull_request.head.repo.full_name || !github.event.pull_request "
+            "&& github.repository) == github.repository && vars.FACTORY_RUNS_ON_TRUSTED || vars.FACTORY_RUNS_ON || "
+            "'\"ubuntu-24.04\"') }}", repository.RUNS_ON_LINE)
 
     def test_each_of_the_four_recipes_carries_exactly_that_line_and_no_other_runs_on(self):
         recipes = repository.recipes(NAME)
@@ -221,30 +326,79 @@ class TestEveryRecipeSelectsItsRunnerThroughOneVariable(unittest.TestCase):
         """The one runs-on line of each recipe as shipped, not the constant: what GitHub would read."""
         return {relative: runs_on_lines(text)[0] for relative, text in repository.recipes(NAME).items() if relative in WORKFLOWS}
 
-    def test_a_repository_without_the_variable_runs_on_the_pinned_hosted_release(self):
-        for relative, line in self.recipe_lines().items():
-            for variable in (None, ""):
-                name, runner = evaluate_runs_on(line, variable)
-                self.assertEqual("FACTORY_RUNS_ON", name, relative)
-                self.assertEqual("ubuntu-24.04", runner, f"{relative}: {variable!r} is unset: the hosted release, as before")
+    def runs(self):
+        """Every kind of run the two variables are asked to tell apart, by what makes it trusted or not."""
+        return {
+            "the owner's push": (run_context(), True),
+            "the owner's pull request from a branch here": (run_context(event="pull_request"), True),
+            "a status the owner posted": (run_context(event="status"), True),
+            "the owner, spelled in another case": (run_context(actor="BrandonIfco", triggering_actor="BRANDONIFCO"), True),
+            "an outsider's fork pull request": (run_context(actor="outsider", head="outsider/engine", event="pull_request"), False),
+            "the owner labelling an outsider's fork pull request": (
+                run_context(head="outsider/engine", event="pull_request"), False),
+            "the owner's own pull request from a fork": (run_context(head=f"{OWNER}-org/engine", event="pull_request"), False),
+            "a pull request whose head repository was deleted": (run_context(head=None, event="pull_request"), False),
+            "the owner re-running an outsider's run": (
+                run_context(actor="outsider", triggering_actor=OWNER, head="outsider/engine", event="pull_request"), False),
+            "a bot's pull request from a branch here": (run_context(actor="dependabot[bot]", event="pull_request"), False),
+            "the owner re-running a bot's run": (
+                run_context(actor="dependabot[bot]", triggering_actor=OWNER, event="pull_request"), False),
+            "a workflow re-running the owner's run": (run_context(triggering_actor="github-actions[bot]"), False),
+        }
 
-    def test_a_repository_with_the_variable_runs_on_the_labels_it_names(self):
-        labels = ["self-hosted", "linux", "x64", "factory-ci"]
+    def runner(self, line, context, variables):
+        context = dict(context, vars=dict(variables))
+        return evaluate_runs_on(line, context)
+
+    def test_a_repository_with_neither_variable_runs_every_run_on_the_pinned_hosted_release(self):
         for relative, line in self.recipe_lines().items():
-            name, runner = evaluate_runs_on(line, json.dumps(labels, separators=(",", ":")))
-            self.assertEqual("FACTORY_RUNS_ON", name, relative)
-            self.assertEqual(labels, runner, relative)
+            for what, (context, _) in self.runs().items():
+                for variables in ({}, {"FACTORY_RUNS_ON": "", "FACTORY_RUNS_ON_TRUSTED": ""}):
+                    self.assertEqual("ubuntu-24.04", self.runner(line, context, variables), f"{relative}: {what}")
+
+    def test_factory_runs_on_sends_every_run_there_exactly_as_0079_did(self):
+        """A private repository's variable means what it meant: whoever started the run."""
+        value = json.dumps(LABELS, separators=(",", ":"))
+        for relative, line in self.recipe_lines().items():
+            for what, (context, _) in self.runs().items():
+                self.assertEqual(LABELS, self.runner(line, context, {"FACTORY_RUNS_ON": value}), f"{relative}: {what}")
+
+    def test_factory_runs_on_trusted_takes_the_owner_s_runs_here_and_nothing_else(self):
+        value = json.dumps(LABELS, separators=(",", ":"))
+        for relative, line in self.recipe_lines().items():
+            for what, (context, trusted) in self.runs().items():
+                expected = LABELS if trusted else "ubuntu-24.04"
+                self.assertEqual(expected, self.runner(line, context, {"FACTORY_RUNS_ON_TRUSTED": value}),
+                                 f"{relative}: {what} is {'trusted' if trusted else 'not trusted'}")
+
+    def test_with_both_set_an_untrusted_run_takes_factory_runs_on(self):
+        """Why a public repository must never hold FACTORY_RUNS_ON: it catches every run the other refuses."""
+        both = {"FACTORY_RUNS_ON_TRUSTED": '["trusted"]', "FACTORY_RUNS_ON": '["everyone"]'}
+        for relative, line in self.recipe_lines().items():
+            for what, (context, trusted) in self.runs().items():
+                self.assertEqual(["trusted"] if trusted else ["everyone"], self.runner(line, context, both),
+                                 f"{relative}: {what}")
 
     def test_a_malformed_variable_fails_and_does_not_fall_back_to_a_hosted_runner(self):
+        owner = run_context()
         for relative, line in self.recipe_lines().items():
-            for variable in ("self-hosted", "[\"self-hosted\",", "{'a': 1}"):
-                with self.assertRaises(ValueError, msg=f"{relative}: {variable}"):
-                    evaluate_runs_on(line, variable)
+            for name in ("FACTORY_RUNS_ON", "FACTORY_RUNS_ON_TRUSTED"):
+                for variable in ("self-hosted", "[\"self-hosted\",", "{'a': 1}"):
+                    with self.assertRaises(ValueError, msg=f"{relative}: {name}={variable}"):
+                        self.runner(line, owner, {name: variable})
 
     def test_the_default_comes_from_the_recipe_s_own_line(self):
         other = repository.RUNS_ON_LINE.replace("ubuntu-24.04", "ubuntu-26.04")
-        self.assertEqual("ubuntu-26.04", evaluate_runs_on(other, None)[1],
+        self.assertEqual("ubuntu-26.04", evaluate_runs_on(other, run_context()),
                          "the model reads the literal out of the line it is given")
+
+    def test_the_model_reads_precedence_as_github_does(self):
+        """The line leans on `&&` binding tighter than `||` and `!` tighter than both."""
+        self.assertEqual("b", evaluate_expression("'' || 'a' && 'b'", {}))
+        self.assertEqual("", evaluate_expression("'' && 'a' || ''", {}))
+        self.assertIs(False, evaluate_expression("!'x' && 'y'", {}))
+        self.assertIs(True, evaluate_expression("'A' == 'a'", {}))
+        self.assertIsNone(evaluate_expression("github.event.pull_request.head", {"github": {"event": {}}}))
 
 
 class TestAnEmbeddedEngineTakesItsRailsFromTheRoot(RepositoryCase):
@@ -293,7 +447,7 @@ class TestAnEmbeddedEngineTakesItsRailsFromTheRoot(RepositoryCase):
             self.assertEqual(repository.render(recipes[relative], "engine", relative).encode("utf-8"), data,
                              f"{relative}: the root holds the rendering, byte for byte")
             self.assertEqual(repository._sha256(data), record[relative], f"{relative}: the record hashes these bytes")
-            self.assertEqual("FACTORY_RUNS_ON", evaluate_runs_on(runs_on_lines(text)[0], None)[0])
+            self.assertEqual("ubuntu-24.04", evaluate_runs_on(runs_on_lines(text)[0], run_context()))
 
     def test_a_deeper_engine_path_is_rendered_with_that_path(self):
         host, _engine, _ = self.embedded("products/engine")

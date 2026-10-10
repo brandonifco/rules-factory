@@ -12,6 +12,8 @@ name="$1" repo="$2" labels="${3:-factory-ci}"
 IFS= read -r token
 [[ -n $token ]] || { echo "no registration token on stdin" >&2; exit 2; }
 user="fci-$name" home="/srv/factory-ci/fci-$name" dir="/srv/factory-ci/fci-$name/runner"
+# A repository served by dispatch is public: a standing registration would take a fork's job.
+[[ -e /etc/factory-ci/dispatch/$user ]] && { echo "$user is served by trusted dispatch; a public repository is never registered (decision 0080)" >&2; exit 2; }
 
 id "$user" >/dev/null 2>&1 ||
   useradd --system --home-dir "$home" --create-home --shell /usr/sbin/nologin --groups factory-ci "$user"

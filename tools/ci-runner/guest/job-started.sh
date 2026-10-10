@@ -19,6 +19,22 @@ while [[ $pid -gt 1 ]]; do
 done
 [[ -n $worker ]] || { echo "::error::factory-ci: no Runner.Worker above the job-started hook"; exit 1; }
 
+# A repository served by trusted dispatch is public (decision 0080). Its jobs reach this VM only on
+# a one-job runner the host's dispatcher started, and only for a run it admitted, recorded where
+# no runner account can write. Anything else stops here, before the job's first step: a runner
+# that is not one of those, a run of another repository, or a run nobody admitted.
+if [[ -e /etc/factory-ci/dispatch/$me ]]; then
+  run="${GITHUB_RUN_ID:-}" attempt="${GITHUB_RUN_ATTEMPT:-}"
+  exe="$(readlink "/proc/$worker/exe" 2>/dev/null || true)"
+  if [[ $exe != "$HOME"/jit/*/bin/Runner.Worker ]] || [[ ! $run =~ ^[0-9]+$ ]] || [[ ! $attempt =~ ^[0-9]+$ ]] ||
+     [[ "${GITHUB_REPOSITORY:-}" != "$(cat "/etc/factory-ci/dispatch/$me")" ]] ||
+     [[ ! -f /run/factory-ci-trust/$me/$run-$attempt ]]; then
+    echo "::error::factory-ci: run ${run:-?} attempt ${attempt:-?} of ${GITHUB_REPOSITORY:-?} was not admitted by the trusted dispatcher; refused before its first step (decision 0080)"
+    exit 1
+  fi
+  echo "factory-ci: run $run attempt $attempt of $GITHUB_REPOSITORY admitted by the trusted dispatcher"
+fi
+
 # A job killed with the VM never ran job-completed: empty what it may have left before this one.
 case "${GITHUB_WORKSPACE:-}" in
   "$HOME"/runner/_work/?*)

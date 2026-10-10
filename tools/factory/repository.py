@@ -53,16 +53,34 @@ WORKFLOWS = (".github/workflows/validate.yml",
              ".github/workflows/conformance-gate.yml",
              ".github/workflows/verdict-requeue.yml")
 
-#: The runner every recipe's job selects, in one place (decision 0079). A repository chooses its
-#: runner through this GitHub Actions *repository variable*, whose value is JSON: a label
-#: (`"ubuntu-24.04"`) or a list of labels (`["self-hosted","linux","x64","factory-ci"]`). Unset or
-#: empty, the expression's right-hand side applies: the pinned hosted release, as before. A value
-#: that is not JSON fails the workflow where it can be seen; there is deliberately no fallback to a
-#: hosted runner, because a private repository whose own runner is offline must wait or fail and
-#: never spend a billable one. Each recipe carries `RUNS_ON_LINE` exactly, as its only `runs-on`.
+#: The runner every recipe's job selects, in one place (decisions 0079 and 0080). A repository
+#: chooses its runner through GitHub Actions *repository variables* whose values are JSON: a label
+#: (`"ubuntu-24.04"`) or a list of labels (`["self-hosted","linux","x64","factory-ci"]`).
+#:
+#: * `FACTORY_RUNS_ON` (0079) sends every run of the workflow there. It is for a private
+#:   repository, where every run is the owner's: a public repository's fork pull request reads
+#:   repository variables too, and would be sent to the same runner.
+#: * `FACTORY_RUNS_ON_TRUSTED` (0080) sends only a run that `TRUSTED_RUN` holds: started, and if it
+#:   is a re-run re-started, by the repository's owner, on a commit of this repository and not of a
+#:   fork. A fork's pull request, a bot's run, or the owner's re-run of either asks for the hosted
+#:   default. This is routing, not the boundary: a fork can rewrite this line in its own pull
+#:   request, so the runner those labels name is never registered with a public repository at all.
+#:   A dispatcher (`tools/ci-runner/dispatch.py`) checks each queued job against the same rule and
+#:   the pushed commit before it starts a one-job runner for it, and the guest refuses any job the
+#:   dispatcher did not admit.
+#:
+#: Neither set (or empty), the pinned hosted release applies, as before. A value that is not JSON
+#: fails the workflow where it can be seen; there is deliberately no fallback to a hosted runner,
+#: because a private repository whose own runner is offline must wait or fail and never spend a
+#: billable one. Each recipe carries `RUNS_ON_LINE` exactly, as its only `runs-on`.
 RUNS_ON_VARIABLE = "FACTORY_RUNS_ON"
+RUNS_ON_TRUSTED_VARIABLE = "FACTORY_RUNS_ON_TRUSTED"
 RUNS_ON_DEFAULT = "ubuntu-24.04"
-RUNS_ON_LINE = ("    runs-on: ${{ fromJSON(vars." + RUNS_ON_VARIABLE + " || '\"" + RUNS_ON_DEFAULT + "\"') }}")
+TRUSTED_RUN = ("github.actor == github.repository_owner && github.triggering_actor == github.repository_owner"
+               " && (github.event.pull_request.head.repo.full_name || !github.event.pull_request && github.repository)"
+               " == github.repository")
+RUNS_ON_LINE = ("    runs-on: ${{ fromJSON(" + TRUSTED_RUN + " && vars." + RUNS_ON_TRUSTED_VARIABLE
+                + " || vars." + RUNS_ON_VARIABLE + " || '\"" + RUNS_ON_DEFAULT + "\"') }}")
 
 #: The pull request template. GitHub reads one only from the repository root (or `docs/`, or the
 #: root itself), so an embedded engine's copy is as unread as its workflows were: every pull request
