@@ -53,22 +53,34 @@ boundary cannot.
      (a push, a branch creation or a merge). That binds the authorization to the revision that
      executes, not to a username or an event name.
 
-   A run that fails is cancelled. While any job that was not admitted is still unfinished in a
-   repository, no runner starts there at all. For an admitted job the dispatcher writes the
-   admission into the guest, root-owned, and then has GitHub create a just-in-time runner. That is
-   one job, ephemeral, with exactly factory-ci's labels, run in the guest as that repository's own
-   unprivileged account, in a fresh directory removed afterwards. An idle runner is deleted.
+   A run that fails is cancelled, retried until GitHub finishes it and then force-cancelled. While
+   any job that was not admitted is unfinished in a repository, or GitHub's lists cannot be read
+   whole, no runner starts there, and every runner of that repository still waiting for a job is
+   deleted. For an admitted job the dispatcher writes the admission into the guest, root-owned, and
+   then has GitHub create a just-in-time runner: one job, ephemeral, exactly factory-ci's labels.
 
-3. **The guest refuses what was not admitted, and stops it.** The job-started hook, on an account
-   served by dispatch, requires that the job runs on a one-job runner and that its repository, run
-   and attempt are admitted. Otherwise it kills the job's `Runner.Worker` before returning. Failing
+3. **The guest runs a one-job runner so that no job can reach another.** It runs as one of the
+   repository's two unprivileged accounts (`fci-<repo>`, `fcj-<repo>`, two so that a repository's
+   two jobs can run in parallel), and **an account never has two runners up at once**: a job that
+   shared a UID with a listener still waiting could rewrite that listener and remove the hook.
+   Root builds the runner's directory under the root-owned `/srv/factory-ci-jit`, fills it, and
+   only then hands it to the account, so root never writes through a path an account could have
+   pointed elsewhere. The guest writes a lease beside the admission: a runner that gets its job
+   more than 15 minutes after it started is refused, so a waiting runner outlives a dead
+   dispatcher by no more than that.
+
+4. **The guest refuses what was not admitted, and stops it.** The job-started hook fails closed.
+   On a one-job runner, an account that serves dispatch, or a guest whose dispatch policy cannot
+   be read, it requires that the runner was started for this account and is within its lease, that
+   the job is of the repository the account serves, and that its run and attempt are admitted.
+   Otherwise it kills the job's `Runner.Worker` before returning. Failing
    the hook is not enough: on 2026-10-10 a refused job still ran an action's `pre:` step after a
    failed hook (runner 2.338.0), and a step marked `if: always()` runs the same way. Killing the
    worker stops every step there is. The same probes showed that a job's `env:` does not reach the
    hook: a forged `GITHUB_RUN_ID` naming an admitted run was refused, and a `BASH_ENV` did not
    execute.
 
-4. **One runner line, trust-aware for routing.** Every recipe, and this repository's own CI jobs,
+5. **One runner line, trust-aware for routing.** Every recipe, and this repository's own CI jobs,
    carry `repository.RUNS_ON_LINE`:
 
    ```yaml
@@ -82,15 +94,15 @@ boundary cannot.
    evaluates exactly as 0079's did. The line is routing and not the boundary: a fork that rewrites
    it gets a job that waits for a runner that never starts and is then cancelled.
 
-5. **The approval prompt is one more door, not the lock.** `factory-ci trust` sets the repository's
+6. **The approval prompt is one more door, not the lock.** `factory-ci trust` sets the repository's
    fork pull request approval to `all_external_contributors`, and `audit` reports a served
    repository that has any other setting.
 
-6. **Capacity does not change.** One-job runners add no execution capacity: the guest's two job
+7. **Capacity does not change.** One-job runners add no execution capacity: the guest's two job
    slots still bound what runs at once, across private and public repositories, and the VM stays at
    6 vCPU and 12 GB. A cap of four one-job runners at a time keeps idle listeners few.
 
-7. **Publication stays hosted.** Workflows that hold publication credentials (`publish-map.yml`,
+8. **Publication stays hosted.** Workflows that hold publication credentials (`publish-map.yml`,
    a library's `publish.yml`) and manual maintenance workflows keep `runs-on: ubuntu-24.04`.
    Release checks run where they always did, and the NuGet key is never on the VM.
 
@@ -106,6 +118,12 @@ boundary cannot.
 - The dispatcher is a single point of service, not of trust. When it is down, the owner's jobs in
   public repositories wait in GitHub's queue, as a private repository's do when the VM is down.
   Nothing moves to an unverified path.
+- The boundary was reviewed independently (AGENTS.md §6, Codex, at `267b789`) before any public
+  repository was enabled. It found three ways a hostile dependency inside an admitted job could
+  reach past that job: an account-written file read into a root shell, root following a link a job
+  left in its home, and a sibling listener of the same UID. It also found two scheduling gaps
+  (truncated lists, idle listeners left online) and three robustness defects. Points 2 to 4 are the
+  answers; each has a test that fails without it.
 - The runner updates itself. Hook behaviour was verified on 2.338.0, so the runbook's boundary
   probe is repeated after a runner version change.
 - On a personal account's public repository the required checks are server-side (a ruleset). The

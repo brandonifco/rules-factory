@@ -47,15 +47,21 @@ workflow can be the boundary. It is held in three places a fork cannot write:
    and triggering actor are the owner, and its event is `push`, `pull_request`,
    `workflow_dispatch`, `schedule`, `status` or `issues`, and the repository's activity log says
    the owner put its exact head commit on its branch. It cancels any other run. While an
-   unadmitted job is unfinished it starts no runner in that repository. For an admitted job it
+   unadmitted job is unfinished, or it could not read GitHub's lists to the end, it starts no runner
+   in that repository and deletes every runner there still waiting for a job. For an admitted job it
    writes the admission into the guest as root, then starts a GitHub just-in-time runner: one job,
-   exactly factory-ci's labels, as the repository's own account, in a fresh directory that is
-   removed afterwards.
-3. **The guest refuses and stops anything else.** On an account served by dispatch, the
-   job-started hook requires a one-job runner and an admission for the job's repository, run and
-   attempt, under `/run/factory-ci-trust`, where no runner account can write. Otherwise it kills
-   the job's `Runner.Worker`. That kill is the point: after a failed hook the runner still runs
-   actions' `pre:` and `post:` steps and any `if: always()` step.
+   exactly factory-ci's labels.
+3. **The guest keeps one job from reaching another, and refuses and stops anything else.** A
+   one-job runner runs as one of the repository's two accounts (`fci-<repo>`, `fcj-<repo>`), and
+   an account never has two runners up, so a job never shares its UID with a listener still
+   waiting for one. Root builds the runner under the root-owned `/srv/factory-ci-jit`, fills it,
+   and only then hands it over. The job-started hook fails closed: on a one-job runner, an account
+   that serves dispatch, or a guest whose dispatch policy it cannot read, it requires that the
+   runner was started for this account less than 15 minutes before it got the job (its lease),
+   that the job is of the repository the account serves, and that its run and attempt are
+   admitted, all under `/run/factory-ci-trust` and `/etc/factory-ci`, where no runner account can
+   write. Otherwise it kills the job's `Runner.Worker`. That kill is the point: after a failed
+   hook the runner still runs actions' `pre:` and `post:` steps and any `if: always()` step.
 
 `factory-ci trust` also sets the repository's fork pull request approval to
 `all_external_contributors`. It is one more door, not the lock.
@@ -68,9 +74,14 @@ What was verified on 2026-10-10 (runner 2.338.0), on a throwaway branch of rules
 | A job whose `env:` forged `GITHUB_RUN_ID` and `GITHUB_RUN_ATTEMPT` to an admitted run, and set `BASH_ENV` to a command | Refused; `BASH_ENV` did not execute. A job's `env:` does not reach the hook |
 | The owner's push | Admitted 9 s after it queued; ran on a one-job runner as `fci-rules-factory`; the runner deregistered itself and was reaped |
 | An event that is not admitted (`create`), asking for `[self-hosted]` alone | Refused and cancelled while queued; it never had a runner. The owner's run queued beside it waited until it was gone |
+| An admitted run, handed to a runner past its lease | Refused (`got its job after its lease`) |
+| A second runner for an account that has one up | Refused by the guest |
+| The owner's re-run (attempt 2) | Admitted as a new attempt; ran on a one-job runner 16 s after it queued |
 | The owner's pull requests and pushes of rules-factory ([#638](https://github.com/brandonifco/rules-factory/pull/638) onward) | `validate`, `engine` and `documentation` ran on the VM and reported on the pull request's commits |
 
-Not probed live: a pull request from a real fork, which needs a second GitHub account. Its run is
+The design was reviewed independently before any public repository was enabled (AGENTS.md §6;
+what it found and what answers it is in decision 0080's Consequences). Not probed live: a pull
+request from a real fork, which needs a second GitHub account. Its run is
 refused by the same head-repository rule as any other, which the dispatcher's tests hold
 ([`test_ci_runner_dispatch.py`](../tools/tests/test_ci_runner_dispatch.py)). **Repeat the probes
 after a runner version change** (the runner updates itself): hook behaviour is the runner's, not
@@ -87,7 +98,7 @@ ours. [Running the boundary probe](#running-the-boundary-probe) says how.
 | Egress | nwfilter `factory-ci-egress` on the guest's NIC. Allowed: DHCP; DNS to the gateway; outbound TCP 80/443 and NTP to public addresses. Dropped: everything else, including the host, the LAN, every RFC 1918, link-local and CGNAT range, other libvirt networks, and IPv6. Only the host may open SSH to the guest. |
 | Admin | `ciadmin`, key-only SSH from the host (`~/.ssh/factory-ci_ed25519`, made for this VM and used for nothing else); passwordless sudo |
 | Toolchain | `/opt/factory-ci` (root-owned, read-only to jobs): the .NET SDK the engines pin (10.0.112) and the .NET 8 runtime their tests also target, the GitHub CLI (the engines' `pr-policy` and `conformance-gate` call `gh`), Node, and the runner distribution. `/opt/hostedtoolcache` holds Python 3.12.15 and 3.12.14 (rules-factory's pin) in the hosted image's layout, for `actions/setup-python`. The Ubuntu packages a job would otherwise `sudo apt-get` (poppler-utils and others) are installed. All are pinned with hashes in [`guest/versions.env`](../tools/ci-runner/guest/versions.env). `actions/setup-dotnet` and `setup-python` find what they need and download nothing. A version that is not there fails the job, rather than being written into a cache another job could change. |
-| Runners | One system account per repository, `fci-<repo>`, home `/srv/factory-ci/fci-<repo>` (0700). No sudo, no login shell, no SSH key. A private repository's standing runner is the service `factory-ci-runner@fci-<repo>`; a public repository's one-job runners are `factory-ci-jit-<id>`, generated from the same unit, in `~/jit/<id>`, removed when done. All are systemd-hardened (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, `ProtectProc=invisible`, so an account sees no other account's processes) and in `factory-ci.slice`, which caps all runners together at 11 GiB. |
+| Runners | One system account per private repository, `fci-<repo>`, and two per public one, `fci-<repo>` and `fcj-<repo>`; home `/srv/factory-ci/<account>` (0700). No sudo, no login shell, no SSH key. A private repository's standing runner is the service `factory-ci-runner@fci-<repo>`; a public repository's one-job runners are `factory-ci-jit-<id>`, generated from the same unit, in `/srv/factory-ci-jit/<id>`, removed when done, at most one per account at a time. All are systemd-hardened (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, `ProtectProc=invisible`, so an account sees no other account's processes) and in `factory-ci.slice`, which caps all runners together at 11 GiB. |
 | Concurrency | `/etc/factory-ci/slots`, which is 2 (measured; see Everyday operation). GitHub cannot share one runner registration between personal repositories, so each repository's listener could take a job at the same moment. The job-started hook takes one of N slot locks before the first step and keeps it until the job's worker exits. A job that waits says so in its log, and the wait counts against its `timeout-minutes`. |
 | Workspaces | The job-completed hook empties the checkout and `_temp`. The job-started hook empties whatever a job killed with the VM left behind. Every job starts from a fresh clone. |
 | Kept between jobs | Only each repository's own home: its NuGet global packages folder, and what `pip` installs for it under `~/.local` (the tool cache's Python is read-only). The engines' locked restore still verifies every package against its lock file. No cache is shared between repositories, and the shared toolchain is read-only. |
@@ -231,13 +242,15 @@ On a throwaway branch of a served public repository, with the dispatcher **stopp
    branch whose `pre:` prints another. Push it; the job queues.
 2. Start a one-job runner by hand without admitting the run: `gh api -X POST
    repos/O/R/actions/runners/generate-jitconfig` (labels as above, `runner_group_id=1`) piped as
-   `.encoded_jit_config` into `factory-ci ssh "sudo /opt/factory-ci/bin/dispatch-guest start <name> <id>"`.
+   `.encoded_jit_config` into `factory-ci ssh "sudo /opt/factory-ci/bin/dispatch-guest start <name> a <id>"`.
    The job must fail with neither marker anywhere; the guest's journal says `refused run`.
 3. Give the job `env:` with `GITHUB_RUN_ID`/`GITHUB_RUN_ATTEMPT` of a run you admit by hand
    (`dispatch-guest admit <name> <run>-<attempt>`) and a `BASH_ENV` that writes a file in the
    account's home. Repeat 2: refused, no file.
 4. Start the dispatcher and push again: admitted, run, runner gone afterwards.
 5. A workflow `on: create` asking for `[self-hosted]`, then create a branch: refused and cancelled.
+6. Start a runner by hand with nothing queued, set its lease in `/run/factory-ci-trust/runners/<id>`
+   to the past, push and admit: refused after its lease. Start a second on the same lane: refused.
 
 Remove the admission, the branches and anything left in the guest (`dispatch-guest reap`) afterwards.
 
