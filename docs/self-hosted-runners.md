@@ -284,15 +284,20 @@ started to completed), successful runs only, against each repository's hosted hi
   are the long ones.
 - **Cancellations and recovery**: a refused run was cancelled while queued and never had a runner;
   a cancelled run's job took GitHub up to about 90 s to finish, during which nothing started beside
-  it. Before decision 0080's follow-up, a one-job runner was known in the guest by GitHub's runner
+  it. Until rules-factory#639, a one-job runner was known in the guest by GitHub's runner
   number alone, which GitHub assigns per repository; two repositories' runners with the same number
   collided, the start was refused, the runner deleted and started again. Nothing ran where it
   should not, but faa-part-107's `conformance-gate` queued for 191 s. The guest now knows a runner
   by its repository and number together.
-@SAR@
+- **Slots**: of the 20 jobs the VM ran from 18:00 to 18:45 UTC, while four repositories' CI was
+  migrating at once, 19 took a job slot within a second and one waited 18 s. The wait that remains
+  is dispatch, not capacity.
+- **CPU and memory** (`sar` every 10 s, 18:25 to 18:56 UTC): the guest was over 10% busy in 23 of
+  189 samples, with a median of 48% and a 90th percentile of 82% when busy; it touched 90% twice
+  (96% at the peak, two heavy jobs together). Memory in use peaked at 2.3 GiB of 12 GiB.
 
-Nothing measured asks for more capacity: the two slots were never the reason a job waited longer
-than a poll, and the VM stays at 6 vCPU, 12 GiB and two slots. Re-measure with `factory-ci timings`
+Nothing measured asks for more capacity: a second slot's worth of CPU is rarely in use, memory is
+at a fifth, and a job almost never waits for a slot. The VM stays at 6 vCPU, 12 GiB and two slots. Re-measure with `factory-ci timings`
 and `factory-ci ssh 'sar -u -r 10'` before changing any of them.
 
 ## Credentials
