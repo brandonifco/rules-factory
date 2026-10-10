@@ -149,9 +149,12 @@ def job(labels=dispatch.LABELS, status="queued"):
 
 
 class TestServe(unittest.TestCase):
-    def serve(self, runs, jobs, activity=(placed(),), runners=()):
+    def serve(self, runs, jobs, activity=(placed(),), runners=(), guest_units=None, dispatcher=None):
         github, guest = FakeGitHub(runs, jobs, list(activity), runners), FakeGuest()
-        dispatcher = dispatch.Dispatcher(github=github, guest=guest)
+        dispatcher = dispatcher or dispatch.Dispatcher(github=github, guest=guest)
+        dispatcher.github, dispatcher.guest = github, guest
+        dispatcher.inventory = {"dispatch": {"fci-rules-factory": REPO}, "persistent": {},
+                                "jit": dict(guest_units or {})}
         started = dispatcher.serve("fci-rules-factory", REPO, 0)
         return started, github, guest
 
@@ -193,6 +196,28 @@ class TestServe(unittest.TestCase):
         started, _, guest = self.serve([run(run_id=7)], {7: [job()]}, runners=[idle])
         self.assertEqual(0, started)
         self.assertFalse([c for c in guest.calls if c[0] == "start"])
+
+    def test_a_runner_that_ran_its_one_job_and_left_is_not_counted_as_still_starting(self):
+        """Seen 2026-10-10: a finished runner held a waiting job back until STARTING passed."""
+        dispatcher = dispatch.Dispatcher(github=None, guest=None)
+        first, _, _ = self.serve([run(run_id=7)], {7: [job()]}, dispatcher=dispatcher)
+        self.assertEqual(1, first)
+        runner_id = next(iter(dispatcher.spawned))
+        listed = {"id": runner_id, "name": "factory-ci-1-jit-x", "status": "online", "busy": True}
+        self.serve([run(run_id=7)], {7: [job(status="in_progress")]}, runners=[listed], dispatcher=dispatcher,
+                   guest_units={runner_id: ("fci-rules-factory", "active")})
+        second, _, _ = self.serve([run(run_id=8)], {8: [job()]}, dispatcher=dispatcher,
+                                  guest_units={runner_id: ("fci-rules-factory", "inactive")})
+        self.assertEqual(1, second, "the next admitted job gets a runner at once")
+
+    def test_a_connecting_runner_whose_guest_unit_is_up_is_supply(self):
+        connecting = {"id": 60, "name": "factory-ci-1-jit-y", "status": "offline", "busy": False}
+        started, _, _ = self.serve([run(run_id=7)], {7: [job()]}, runners=[connecting],
+                                   guest_units={60: ("fci-rules-factory", "active")})
+        self.assertEqual(0, started)
+        started, _, _ = self.serve([run(run_id=7)], {7: [job()]}, runners=[connecting],
+                                   guest_units={60: ("fci-rules-factory", "inactive")})
+        self.assertEqual(1, started, "an offline runner whose unit is down will never take it")
 
     def test_one_runner_per_admitted_queued_job_and_never_past_the_cap(self):
         runs = [run(run_id=i) for i in range(1, 7)]

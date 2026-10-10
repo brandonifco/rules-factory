@@ -94,7 +94,7 @@ def judge(repository, run, activity):
         return "refuse", f"its code comes from {head or 'a repository that no longer exists'}, not {repository}"
     event = run.get("event") or ""
     if event not in EVENTS:
-        return "refuse", f"the {event or 'unnamed'} event runs code this repository's history did not put there"
+        return "refuse", f"its event, {event or 'none'}, is not one whose runs are admitted ({', '.join(sorted(EVENTS))})"
     for role in ("actor", "triggering_actor"):
         if login(run.get(role)) != owner:
             return "refuse", f"its {role.replace('_', ' ')} is {login(run.get(role)) or 'nobody'}, not the owner {owner}"
@@ -201,6 +201,7 @@ class Dispatcher:
         self.verdicts = {}      # (repository, run id, attempt) -> (verdict, why, first seen)
         self.cancelled = set()  # run ids asked to cancel
         self.spawned = {}       # runner id -> (repository, account, monotonic time started)
+        self.seen = set()       # runner ids this program started that GitHub has listed
         self.idle_since = {}    # runner id -> monotonic time first seen online and idle
         self.inventory = None
         self.inventory_at = 0.0
@@ -277,6 +278,12 @@ class Dispatcher:
                     log(f"{repository} run {run['id']}: cancel failed: HTTP {error.code}")
         now = time.monotonic()
         mine = {r["id"]: r for r in runners if r["name"].startswith(f"{VM}-jit-")}
+        running = {runner_id for runner_id, (owner, state) in self.inventory["jit"].items()
+                   if owner == account and state == "active"}
+        self.seen |= set(mine) & set(self.spawned)
+        # A runner can take a job if it is idle, or still connecting with its guest unit up. One this
+        # program started that GitHub has not listed yet counts until it is seen or STARTING passes;
+        # once seen and gone, it ran its one job.
         supply = 0
         for runner_id, runner in mine.items():
             if runner.get("busy"):
@@ -284,10 +291,11 @@ class Dispatcher:
             elif runner.get("status") == "online":
                 supply += 1
                 self.idle_since.setdefault(runner_id, now)
-            elif now - self.spawned.get(runner_id, ("", "", 0.0))[2] < STARTING:
+            elif runner_id in running:
                 supply += 1
         supply += sum(1 for runner_id, (repo, _, started) in self.spawned.items()
-                      if repo == repository and runner_id not in mine and now - started < STARTING)
+                      if repo == repository and runner_id not in mine and runner_id not in self.seen
+                      and now - started < STARTING)
         for runner_id in [r for r in self.idle_since if r in mine and demand == 0 and now - self.idle_since[r] > IDLE_MAX]:
             self.retire(repository, runner_id, f"idle for {IDLE_MAX}s with nothing admitted to run")
         if blocked:
@@ -348,6 +356,7 @@ class Dispatcher:
             self.guest.call("reap")
         for runner_id in [r for r, (_, _, t) in self.spawned.items() if now - t > 8 * 3600]:
             self.spawned.pop(runner_id, None)
+            self.seen.discard(runner_id)
 
     def cycle(self):
         self.refresh()
