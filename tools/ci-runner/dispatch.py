@@ -540,17 +540,17 @@ def timings(repository, count=10):
     print(f"{'run':>12} {'workflow/job':<38} {'runner':<26} {'queue':>6} {'run':>6} conclusion")
     for run in runs:
         for job in github.get(f"/repos/{repository}/actions/runs/{run['id']}/attempts/{run['run_attempt']}/jobs")["jobs"]:
-            if not job.get("started_at") or not job.get("completed_at"):
-                continue
+            if not job.get("started_at") or not job.get("completed_at") or not job.get("runner_name"):
+                continue  # a job that never had a runner (cancelled while queued) measures nothing
             created, started, done = (datetime.fromisoformat(job[k].replace("Z", "+00:00")) for k in ("created_at", "started_at", "completed_at"))
             queue, took = (started - created).total_seconds(), (done - started).total_seconds()
             runner = job.get("runner_name") or "-"
             kind = "factory-ci" if runner.startswith(VM) else "hosted"
             print(f"{run['id']:>12} {(run['name'] + '/' + job['name'])[:38]:<38} {runner[:26]:<26} {queue:>5.0f}s {took:>5.0f}s {job.get('conclusion')}")
-            groups.setdefault((run["name"], job["name"], kind), []).append((queue, took))
+            groups.setdefault((run["name"], job["name"], run["event"], kind), []).append((queue, took))
     print()
-    for (workflow, job, kind), values in sorted(groups.items()):
-        print(f"median {workflow}/{job} on {kind}: queue {statistics.median(v[0] for v in values):.0f}s, "
+    for (workflow, job, event, kind), values in sorted(groups.items()):
+        print(f"median {workflow}/{job} ({event}) on {kind}: queue {statistics.median(v[0] for v in values):.0f}s, "
               f"run {statistics.median(v[1] for v in values):.0f}s over {len(values)} job(s)")
     return 0
 
