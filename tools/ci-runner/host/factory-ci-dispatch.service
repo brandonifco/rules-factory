@@ -1,0 +1,16 @@
+# The trusted dispatcher (decision 0080), as a systemd user service of the host account that runs
+# `factory-ci`. `factory-ci install-dispatcher` writes it with @KIT@ replaced by the kit's path.
+# It holds the owner's `gh` login, so it runs here on the host and never in the guest.
+[Unit]
+Description=factory-ci trusted dispatcher for public repositories
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=@KIT@/factory-ci dispatch
+Restart=always
+RestartSec=30
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

@@ -61,13 +61,15 @@ if [[ "$(/opt/factory-ci/node/bin/node --version 2>/dev/null)" != "v$NODE_VERSIO
 fi
 
 # Python in the hosted tool cache's layout (/opt/hostedtoolcache/Python/<v>/x64 + x64.complete),
-# installed by the build's own setup.sh, then left root-owned.
-if [[ ! -f /opt/hostedtoolcache/Python/$PYTHON_TOOLCACHE_VERSION/x64.complete ]]; then
+# installed by each build's own setup.sh, then left root-owned.
+for entry in $PYTHON_TOOLCACHE; do
+  IFS='|' read -r v url sha <<<"$entry"
+  [[ -f /opt/hostedtoolcache/Python/$v/x64.complete ]] && continue
   install -d -m 0755 /opt/hostedtoolcache
-  t="$(mktemp -d)"; fetch "$PYTHON_TOOLCACHE_URL" "$t/python.tar.gz" sha256 "$PYTHON_TOOLCACHE_SHA256"
+  t="$(mktemp -d)"; fetch "$url" "$t/python.tar.gz" sha256 "$sha"
   tar -xzf "$t/python.tar.gz" -C "$t" && (cd "$t" && RUNNER_TOOL_CACHE=/opt/hostedtoolcache AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache bash ./setup.sh >/dev/null)
   rm -rf "$t"
-fi
+done
 
 # The runner distribution every registration is unpacked from. The runner updates itself after
 # that (GitHub refuses runners that fall too far behind); this pin is only the starting point.
@@ -75,11 +77,18 @@ f=/opt/factory-ci/dist/actions-runner-linux-x64-$RUNNER_VERSION.tar.gz
 [[ -f $f ]] || fetch "https://github.com/actions/runner/releases/download/v$RUNNER_VERSION/actions-runner-linux-x64-$RUNNER_VERSION.tar.gz" "$f" sha256 "$RUNNER_SHA256"
 ln -sfn "$f" /opt/factory-ci/dist/actions-runner-linux-x64.tar.gz
 
-# Job hooks and the slot holder.
+# Job hooks and the slot holder. The hook refuses every job when the dispatch directories are
+# missing, so they exist before it is installed.
+install -d -m 0755 /etc/factory-ci/dispatch /etc/factory-ci/dispatch-accounts
 install -m 0755 "$here/job-started.sh" /opt/factory-ci/bin/job-started.sh
 install -m 0755 "$here/job-completed.sh" /opt/factory-ci/bin/job-completed.sh
 install -m 0755 "$here/slot-hold.sh" /opt/factory-ci/bin/slot-hold
 install -m 0700 "$here/register.sh" /opt/factory-ci/bin/register
+# Trusted dispatch for public repositories (decision 0080): the root half the host's dispatcher
+# drives, the one-job runner's ExecStart, and the directory that says which accounts it serves.
+install -m 0700 "$here/dispatch-guest.sh" /opt/factory-ci/bin/dispatch-guest
+install -m 0755 "$here/jit-run.sh" /opt/factory-ci/bin/jit-run
+install -d -m 0755 /srv/factory-ci-jit
 install -m 0644 "$here/runner.env" /etc/factory-ci/runner.env
 # Two job slots, as measured on 2026-10-09 (docs/self-hosted-runners.md, Everyday operation).
 [[ -f /etc/factory-ci/slots ]] || echo 2 > /etc/factory-ci/slots
@@ -97,10 +106,12 @@ systemctl daemon-reload
 for d in /srv/factory-ci/fci-*/runner; do
   [[ -f $d/.runner ]] || continue
   u="$(stat -c %U "$d")"
-  install -o "$u" -g "$u" -m 0600 /etc/factory-ci/runner.env "$d/.env"
-  sed -n 's/^PATH=//p' /etc/factory-ci/runner.env | install -o "$u" -g "$u" -m 0600 /dev/stdin "$d/.path"
+  # As the account, not root: the directory is the account's, and root does not write through a
+  # path its owner could have pointed elsewhere.
+  runuser -u "$u" -- install -m 0600 /etc/factory-ci/runner.env "$d/.env"
+  sed -n 's/^PATH=//p' /etc/factory-ci/runner.env | runuser -u "$u" -- sh -c 'umask 077 && cat >"$1"' sh "$d/.path"
 done
 for u in $(systemctl list-units --plain --no-legend 'factory-ci-runner@*' | awk '{print $1}'); do
   systemctl restart "$u"
 done
-echo "factory-ci guest ready: runner $RUNNER_VERSION, .NET $DOTNET_SDKS (+ runtimes $DOTNET_RUNTIMES), gh $GH_VERSION, node $NODE_VERSION, python toolcache $PYTHON_TOOLCACHE_VERSION, slots $(cat /etc/factory-ci/slots)"
+echo "factory-ci guest ready: runner $RUNNER_VERSION, .NET $DOTNET_SDKS (+ runtimes $DOTNET_RUNTIMES), gh $GH_VERSION, node $NODE_VERSION, python toolcache $(ls /opt/hostedtoolcache/Python | tr "\n" " ")slots $(cat /etc/factory-ci/slots)"

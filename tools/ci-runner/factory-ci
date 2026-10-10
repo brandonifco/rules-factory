@@ -1,7 +1,9 @@
 #!/bin/bash
-# factory-ci -- operate the self-hosted GitHub Actions runner VM for private rules-factory
-# engines (docs/self-hosted-runners.md). Runs on the KVM host as a user in the `libvirt` group;
-# needs no sudo. Every guest-side change goes through the guest's admin account over SSH.
+# factory-ci -- operate the self-hosted GitHub Actions runner VM for the owner's trusted runs
+# (docs/self-hosted-runners.md). A private repository has a standing runner registration; a public
+# one never does, and its owner's runs reach the VM only through the trusted dispatcher (decision
+# 0080). Runs on the KVM host as a user in the `libvirt` group; needs no sudo. Every guest-side
+# change goes through the guest's admin account over SSH.
 set -euo pipefail
 kit="$(cd "$(dirname "$0")" && pwd)"
 VM="${FACTORY_CI_VM:-factory-ci-1}"
@@ -19,6 +21,8 @@ guest() { ssh -i "$KEY" -o UserKnownHostsFile="$KNOWN" -o StrictHostKeyChecking=
 die() { echo "factory-ci: $*" >&2; exit 1; }
 name_of() { local r="${1#*/}"; r="${r,,}"; echo "${r//[^a-z0-9-]/-}"; }
 need_repo() { [[ ${1:-} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "give OWNER/REPO"; }
+is_private() { [[ "$("$GH" api "repos/$1" --jq .private)" == true ]]; }
+dispatch_py() { python3 -I "$kit/dispatch.py" "$@"; }
 
 cmd_provision() { # create the network, filter and VM from the pinned cloud image
   virsh dominfo "$VM" >/dev/null 2>&1 && die "$VM already exists (rebuild: factory-ci destroy-vm first)"
@@ -58,8 +62,9 @@ cmd_provision() { # create the network, filter and VM from the pinned cloud imag
 cmd_setup() { # install or update the guest baseline (toolchain, hooks, units)
   tar -C "$kit/guest" -czf - . | guest 'rm -rf ~/kit && mkdir ~/kit && tar -xzf - -C ~/kit && sudo ~/kit/setup-guest.sh'
 }
-cmd_register() { # OWNER/REPO: register (or re-register) this VM's runner for one repository
+cmd_register() { # OWNER/REPO: register (or re-register) this VM's runner for one private repository
   need_repo "${1:-}"; local repo="$1" name; name="$(name_of "$repo")"
+  is_private "$repo" || die "$repo is public: a standing runner would take a fork's job; use trust (decision 0080)"
   "$GH" api -X POST "repos/$repo/actions/runners/registration-token" --jq .token |
     guest "sudo /opt/factory-ci/bin/register '$name' '$repo'"
   cmd_runners "$repo"
@@ -70,14 +75,46 @@ cmd_deregister() { # OWNER/REPO: remove this VM's runner for one repository, her
   "$GH" api -X POST "repos/$repo/actions/runners/remove-token" --jq .token |
     guest "cd /srv/factory-ci/$user/runner && sudo -u $user env ACTIONS_RUNNER_INPUT_TOKEN=\"\$(cat)\" ./config.sh remove"
 }
-cmd_enable() { # OWNER/REPO: send this repository's factory workflows to the VM (FACTORY_RUNS_ON)
+cmd_trust() { # OWNER/REPO: serve a public repository's owner runs by dispatch (decision 0080)
+  need_repo "${1:-}"; local repo name standing
+  repo="$("$GH" api "repos/$1" --jq .full_name)"; name="$(name_of "$repo")"
+  standing="$("$GH" api "repos/$repo/actions/runners" --jq "[.runners[].name | select(startswith(\"$VM-jit-\") | not)] | join(\" \")")"
+  [[ -z $standing ]] || die "$repo has standing runner(s) $standing; remove them first (deregister)"
+  # Not the boundary (the dispatcher and the guest are): one more door a fork must get through.
+  "$GH" api -X PUT "repos/$repo/actions/permissions/fork-pr-contributor-approval" -f approval_policy=all_external_contributors
+  guest "sudo /opt/factory-ci/bin/dispatch-guest trust '$name' '$repo'"
+}
+cmd_untrust() { # OWNER/REPO: stop serving a repository by dispatch; its runs go back to hosted runners
   need_repo "${1:-}"
-  [[ "$("$GH" api "repos/$1" --jq .private)" == true ]] || die "$1 is public: public repositories stay on GitHub-hosted runners (decision 0079)"
-  "$GH" variable set FACTORY_RUNS_ON --repo "$1" --body "$LABELS"
+  "$GH" variable delete FACTORY_RUNS_ON_TRUSTED --repo "$1" 2>/dev/null || true
+  guest "sudo /opt/factory-ci/bin/dispatch-guest untrust '$(name_of "$1")'"
 }
-cmd_disable() { # OWNER/REPO: return this repository to GitHub-hosted runners (billable; owner's decision)
-  need_repo "${1:-}"; "$GH" variable delete FACTORY_RUNS_ON --repo "$1"
+cmd_enable() { # OWNER/REPO: send its runs to the VM: all of a private one's, the owner's of a public one
+  need_repo "${1:-}"
+  if is_private "$1"; then "$GH" variable set FACTORY_RUNS_ON --repo "$1" --body "$LABELS"; return; fi
+  guest "test -f /etc/factory-ci/dispatch/$(name_of "$1")" || die "$1 is public and not served by dispatch: trust it first"
+  "$GH" variable list --repo "$1" --json name --jq '.[].name' | grep -qx FACTORY_RUNS_ON &&
+    die "$1 is public and has FACTORY_RUNS_ON, which sends a fork's run to the VM too; delete it (disable)"
+  "$GH" variable set FACTORY_RUNS_ON_TRUSTED --repo "$1" --body "$LABELS"
 }
+cmd_disable() { # OWNER/REPO: return its runs to GitHub-hosted runners (billable when private; owner's decision)
+  need_repo "${1:-}"; local v gone=
+  for v in FACTORY_RUNS_ON FACTORY_RUNS_ON_TRUSTED; do "$GH" variable delete "$v" --repo "$1" 2>/dev/null && gone=1; done
+  [[ -n $gone ]] || die "$1 had neither variable"
+}
+cmd_dispatch() { # the trusted dispatcher in the foreground (the user service runs this)
+  exec python3 -I "$kit/dispatch.py" run; }
+cmd_install_dispatcher() { # install and start the dispatcher as a systemd user service on this host
+  local dir="$HOME/.config/systemd/user"; mkdir -p "$dir"
+  sed "s#@KIT@#$kit#g" "$kit/host/factory-ci-dispatch.service" > "$dir/factory-ci-dispatch.service"
+  systemctl --user daemon-reload; systemctl --user enable --now factory-ci-dispatch
+  [[ "$(loginctl show-user "$USER" -p Linger --value 2>/dev/null)" == yes ]] ||
+    echo "factory-ci: lingering is off for $USER, so the dispatcher stops at logout: loginctl enable-linger $USER"
+}
+cmd_audit() { # registrations, labels, visibility, variables, fork approval as one boundary; exit 1 on a finding
+  dispatch_py audit; }
+cmd_timings() { # OWNER/REPO [N]: queue and run time of the last N runs' jobs, hosted against factory-ci
+  need_repo "${1:-}"; dispatch_py timings "$@"; }
 cmd_runners() { # [OWNER/REPO]: GitHub's view of the runners (all registered repositories by default)
   local repos="${1:-$(guest 'ls /srv/factory-ci' | sed -n 's/^fci-//p')}" r
   for r in $repos; do
@@ -92,6 +129,8 @@ cmd_status() { # VM, guest services, slots, load, and GitHub's view
   echo "== guest"; guest 'uptime; df -h / | tail -1; free -m | sed -n 2p
     systemctl list-units --plain --no-legend "factory-ci-runner@*" | awk "{print \$1, \$3, \$4}"
     echo "slots: $(cat /etc/factory-ci/slots)"; cat /run/factory-ci/hold-* 2>/dev/null | sed "s/^/held: /" || true'
+  echo "== dispatch"; systemctl --user is-active factory-ci-dispatch 2>/dev/null | sed 's/^/dispatcher: /' || true
+  guest 'sudo /opt/factory-ci/bin/dispatch-guest inventory' | grep -v '^persistent' || true
   echo "== github"; cmd_runners
 }
 cmd_queue() { # OWNER/REPO: queued and running workflow runs
@@ -100,9 +139,10 @@ cmd_queue() { # OWNER/REPO: queued and running workflow runs
     "$GH" api "repos/$1/actions/runs?status=$s&per_page=20" --jq ".workflow_runs[] | \"$s \(.id) \(.name) \(.head_branch) \(.created_at)\""
   done
 }
-cmd_logs() { # OWNER/REPO [journalctl args]: the runner service's journal
+cmd_logs() { # OWNER/REPO|dispatch [journalctl args]: a runner's journal, or the dispatcher's
+  if [[ ${1:-} == dispatch ]]; then shift; journalctl --user -u factory-ci-dispatch --no-pager "${@:--n 100}"; return; fi
   need_repo "${1:-}"; local user; user="fci-$(name_of "$1")"; shift
-  guest "sudo journalctl -u factory-ci-runner@$user --no-pager ${*:--n 100}"
+  guest "sudo journalctl -u factory-ci-runner@$user -u 'factory-ci-jit-*' --no-pager ${*:--n 100}"
 }
 cmd_slots() { # N: let the VM run N jobs at once (1-4); measure before raising it
   [[ ${1:-} =~ ^[1-4]$ ]] || die "slots must be 1-4"; guest "echo $1 | sudo tee /etc/factory-ci/slots >/dev/null"; echo "slots: $1"
@@ -128,7 +168,7 @@ cmd_destroy_vm() { # remove the VM and its disks (registrations on GitHub stay u
   virsh undefine "$VM" --nvram 2>/dev/null || virsh undefine "$VM"
   virsh vol-delete --pool default "$VM.qcow2"; virsh vol-delete --pool default "$VM-seed.iso"
 }
-usage() { sed -n 's/^cmd_\([a-z_]*\)() { # \(.*\)$/\1\t\2/p' "$0" | while IFS=$'\t' read -r n d; do printf '  %-14s %s\n' "${n//_/-}" "$d"; done; }
+usage() { sed -n 's/^cmd_\([a-z_]*\)() { # \(.*\)$/\1\t\2/p' "$0" | while IFS=$'\t' read -r n d; do printf '  %-18s %s\n' "${n//_/-}" "$d"; done; }
 c="${1:-}"; shift || true
 case "$c" in
   ""|-h|--help|help) echo "factory-ci COMMAND"; usage ;;

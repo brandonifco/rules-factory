@@ -203,15 +203,15 @@ TABLE = (
         "the pull request shape pr-policy.py checks, documentation section included (0029, #236); "
         "\"Unrelated changes\" says what belongs in it and what is part of the change (#196); the entry list "
         "states the correspondence pr-policy checks (#451); a `review class:` line, checked against the diff and never taken, and a `decision scope:` line (0076)"),
-    Row(".github/workflows/pr-policy.yml", MANAGED, 2,
+    Row(".github/workflows/pr-policy.yml", MANAGED, 3,
         "the required check that runs pr-policy.py (0029); the runner is the repository variable FACTORY_RUNS_ON, "
         "the hosted ubuntu-24.04 when it is unset (0079)"),
-    Row(".github/workflows/conformance-gate.yml", MANAGED, 4,
+    Row(".github/workflows/conformance-gate.yml", MANAGED, 5,
         "the required check that runs conformance-gate.py (0029); the gate re-runs when the pull request body is edited, because the review class a pull request claims is a line in it (0076); "
-        "the runner is the repository variable FACTORY_RUNS_ON, the hosted ubuntu-24.04 when it is unset (0079)"),
-    Row(".github/workflows/verdict-requeue.yml", MANAGED, 3,
+        "the runner is the repository variable FACTORY_RUNS_ON, the hosted ubuntu-24.04 when it is unset (0079); FACTORY_RUNS_ON_TRUSTED takes only the owner's run on a commit of this repository (0080)"),
+    Row(".github/workflows/verdict-requeue.yml", MANAGED, 4,
         "runs requeue-gate.py on the status and issues events; deliberately not a required check "
-        "(#191, #230); the runner is the repository variable FACTORY_RUNS_ON, the hosted ubuntu-24.04 when it is unset (0079)"),
+        "(#191, #230); the runner is the repository variable FACTORY_RUNS_ON, the hosted ubuntu-24.04 when it is unset (0079); FACTORY_RUNS_ON_TRUSTED takes only the owner's run on a commit of this repository (0080)"),
     Row("tools/agent-doctor.py", MANAGED, 8,
         "whether the rails are active or only present, locally and on GitHub, and what merged work "
         "left behind (0029, #236); the machine's own prerequisites first, because a rail in place on a "
@@ -546,17 +546,20 @@ RECIPE_SHA256 = {
     ".github/workflows/pr-policy.yml": {
         1: "caa3394a473d5fdd45b274176d8e28c48d9f5425176318194ba68fbea8453fa2",
         2: "a99ddb7cd87905f24f64892a3773275554d29e1977acefc0fafd69838f14aa87",
+        3: "ebf84bcf01619ae578417767d0a984102dfcb00a67b6778b4527a409a3722b6e",
     },
     ".github/workflows/conformance-gate.yml": {
         1: "851d64e8705363b70711b74fe1b25306c3fac1c1e26c88a9805defc3a03042a8",
         2: "d66ae8a37a37874369ac962fbecbf9ac1b98cf0246541a61ea5089b23f8ea702",
         3: "5ddfd5e6b2fba8553e4f9f7d0f6bd40de9d51529acf983b3ac65d5f94857f16a",
         4: "e96719a5f71ef095f2265549c5c8b42fff7283b820aa035339bd0eebba4edabc",
+        5: "4a18b24d803fa8a7e97ba018ab3ae4d0c9ed59fcbbc615963bbf024503b49c20",
     },
     ".github/workflows/verdict-requeue.yml": {
         1: "b1a48c75587dcbcf15638f83a703025c08f5449d9e2611550c4f15a448fcb178",
         2: "8ab0d0de2df9777f3e545fedb66c118816e3c658a0fce87db63261967332780a",
         3: "bfdc9cdf73e8e63264ef35b3cb020adb6848d6f8126da10987deb75322fd2a24",
+        4: "e12f280ee6e9e70e413f59cc6df35d4eda26a2bd2667ba4be5e954d2fecbb4df",
     },
     "tools/orchestrator-status.py": {
         1: "ae752a3234fcdcf9cd5d478dd1737d8cf0c952c7853fa25918e27b0299a8db17",

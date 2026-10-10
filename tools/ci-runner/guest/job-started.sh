@@ -19,6 +19,40 @@ while [[ $pid -gt 1 ]]; do
 done
 [[ -n $worker ]] || { echo "::error::factory-ci: no Runner.Worker above the job-started hook"; exit 1; }
 
+# A repository served by trusted dispatch is public (decision 0080). Its jobs reach this VM only on
+# a one-job runner the host's dispatcher started, under /srv/factory-ci-jit, and only for a run it
+# admitted. What says so is root's, under /run/factory-ci-trust and /etc/factory-ci, where no runner
+# account can write. The check fails closed: a one-job runner, or an account that serves dispatch,
+# is refused unless every condition holds -- the runner was started for this account, it got its
+# job within its lease, the job is of the repository the account serves, and its run and attempt
+# were admitted. Failing this hook is not enough to stop a job: the runner still runs every action's
+# `pre:` and `post:` step after a failed job-started hook (seen on 2026-10-10, runner 2.338.0), as
+# it would a step marked `if: always()`, and a fork writes both. So a refusal kills the job's
+# Runner.Worker, which runs every step there is, before it returns; GitHub then has no log for the
+# job, so the refusal goes to the guest's journal too. (A job's `env:` does not reach this hook:
+# neither a forged GITHUB_RUN_ID nor BASH_ENV did, same day.)
+exe="$(readlink "/proc/$worker/exe" 2>/dev/null || true)"
+if [[ $exe == /srv/factory-ci-jit/* || -e /etc/factory-ci/dispatch-accounts/$me || ! -r /etc/factory-ci/dispatch-accounts ]]; then
+  run="${GITHUB_RUN_ID:-}" attempt="${GITHUB_RUN_ATTEMPT:-}" why=
+  id="$(sed -n 's#^/srv/factory-ci-jit/\([0-9]\{1,19\}\)/bin/Runner.Worker$#\1#p' <<<"$exe")"
+  owner= name= deadline=
+  [[ -n $id ]] && read -r owner name deadline _ 2>/dev/null </run/factory-ci-trust/runners/"$id" || true
+  if [[ -z $id ]]; then why="not a one-job runner"
+  elif [[ $owner != "$me" ]]; then why="runner $id was not started for $me"
+  elif [[ ! $deadline =~ ^[0-9]+$ ]] || (( $(date +%s) > deadline )); then why="runner $id got its job after its lease"
+  elif [[ ! $name =~ ^[a-z0-9][a-z0-9-]{0,23}$ ]] || [[ "$(cat "/etc/factory-ci/dispatch-accounts/$me" 2>/dev/null)" != "$name" ]]; then why="$me does not serve $name"
+  elif [[ "${GITHUB_REPOSITORY:-}" != "$(head -1 "/etc/factory-ci/dispatch/$name" 2>/dev/null)" ]]; then why="the job is not of the repository $name serves"
+  elif [[ ! $run =~ ^[0-9]+$ ]] || [[ ! $attempt =~ ^[0-9]+$ ]] || [[ ! -f /run/factory-ci-trust/$name/$run-$attempt ]]; then why="run ${run:-?} attempt ${attempt:-?} was not admitted"
+  fi
+  if [[ -n $why ]]; then
+    echo "::error::factory-ci: ${GITHUB_REPOSITORY:-?} run ${run:-?} attempt ${attempt:-?} refused: $why; its worker is killed before any step (decision 0080)"
+    logger -t factory-ci "refused ${GITHUB_REPOSITORY:-?} run ${run:-?} attempt ${attempt:-?} on $me: $why"
+    kill -KILL "$worker"
+    exit 1
+  fi
+  echo "factory-ci: run $run attempt $attempt of $GITHUB_REPOSITORY admitted by the trusted dispatcher"
+fi
+
 # A job killed with the VM never ran job-completed: empty what it may have left before this one.
 case "${GITHUB_WORKSPACE:-}" in
   "$HOME"/runner/_work/?*)

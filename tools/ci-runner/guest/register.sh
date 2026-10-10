@@ -12,25 +12,29 @@ name="$1" repo="$2" labels="${3:-factory-ci}"
 IFS= read -r token
 [[ -n $token ]] || { echo "no registration token on stdin" >&2; exit 2; }
 user="fci-$name" home="/srv/factory-ci/fci-$name" dir="/srv/factory-ci/fci-$name/runner"
+# A repository served by dispatch is public: a standing registration would take a fork's job.
+[[ -e /etc/factory-ci/dispatch-accounts/$user ]] && { echo "$user is served by trusted dispatch; a public repository is never registered (decision 0080)" >&2; exit 2; }
 
 id "$user" >/dev/null 2>&1 ||
   useradd --system --home-dir "$home" --create-home --shell /usr/sbin/nologin --groups factory-ci "$user"
 chmod 0700 "$home"
 systemctl stop "factory-ci-runner@$user" 2>/dev/null || true
+# Everything below the home is written as the account, never as root: the account owns those paths
+# and could have made any of them a link to somewhere root can write.
+[[ -L $dir ]] && { echo "$dir is a link; refusing" >&2; exit 2; }
 if [[ ! -x $dir/config.sh ]]; then
-  install -d -o "$user" -g "$user" -m 0700 "$dir"
+  runuser -u "$user" -- install -d -m 0700 "$dir"
   runuser -u "$user" -- tar -xzf /opt/factory-ci/dist/actions-runner-linux-x64.tar.gz -C "$dir"
-  chmod 0700 "$dir"
 fi
 # A re-registration replaces the runner of the same name on GitHub (--replace); the local
 # credentials of the old one go first, or config.sh refuses.
-rm -f "$dir/.runner" "$dir/.credentials" "$dir/.credentials_rsaparams"
+runuser -u "$user" -- rm -f "$dir/.runner" "$dir/.credentials" "$dir/.credentials_rsaparams"
 cd "$dir"
 runuser -u "$user" -- env -i HOME="$home" PATH=/usr/bin:/bin LANG=C.UTF-8 ACTIONS_RUNNER_INPUT_TOKEN="$token" \
   ./config.sh --unattended --url "https://github.com/$repo" --name "$(hostname)" \
   --labels "$labels" --work _work --replace >/dev/null
-install -o "$user" -g "$user" -m 0600 /etc/factory-ci/runner.env "$dir/.env"
+runuser -u "$user" -- install -m 0600 /etc/factory-ci/runner.env "$dir/.env"
 # runsvc.sh exports .path as the listener's PATH; keep it the one runner.env names.
-sed -n 's/^PATH=//p' /etc/factory-ci/runner.env | install -o "$user" -g "$user" -m 0600 /dev/stdin "$dir/.path"
+sed -n 's/^PATH=//p' /etc/factory-ci/runner.env | runuser -u "$user" -- sh -c 'umask 077 && cat >"$1"' sh "$dir/.path"
 systemctl enable --now "factory-ci-runner@$user" >/dev/null
 echo "registered $(hostname) for $repo as $user (labels: self-hosted, Linux, X64, $labels)"

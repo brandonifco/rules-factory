@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted — 2026-10-09. Records the owner's direction on
+Accepted — 2026-10-09. **Partially superseded by [0080](0080-execution-trust-not-visibility-decides-whether-a-run-reaches-the-self-hosted-runner.md)** (2026-10-10): point 4 below, that public
+repositories never use the self-hosted runner, is replaced by trusted dispatch, and the runner line
+by 0080's, which reads `FACTORY_RUNS_ON_TRUSTED` first and evaluates as this one does where that is
+unset. Everything else here stands. Records the owner's direction on
 [#633](https://github.com/brandonifco/rules-factory/issues/633). Changes the generated
 `.github/workflows/validate.yml` recipe and the three managed rails, `pr-policy.yml` (recipe
 1 → 2), `conformance-gate.yml` (3 → 4) and `verdict-requeue.yml` (2 → 3), decision
