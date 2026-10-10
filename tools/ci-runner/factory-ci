@@ -92,7 +92,7 @@ cmd_untrust() { # OWNER/REPO: stop serving a repository by dispatch; its runs go
 cmd_enable() { # OWNER/REPO: send its runs to the VM: all of a private one's, the owner's of a public one
   need_repo "${1:-}"
   if is_private "$1"; then "$GH" variable set FACTORY_RUNS_ON --repo "$1" --body "$LABELS"; return; fi
-  guest "test -f /etc/factory-ci/dispatch/fci-$(name_of "$1")" || die "$1 is public and not served by dispatch: trust it first"
+  guest "test -f /etc/factory-ci/dispatch/$(name_of "$1")" || die "$1 is public and not served by dispatch: trust it first"
   "$GH" variable list --repo "$1" --json name --jq '.[].name' | grep -qx FACTORY_RUNS_ON &&
     die "$1 is public and has FACTORY_RUNS_ON, which sends a fork's run to the VM too; delete it (disable)"
   "$GH" variable set FACTORY_RUNS_ON_TRUSTED --repo "$1" --body "$LABELS"
