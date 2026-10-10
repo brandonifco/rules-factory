@@ -1,0 +1,31 @@
+#cloud-config
+# factory-ci guest baseline (Ubuntu Server 24.04). Only the admin account is
+# created here; runner accounts are created by setup-guest.sh.
+hostname: factory-ci-1
+fqdn: factory-ci-1.local
+manage_etc_hosts: true
+timezone: Etc/UTC
+ssh_pwauth: false
+disable_root: true
+users:
+  - name: ciadmin
+    gecos: factory-ci administrator
+    groups: [sudo]
+    shell: /bin/bash
+    lock_passwd: true
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - @ADMIN_KEY@
+package_update: true
+package_upgrade: true
+packages: [qemu-guest-agent, git, curl, jq, unzip, zip, ca-certificates, python3, python3-venv, libicu74, sysstat, unattended-upgrades]
+write_files:
+  - path: /etc/ssh/sshd_config.d/10-factory-ci.conf
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+      AllowUsers ciadmin
+runcmd:
+  - [systemctl, enable, --now, qemu-guest-agent]
+  - [systemctl, restart, ssh]

@@ -1,0 +1,136 @@
+#!/bin/bash
+# factory-ci -- operate the self-hosted GitHub Actions runner VM for private rules-factory
+# engines (docs/self-hosted-runners.md). Runs on the KVM host as a user in the `libvirt` group;
+# needs no sudo. Every guest-side change goes through the guest's admin account over SSH.
+set -euo pipefail
+kit="$(cd "$(dirname "$0")" && pwd)"
+VM="${FACTORY_CI_VM:-factory-ci-1}"
+IP="${FACTORY_CI_IP:-192.168.150.11}"
+KEY="${FACTORY_CI_KEY:-$HOME/.ssh/factory-ci_ed25519}"
+KNOWN="${FACTORY_CI_KNOWN_HOSTS:-$HOME/.ssh/known_hosts.factory-ci}"
+GH="${FACTORY_CI_GH:-gh}"
+IMAGE_RELEASE="${FACTORY_CI_IMAGE_RELEASE:-release-20260926}"
+IMAGE_SHA256="${FACTORY_CI_IMAGE_SHA256:-6a81c37564db9b1ee84e141922625e1d7c5b389b99bb3c572e0243607d5bb4d2}"
+VCPUS="${FACTORY_CI_VCPUS:-6}" MEMORY_MB="${FACTORY_CI_MEMORY_MB:-12288}" DISK="${FACTORY_CI_DISK:-100G}"
+LABELS='["self-hosted","linux","x64","factory-ci"]'
+virsh() { command virsh -c qemu:///system "$@"; }
+guest() { ssh -i "$KEY" -o UserKnownHostsFile="$KNOWN" -o StrictHostKeyChecking=accept-new -o BatchMode=yes \
+            -o ConnectTimeout=5 "ciadmin@$IP" "$@"; }
+die() { echo "factory-ci: $*" >&2; exit 1; }
+name_of() { local r="${1#*/}"; r="${r,,}"; echo "${r//[^a-z0-9-]/-}"; }
+need_repo() { [[ ${1:-} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "give OWNER/REPO"; }
+
+cmd_provision() { # create the network, filter and VM from the pinned cloud image
+  virsh dominfo "$VM" >/dev/null 2>&1 && die "$VM already exists (rebuild: factory-ci destroy-vm first)"
+  [[ -f $KEY ]] || ssh-keygen -q -t ed25519 -N '' -C "factory-ci admin (host only)" -f "$KEY"
+  virsh net-info factory-ci >/dev/null 2>&1 || { virsh net-define "$kit/host/network.xml"; virsh net-autostart factory-ci; }
+  virsh net-start factory-ci 2>/dev/null || true
+  virsh nwfilter-define "$kit/host/nwfilter.xml" >/dev/null
+  local work base="factory-ci-base-noble-${IMAGE_RELEASE#release-}.qcow2"
+  work="$(mktemp -d)"; trap 'rm -rf "$work"' RETURN
+  if ! virsh vol-info --pool default "$base" >/dev/null 2>&1; then
+    local url="https://cloud-images.ubuntu.com/releases/noble/$IMAGE_RELEASE/ubuntu-24.04-server-cloudimg-amd64.img"
+    curl -fsSL -o "$work/base.img" "$url"
+    echo "$IMAGE_SHA256  $work/base.img" | sha256sum -c --quiet - || die "cloud image hash mismatch"
+    virsh vol-create-as default "$base" "$(stat -c %s "$work/base.img")" --format qcow2 >/dev/null
+    virsh vol-upload --pool default "$base" "$work/base.img"
+  fi
+  mkdir "$work/seed"
+  sed "s#@ADMIN_KEY@#$(cat "$KEY.pub")#; s#factory-ci-1#$VM#g" "$kit/host/user-data.yaml" > "$work/seed/user-data"
+  printf 'instance-id: %s\nlocal-hostname: %s\n' "$VM" "$VM" > "$work/seed/meta-data"
+  cp "$kit/host/network-config.yaml" "$work/seed/network-config"
+  xorriso -as mkisofs -quiet -output "$work/seed.iso" -volid cidata -joliet -rock \
+    "$work/seed/user-data" "$work/seed/meta-data" "$work/seed/network-config"
+  virsh vol-create-as default "$VM-seed.iso" "$(stat -c %s "$work/seed.iso")" --format raw >/dev/null
+  virsh vol-upload --pool default "$VM-seed.iso" "$work/seed.iso"
+  virsh vol-clone --pool default "$base" "$VM.qcow2" >/dev/null
+  virsh vol-resize --pool default "$VM.qcow2" "$DISK" >/dev/null
+  virt-install --connect qemu:///system --name "$VM" --description "rules-factory self-hosted CI runner" \
+    --memory "$MEMORY_MB" --vcpus "$VCPUS" --cpu host-passthrough --os-variant ubuntu24.04 \
+    --disk "vol=default/$VM.qcow2,bus=virtio,cache=none,discard=unmap" \
+    --disk "vol=default/$VM-seed.iso,device=cdrom,bus=sata,readonly=on" \
+    --network network=factory-ci,model=virtio,mac=52:54:00:fc:01:01,filterref=factory-ci-egress \
+    --graphics none --console pty,target_type=serial --noautoconsole --import --autostart
+  ssh-keygen -R "$IP" -f "$KNOWN" >/dev/null 2>&1 || true
+  echo "waiting for cloud-init..."; for _ in $(seq 60); do guest 'cloud-init status --wait' 2>/dev/null && return 0; sleep 5; done
+  die "guest did not come up"
+}
+cmd_setup() { # install or update the guest baseline (toolchain, hooks, units)
+  tar -C "$kit/guest" -czf - . | guest 'rm -rf ~/kit && mkdir ~/kit && tar -xzf - -C ~/kit && sudo ~/kit/setup-guest.sh'
+}
+cmd_register() { # OWNER/REPO: register (or re-register) this VM's runner for one repository
+  need_repo "${1:-}"; local repo="$1" name; name="$(name_of "$repo")"
+  "$GH" api -X POST "repos/$repo/actions/runners/registration-token" --jq .token |
+    guest "sudo /opt/factory-ci/bin/register '$name' '$repo'"
+  cmd_runners "$repo"
+}
+cmd_deregister() { # OWNER/REPO: remove this VM's runner for one repository, here and on GitHub
+  need_repo "${1:-}"; local repo="$1" user; user="fci-$(name_of "$repo")"
+  guest "sudo systemctl disable --now factory-ci-runner@$user"
+  "$GH" api -X POST "repos/$repo/actions/runners/remove-token" --jq .token |
+    guest "cd /srv/factory-ci/$user/runner && sudo -u $user env ACTIONS_RUNNER_INPUT_TOKEN=\"\$(cat)\" ./config.sh remove"
+}
+cmd_enable() { # OWNER/REPO: send this repository's factory workflows to the VM (FACTORY_RUNS_ON)
+  need_repo "${1:-}"
+  [[ "$("$GH" api "repos/$1" --jq .private)" == true ]] || die "$1 is public: public repositories stay on GitHub-hosted runners (decision 0079)"
+  "$GH" variable set FACTORY_RUNS_ON --repo "$1" --body "$LABELS"
+}
+cmd_disable() { # OWNER/REPO: return this repository to GitHub-hosted runners (billable; owner's decision)
+  need_repo "${1:-}"; "$GH" variable delete FACTORY_RUNS_ON --repo "$1"
+}
+cmd_runners() { # [OWNER/REPO]: GitHub's view of the runners (all registered repositories by default)
+  local repos="${1:-$(guest 'ls /srv/factory-ci' | sed -n 's/^fci-//p')}" r
+  for r in $repos; do
+    [[ $r == */* ]] || r="$("$GH" api user --jq .login)/$r"
+    "$GH" api "repos/$r/actions/runners" --jq ".runners[] | \"$r: \(.name) \(.status) busy=\(.busy) [\([.labels[].name]|join(\",\"))]\"" 2>/dev/null ||
+      echo "$r: cannot read runners"
+  done
+}
+cmd_status() { # VM, guest services, slots, load, and GitHub's view
+  echo "== host"; virsh domstate "$VM" --reason; virsh net-info factory-ci | grep -E 'Active|Autostart'
+  virsh dominfo "$VM" | grep -E 'Autostart|CPU\(s\)|Max memory'
+  echo "== guest"; guest 'uptime; df -h / | tail -1; free -m | sed -n 2p
+    systemctl list-units --plain --no-legend "factory-ci-runner@*" | awk "{print \$1, \$3, \$4}"
+    echo "slots: $(cat /etc/factory-ci/slots)"; cat /run/factory-ci/hold-* 2>/dev/null | sed "s/^/held: /" || true'
+  echo "== github"; cmd_runners
+}
+cmd_queue() { # OWNER/REPO: queued and running workflow runs
+  need_repo "${1:-}"
+  for s in queued in_progress; do
+    "$GH" api "repos/$1/actions/runs?status=$s&per_page=20" --jq ".workflow_runs[] | \"$s \(.id) \(.name) \(.head_branch) \(.created_at)\""
+  done
+}
+cmd_logs() { # OWNER/REPO [journalctl args]: the runner service's journal
+  need_repo "${1:-}"; local user; user="fci-$(name_of "$1")"; shift
+  guest "sudo journalctl -u factory-ci-runner@$user --no-pager ${*:--n 100}"
+}
+cmd_slots() { # N: let the VM run N jobs at once (1-4); measure before raising it
+  [[ ${1:-} =~ ^[1-4]$ ]] || die "slots must be 1-4"; guest "echo $1 | sudo tee /etc/factory-ci/slots >/dev/null"; echo "slots: $1"
+}
+cmd_runner() { # start|stop|restart [OWNER/REPO]: the runner service(s) in the guest
+  local action="${1:-}" unit='factory-ci-runner@*'
+  [[ $action =~ ^(start|stop|restart)$ ]] || die "start|stop|restart"
+  [[ -n ${2:-} ]] && unit="factory-ci-runner@fci-$(name_of "$2")"
+  if [[ $action == start && -z ${2:-} ]]; then
+    guest 'for d in /srv/factory-ci/fci-*; do sudo systemctl start "factory-ci-runner@${d##*/}"; done'
+  else guest "sudo systemctl $action '$unit'"; fi
+}
+cmd_ssh() { # [COMMAND]: the guest's admin shell
+  guest "$@"; }
+cmd_start() { # start the VM (it also starts with the host: autostart)
+  virsh start "$VM"; }
+cmd_stop() { # shut the VM down gracefully: a running job may finish first (TimeoutStopSec)
+  virsh shutdown "$VM"; }
+cmd_restart() { # reboot the VM; the runners come back by themselves
+  virsh reboot "$VM"; }
+cmd_destroy_vm() { # remove the VM and its disks (registrations on GitHub stay until deregistered)
+  virsh destroy "$VM" 2>/dev/null || true
+  virsh undefine "$VM" --nvram 2>/dev/null || virsh undefine "$VM"
+  virsh vol-delete --pool default "$VM.qcow2"; virsh vol-delete --pool default "$VM-seed.iso"
+}
+usage() { sed -n 's/^cmd_\([a-z_]*\)() { # \(.*\)$/\1\t\2/p' "$0" | while IFS=$'\t' read -r n d; do printf '  %-14s %s\n' "${n//_/-}" "$d"; done; }
+c="${1:-}"; shift || true
+case "$c" in
+  ""|-h|--help|help) echo "factory-ci COMMAND"; usage ;;
+  *) declare -F "cmd_${c//-/_}" >/dev/null || { usage; exit 2; }; "cmd_${c//-/_}" "$@" ;;
+esac

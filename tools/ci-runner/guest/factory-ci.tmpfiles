@@ -1,0 +1,7 @@
+# Job-slot locks for the factory-ci runners (see job-started). Sticky and group-writable: a runner
+# account records the slot it holds and cannot remove another's record.
+d /run/factory-ci 1775 root factory-ci -
+f /run/factory-ci/slot-1.lock 0644 root root -
+f /run/factory-ci/slot-2.lock 0644 root root -
+f /run/factory-ci/slot-3.lock 0644 root root -
+f /run/factory-ci/slot-4.lock 0644 root root -

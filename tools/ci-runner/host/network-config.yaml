@@ -1,0 +1,8 @@
+version: 2
+ethernets:
+  ci0:
+    match: {macaddress: "52:54:00:fc:01:01"}
+    set-name: ci0
+    dhcp4: true
+    dhcp6: false
+    accept-ra: false

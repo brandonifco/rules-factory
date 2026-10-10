@@ -162,3 +162,4 @@ is removed (§4).
 | What was decided, and why | [docs/decisions/](docs/decisions/README.md) |
 | How issues are labelled and ordered | [docs/backlog.md](docs/backlog.md) |
 | What each trial changed | [examples/README.md](examples/README.md) |
+| Where a private engine's CI runs, and how that runner is rebuilt and operated | [docs/self-hosted-runners.md](docs/self-hosted-runners.md) |

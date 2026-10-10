@@ -1,0 +1,32 @@
+<!-- factory-ci-egress: the CI guest may reach the host's DNS and the public
+     internet on 80/443 (and NTP); nothing on the host or any private network.
+     Only the host (the libvirt gateway) may open SSH to the guest. -->
+<filter name='factory-ci-egress' chain='root' priority='-700'>
+  <!-- L2: only ARP and IPv4; no IPv6 -->
+  <rule action='accept' direction='inout' priority='-650'><mac protocolid='arp'/></rule>
+  <rule action='accept' direction='inout' priority='-640'><mac protocolid='ipv4'/></rule>
+  <rule action='drop' direction='inout' priority='-600'><mac/></rule>
+  <!-- return traffic -->
+  <rule action='accept' direction='inout' priority='100'><all state='ESTABLISHED,RELATED'/></rule>
+  <!-- DHCP and DNS from the libvirt gateway only -->
+  <rule action='accept' direction='out' priority='200'><udp srcportstart='68' dstportstart='67'/></rule>
+  <rule action='accept' direction='in' priority='200'><udp srcportstart='67' dstportstart='68'/></rule>
+  <rule action='accept' direction='out' priority='210'><udp dstipaddr='192.168.150.1' dstportstart='53' state='NEW'/></rule>
+  <rule action='accept' direction='out' priority='210'><tcp dstipaddr='192.168.150.1' dstportstart='53' state='NEW'/></rule>
+  <!-- SSH in from the host only -->
+  <rule action='accept' direction='in' priority='220'><tcp srcipaddr='192.168.150.1' dstportstart='22' state='NEW'/></rule>
+  <!-- nothing else to the host, the LAN, or any private/link-local/CGNAT range -->
+  <rule action='drop' direction='out' priority='300'><all dstipaddr='10.0.0.0' dstipmask='8'/></rule>
+  <rule action='drop' direction='out' priority='300'><all dstipaddr='172.16.0.0' dstipmask='12'/></rule>
+  <rule action='drop' direction='out' priority='300'><all dstipaddr='192.168.0.0' dstipmask='16'/></rule>
+  <rule action='drop' direction='out' priority='300'><all dstipaddr='169.254.0.0' dstipmask='16'/></rule>
+  <rule action='drop' direction='out' priority='300'><all dstipaddr='100.64.0.0' dstipmask='10'/></rule>
+  <rule action='drop' direction='out' priority='300'><all dstipaddr='127.0.0.0' dstipmask='8'/></rule>
+  <rule action='drop' direction='out' priority='300'><all dstipaddr='224.0.0.0' dstipmask='3'/></rule>
+  <!-- public internet: HTTPS, HTTP (Ubuntu archive), NTP -->
+  <rule action='accept' direction='out' priority='400'><tcp dstportstart='443' state='NEW'/></rule>
+  <rule action='accept' direction='out' priority='400'><tcp dstportstart='80' state='NEW'/></rule>
+  <rule action='accept' direction='out' priority='400'><udp dstportstart='123' state='NEW'/></rule>
+  <!-- everything else -->
+  <rule action='drop' direction='inout' priority='1000'><all/></rule>
+</filter>
