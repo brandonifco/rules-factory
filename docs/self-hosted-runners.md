@@ -231,6 +231,12 @@ must name `factory-ci-1` (a standing runner) or `factory-ci-1-jit-<hex>` (a one-
 |---|---|---|---|
 | reykholt, reykholt-web, reykholt-art, hallertau | private | standing | since 2026-10-09 |
 | rules-factory | public | dispatch | since 2026-10-10; `validate`, `engine`, `documentation` (`publish-map`, `judge-rebuild` hosted) |
+| faa-part-107 | public | dispatch | since 2026-10-10, re-produced from factory 1.6.0 (faa-part-107#147); `validate`, `pr-policy`, `conformance-gate`, `verdict-requeue` (`package`, `publish` hosted) |
+| srd-52-combat | public | dispatch | since 2026-10-10, re-produced from factory 1.6.0 (srd-52-combat#81) |
+| rules-corpus | public | dispatch | since 2026-10-10 (rules-corpus#22); `build-and-test` |
+| rules-kernel | public | dispatch | since 2026-10-10 (rules-kernel#83); `build-and-test` (`pcg-vectors` hosted: it needs a C compiler; `publish` hosted) |
+| tax-121-principal-residence, hoyle-backgammon, hoyle-blind-rebuild | public | hosted | **Not migrated.** Their workflows are factory-generated, so they change only by re-producing, and they cannot be re-produced: each consumes a map published before decision 0048 (no `map/verification.json`) and has no rules-corpus build definition (0074). A new map version is a publication, the owner's decision. |
+| brandonifco.github.io, brandonifco, hollow-crown | public | — | No workflows. |
 
 ### Running the boundary probe
 
@@ -253,6 +259,41 @@ On a throwaway branch of a served public repository, with the dispatcher **stopp
    to the past, push and admit: refused after its lease. Start a second on the same lane: refused.
 
 Remove the admission, the branches and anything left in the guest (`dispatch-guest reap`) afterwards.
+
+## Measured
+
+On 2026-10-10, the jobs' own timestamps (`factory-ci timings`; queue is created to started, run is
+started to completed), successful runs only, against each repository's hosted history:
+
+| Repository | Job | Hosted median run (n) | factory-ci run | factory-ci queue |
+|---|---|---|---|---|
+| rules-factory | `validate` (pull request) | 760 s (34) | 280 s | 19 s |
+| rules-factory | `validate` (push, full) | 729 s (19) | 275 s | 50 s |
+| rules-factory | `engine` | 450 s (36) | 269–275 s | 15–40 s |
+| rules-corpus | `build-and-test` | 121 s (27) | 47 s | 17 s |
+| rules-kernel | `build-and-test` | 120 s (39) | 63 s | 38 s |
+| faa-part-107 | `validate` | 87 s (9) | 40 s | 54 s |
+| srd-52-combat | `validate` | 53 s (23) | 30 s | 47 s |
+| any | `pr-policy`, `conformance-gate` | 8 s | 5–7 s | 21–39 s |
+
+- **Run time** is about 40% to 60% shorter on the VM: 6 vCPU with host-passthrough against the hosted
+  runner's 4, and the account's NuGet and pip caches kept between jobs.
+- **Queue time** is what dispatch costs: hosted jobs start in 2 to 3 s; a dispatched job waits for
+  the dispatcher's 10 s poll, a one-job runner's start (about 4 s) and, when a repository's two
+  jobs are already running, a lane. A run's total time still falls because the jobs it waits for
+  are the long ones.
+- **Cancellations and recovery**: a refused run was cancelled while queued and never had a runner;
+  a cancelled run's job took GitHub up to about 90 s to finish, during which nothing started beside
+  it. Before decision 0080's follow-up, a one-job runner was known in the guest by GitHub's runner
+  number alone, which GitHub assigns per repository; two repositories' runners with the same number
+  collided, the start was refused, the runner deleted and started again. Nothing ran where it
+  should not, but faa-part-107's `conformance-gate` queued for 191 s. The guest now knows a runner
+  by its repository and number together.
+@SAR@
+
+Nothing measured asks for more capacity: the two slots were never the reason a job waited longer
+than a poll, and the VM stays at 6 vCPU, 12 GiB and two slots. Re-measure with `factory-ci timings`
+and `factory-ci ssh 'sar -u -r 10'` before changing any of them.
 
 ## Credentials
 
