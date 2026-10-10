@@ -18,10 +18,14 @@ guest. Every POLL seconds, for each repository the guest serves by dispatch:
      A run that fails is cancelled. Its jobs never had a runner to go to, and while any is still
      queued no runner is started for that repository at all.
   3. For an admitted run it writes an admission into the guest, root-owned, which the guest's
-     job-started hook requires before a job's first step, and starts one one-job (JIT) runner per
-     admitted queued job, with exactly factory-ci's labels, as that repository's own account.
-  4. It deletes a one-job runner left idle, stops a guest runner GitHub no longer knows, and has
-     the guest reap finished ones.
+     job-started hook requires, and starts one one-job (JIT) runner per admitted queued job, with
+     exactly factory-ci's labels, as one of that repository's two accounts that has no runner up:
+     an account never has two, so no job shares its UID with a listener still waiting for one.
+  4. It deletes every waiting runner of a repository the moment anything there is refused, or a
+     cycle cannot read GitHub whole (a list it could not page through to the end, an error); it
+     deletes one left idle, stops a guest runner GitHub no longer knows, and has the guest reap
+     finished ones. The guest refuses a job a runner got more than 15 minutes after it started,
+     so a waiting runner outlives a dead dispatcher by no more than that.
 
 The two job slots in the guest still bound how many jobs run at once; a one-job runner adds no
 capacity. `judge` is pure and is what the tests hold; everything else is I/O around it.
@@ -35,12 +39,15 @@ Standard library only.
 """
 import json
 import os
+import re
 import secrets
+import shlex
 import statistics
 import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
@@ -50,7 +57,7 @@ VM = os.environ.get("FACTORY_CI_VM", "factory-ci-1")
 LABELS = ("self-hosted", "linux", "x64", "factory-ci")
 POLL = float(os.environ.get("FACTORY_CI_DISPATCH_POLL", "10"))
 JIT_MAX = int(os.environ.get("FACTORY_CI_JIT_MAX", "4"))
-IDLE_MAX = 300
+IDLE_MAX = 60
 STARTING = 120
 PENDING_GRACE = 120
 API = "https://api.github.com"
@@ -126,6 +133,15 @@ def branch_of(run):
 
 # ---------------------------------------------------------------------------------------- I/O --
 
+NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,23}")
+REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
+LANES = (("a", "fci-"), ("b", "fcj-"))
+
+
+class Incomplete(Exception):
+    """GitHub's answer could not be read whole: nothing is started on a partial view."""
+
+
 def log(message):
     print(f"{datetime.now(timezone.utc):%Y-%m-%dT%H:%M:%SZ} {message}", flush=True)
 
@@ -136,6 +152,7 @@ class GitHub:
     def __init__(self):
         self.token = self._token()
         self.etags = {}
+        self.link = ""
 
     @staticmethod
     def _token():
@@ -156,11 +173,13 @@ class GitHub:
                 with urllib.request.urlopen(request, timeout=30) as response:
                     data = response.read()
                     value = json.loads(data) if data else None
+                    self.link = response.headers.get("Link") or ""
                     if cache and response.headers.get("ETag"):
-                        self.etags[url] = (response.headers["ETag"], value)
+                        self.etags[url] = (response.headers["ETag"], value, self.link)
                     return value
             except urllib.error.HTTPError as error:
                 if error.code == 304 and cache:
+                    self.link = self.etags[url][2]
                     return self.etags[url][1]
                 if error.code == 401 and attempt == 1:
                     self.token = self._token()
@@ -170,28 +189,64 @@ class GitHub:
     def get(self, path, cache=False):
         return self.call("GET", path, cache=cache)
 
+    def every(self, path, key, cache=True, pages=10):
+        """Every item of a paginated list, or Incomplete: a list GitHub cut is not a list."""
+        items, separator = [], "&" if "?" in path else "?"
+        for page in range(1, pages + 1):
+            chunk = self.get(f"{path}{separator}per_page=100&page={page}", cache=cache)
+            batch = chunk.get(key, []) if isinstance(chunk, dict) else chunk
+            items.extend(batch)
+            if len(batch) < 100:
+                return items
+        raise Incomplete(f"{path} has more than {pages * 100} {key}")
+
+    def next_link(self):
+        found = re.search(r'<([^>]+)>;\s*rel="next"', self.link or "")
+        return found.group(1) if found else None
+
 
 class Guest:
-    """The guest's half, `dispatch-guest`, through the kit's own `factory-ci ssh`."""
+    """The guest's half, `dispatch-guest`, through the kit's own `factory-ci ssh`. Every argument is
+    checked here and quoted: the remote side is a shell running as the guest's admin."""
 
     @staticmethod
     def call(*args, stdin=None):
-        command = "sudo /opt/factory-ci/bin/dispatch-guest " + " ".join(args)
+        for arg in args:
+            if not re.fullmatch(r"[A-Za-z0-9._/-]+", arg):
+                raise ValueError(f"refusing to send {arg!r} to the guest")
+        command = "sudo /opt/factory-ci/bin/dispatch-guest " + " ".join(shlex.quote(a) for a in args)
         result = subprocess.run([FACTORY_CI, "ssh", command], input=stdin, capture_output=True, text=True, timeout=120)
         if result.returncode != 0:
             raise RuntimeError(f"guest {args[0]}: {result.stderr.strip() or result.stdout.strip()}")
         return result.stdout
 
     def inventory(self):
-        """{"dispatch": {account: repo}, "persistent": {account: url}, "jit": {runner id: (account, state)}}"""
-        found = {"dispatch": {}, "persistent": {}, "jit": {}}
-        for line in self.call("inventory").splitlines():
-            parts = line.split()
-            if len(parts) == 3 and parts[0] in ("dispatch", "persistent"):
-                found[parts[0]][parts[1]] = parts[2]
-            elif len(parts) == 4 and parts[0] == "jit":
-                found["jit"][int(parts[1])] = (parts[2], parts[3])
-        return found
+        return parse_inventory(self.call("inventory"))
+
+
+def parse_inventory(text):
+    """{"dispatch": {name: repo}, "persistent": {account: url}, "jit": {runner id: (account, state)}}.
+
+    One JSON object per line; a line that is not one, or whose fields do not have their shape, is
+    dropped. A persistent runner's URL comes from a file its account can write, so it is data here
+    and never a name the dispatcher acts on."""
+    found = {"dispatch": {}, "persistent": {}, "jit": {}}
+    for line in text.splitlines():
+        try:
+            item = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(item, dict):
+            continue
+        kind = item.get("kind")
+        if kind == "dispatch" and NAME.fullmatch(str(item.get("name"))) and REPOSITORY.fullmatch(str(item.get("repo"))):
+            found["dispatch"][item["name"]] = item["repo"]
+        elif kind == "persistent" and re.fullmatch(r"fci-[a-z0-9][a-z0-9-]{0,23}", str(item.get("account"))):
+            found["persistent"][item["account"]] = str(item.get("url"))
+        elif kind == "jit" and re.fullmatch(r"[0-9]{1,19}", str(item.get("id"))) \
+                and re.fullmatch(r"fc[ij]-[a-z0-9][a-z0-9-]{0,23}", str(item.get("account"))):
+            found["jit"][int(item["id"])] = (item["account"], str(item.get("state")))
+    return found
 
 
 class Dispatcher:
@@ -199,7 +254,8 @@ class Dispatcher:
         self.github = github or GitHub()
         self.guest = guest or Guest()
         self.verdicts = {}      # (repository, run id, attempt) -> (verdict, why, first seen)
-        self.cancelled = set()  # run ids asked to cancel
+        self.cancels = {}       # (repository, run id, attempt) -> cancel requests made
+        self.admitted = {}      # name -> the run-attempts last written into the guest
         self.spawned = {}       # runner id -> (repository, account, monotonic time started)
         self.seen = set()       # runner ids this program started that GitHub has listed
         self.idle_since = {}    # runner id -> monotonic time first seen online and idle
@@ -216,18 +272,27 @@ class Dispatcher:
     def candidates(self, repository):
         """[(run, job)] for every unfinished job in `repository` a factory-ci runner could take."""
         runs = {}
-        for status in ("queued", "in_progress", "waiting"):
-            page = self.github.get(f"/repos/{repository}/actions/runs?status={status}&per_page=50", cache=True)
-            for run in page.get("workflow_runs", []):
+        for status in ("queued", "in_progress", "waiting", "pending", "requested"):
+            for run in self.github.every(f"/repos/{repository}/actions/runs?status={status}", "workflow_runs"):
                 runs[run["id"]] = run
         found = []
         for run in runs.values():
-            jobs = self.github.get(f"/repos/{repository}/actions/runs/{run['id']}/attempts/{run['run_attempt']}/jobs?per_page=100",
-                                   cache=True)
-            for job in jobs.get("jobs", []):
+            for job in self.github.every(f"/repos/{repository}/actions/runs/{run['id']}/attempts/{run['run_attempt']}/jobs", "jobs"):
                 if job.get("status") not in ("completed", "in_progress") and ours(job.get("labels")):
                     found.append((run, job))
         return found
+
+    def activity(self, repository, branch, sha):
+        """The branch's activity, newest first, far enough back to find `sha` (three pages at most)."""
+        ref = urllib.parse.quote(f"refs/heads/{branch}", safe="")
+        path, items = f"/repos/{repository}/activity?ref={ref}&per_page=100", []
+        for _ in range(3):
+            chunk = self.github.get(path)
+            items.extend(chunk)
+            path = self.github.next_link()
+            if not path or any(item.get("after") == sha for item in chunk):
+                break
+        return items
 
     def verdict(self, repository, run):
         key = (repository, run["id"], run["run_attempt"])
@@ -236,13 +301,8 @@ class Dispatcher:
             return held[0], held[1]
         activity = None
         branch = branch_of(run)
-        if branch and (run.get("head_repository") or {}).get("full_name", "").casefold() == repository.casefold():
-            activity = []
-            for page in (1, 2, 3):
-                chunk = self.github.get(f"/repos/{repository}/activity?ref=refs/heads/{branch}&per_page=100&page={page}")
-                activity.extend(chunk)
-                if len(chunk) < 100 or any(item.get("after") == run.get("head_sha") for item in chunk):
-                    break
+        if branch and ((run.get("head_repository") or {}).get("full_name") or "").casefold() == repository.casefold():
+            activity = self.activity(repository, branch, run.get("head_sha"))
         verdict, why = judge(repository, run, activity)
         first = held[2] if held else time.monotonic()
         if verdict == "pending" and time.monotonic() - first > PENDING_GRACE:
@@ -252,12 +312,31 @@ class Dispatcher:
         self.verdicts[key] = (verdict, why, first)
         return verdict, why
 
-    def serve(self, account, repository, live):
+    def cancel(self, repository, run):
+        """Ask until GitHub has finished the run; past three asks, force it."""
+        key = (repository, run["id"], run["run_attempt"])
+        asked = self.cancels.get(key, 0)
+        how = "force-cancel" if asked >= 3 else "cancel"
+        self.cancels[key] = asked + 1
+        try:
+            self.github.call("POST", f"/repos/{repository}/actions/runs/{run['id']}/{how}")
+            if asked == 0 or how == "force-cancel":
+                log(f"{repository} run {run['id']} attempt {run['run_attempt']}: {how} asked; it wanted factory-ci and was not admitted")
+        except urllib.error.HTTPError as error:
+            if error.code != 409:  # 409: already finishing
+                log(f"{repository} run {run['id']}: {how} failed: HTTP {error.code}")
+
+    def lanes(self, name):
+        return [(lane, prefix + name) for lane, prefix in LANES]
+
+    def serve(self, name, repository, live):
         """Judge every job in `repository` a factory-ci runner could take, and start runners for the
         admitted queued ones; returns how many runners it started."""
-        runners = self.github.get(f"/repos/{repository}/actions/runners?per_page=100", cache=True).get("runners", [])
-        foreign = [r["name"] for r in runners if not r["name"].startswith(f"{VM}-jit-")]
+        runners = self.github.every(f"/repos/{repository}/actions/runners", "runners")
+        mine = {r["id"]: r for r in runners if r["name"].startswith(f"{VM}-jit-")}
+        foreign = [r["name"] for r in runners if r["id"] not in mine]
         if foreign:
+            self.retire_waiting(repository, mine, "a runner registered outside dispatch")
             log(f"{repository}: NOT SERVED: runner(s) {', '.join(foreign)} registered outside dispatch; "
                 f"a public repository has none (factory-ci audit)")
             return 0
@@ -269,21 +348,19 @@ class Dispatcher:
                 demand += job.get("status") == "queued"
                 continue
             blocked = True
-            if verdict == "refuse" and run["id"] not in self.cancelled:
-                self.cancelled.add(run["id"])
-                try:
-                    self.github.call("POST", f"/repos/{repository}/actions/runs/{run['id']}/cancel")
-                    log(f"{repository} run {run['id']}: cancelled; it asked for factory-ci and was not admitted")
-                except urllib.error.HTTPError as error:
-                    log(f"{repository} run {run['id']}: cancel failed: HTTP {error.code}")
+            if verdict == "refuse":
+                self.cancel(repository, run)
+        # Written whenever the set changes, so a runner already waiting can take a new admitted job.
+        if admitted and admitted != self.admitted.get(name):
+            self.guest.call("admit", name, *sorted(admitted))
+        self.admitted[name] = admitted
         now = time.monotonic()
-        mine = {r["id"]: r for r in runners if r["name"].startswith(f"{VM}-jit-")}
-        running = {runner_id for runner_id, (owner, state) in self.inventory["jit"].items()
-                   if owner == account and state == "active"}
+        accounts = dict((account, lane) for lane, account in self.lanes(name))
+        up = {runner_id for runner_id, (account, state) in self.inventory["jit"].items()
+              if account in accounts and state == "active"}
+        up |= {runner_id for runner_id, (repo, _, started) in self.spawned.items()
+               if repo == repository and runner_id not in self.seen and now - started < STARTING}
         self.seen |= set(mine) & set(self.spawned)
-        # A runner can take a job if it is idle, or still connecting with its guest unit up. One this
-        # program started that GitHub has not listed yet counts until it is seen or STARTING passes;
-        # once seen and gone, it ran its one job.
         supply = 0
         for runner_id, runner in mine.items():
             if runner.get("busy"):
@@ -291,39 +368,49 @@ class Dispatcher:
             elif runner.get("status") == "online":
                 supply += 1
                 self.idle_since.setdefault(runner_id, now)
-            elif runner_id in running:
+            elif runner_id in up:
                 supply += 1
         supply += sum(1 for runner_id, (repo, _, started) in self.spawned.items()
                       if repo == repository and runner_id not in mine and runner_id not in self.seen
                       and now - started < STARTING)
-        for runner_id in [r for r in self.idle_since if r in mine and demand == 0 and now - self.idle_since[r] > IDLE_MAX]:
-            self.retire(repository, runner_id, f"idle for {IDLE_MAX}s with nothing admitted to run")
         if blocked:
+            self.retire_waiting(repository, mine, "a job that was not admitted is unfinished")
             if demand:
                 log(f"{repository}: {demand} admitted job(s) wait: no runner starts while a job that was not admitted is unfinished")
             return 0
-        wanted = min(demand - supply, JIT_MAX - live)
-        if wanted <= 0:
-            return 0
-        # Every admitted run with a queued job is written before any runner starts: GitHub hands a
-        # runner whichever matching job it likes, and the guest refuses a run not written here.
-        self.guest.call("admit", account.removeprefix("fci-"), *sorted(admitted))
-        for _ in range(wanted):
-            self.spawn(account, repository)
-        return wanted
+        for runner_id in [r for r in self.idle_since if r in mine and demand <= supply - 1 and now - self.idle_since[r] > IDLE_MAX]:
+            self.retire(repository, runner_id, f"idle for {IDLE_MAX}s with nothing admitted for it")
+            supply -= 1
+        busy_accounts = {self.spawned.get(r, (None, None))[1] for r in up} | {
+            account for runner_id, (account, state) in self.inventory["jit"].items() if state == "active"}
+        free = [(lane, account) for lane, account in self.lanes(name) if account not in busy_accounts]
+        wanted = free[:max(0, min(demand - supply, JIT_MAX - live))]
+        if wanted:  # again, so an admission lost with a guest reboot is back before a runner starts
+            self.guest.call("admit", name, *sorted(admitted))
+        started = 0
+        for lane, account in wanted:
+            self.spawn(name, lane, account, repository)
+            started += 1
+        return started
 
-    def spawn(self, account, repository):
-        name = f"{VM}-jit-{secrets.token_hex(4)}"
+    def spawn(self, name, lane, account, repository):
+        runner_name = f"{VM}-jit-{secrets.token_hex(4)}"
         created = self.github.call("POST", f"/repos/{repository}/actions/runners/generate-jitconfig",
-                                   {"name": name, "runner_group_id": 1, "labels": list(LABELS), "work_folder": "_work"})
+                                   {"name": runner_name, "runner_group_id": 1, "labels": list(LABELS), "work_folder": "_work"})
         runner_id = created["runner"]["id"]
         try:
-            self.guest.call("start", account.removeprefix("fci-"), str(runner_id), stdin=created["encoded_jit_config"] + "\n")
+            self.guest.call("start", name, lane, str(runner_id), stdin=created["encoded_jit_config"] + "\n")
         except Exception:
             self.github.call("DELETE", f"/repos/{repository}/actions/runners/{runner_id}")
             raise
         self.spawned[runner_id] = (repository, account, time.monotonic())
-        log(f"{repository}: started one-job runner {name} (id {runner_id}) as {account}")
+        log(f"{repository}: started one-job runner {runner_name} (id {runner_id}) as {account}")
+
+    def retire_waiting(self, repository, mine, why):
+        """Every runner of `repository` not running a job goes: none waits beside a refused job."""
+        for runner_id, runner in mine.items():
+            if not runner.get("busy"):
+                self.retire(repository, runner_id, why)
 
     def retire(self, repository, runner_id, why):
         try:
@@ -341,15 +428,15 @@ class Dispatcher:
         """A guest runner GitHub no longer knows is stopped; a finished one is reaped."""
         now = time.monotonic()
         known = set()
-        for account, repository in self.inventory["dispatch"].items():
-            runners = self.github.get(f"/repos/{repository}/actions/runners?per_page=100", cache=True).get("runners", [])
+        for name, repository in self.inventory["dispatch"].items():
+            runners = self.github.every(f"/repos/{repository}/actions/runners", "runners")
             known |= {r["id"] for r in runners}
             for r in runners:
                 if r["name"].startswith(f"{VM}-jit-") and r["id"] not in self.inventory["jit"] \
-                        and now - self.spawned.get(r["id"], (0, 0, 0))[2] > STARTING and r.get("status") != "online":
+                        and now - self.spawned.get(r["id"], ("", "", 0.0))[2] > STARTING and r.get("status") != "online":
                     self.retire(repository, r["id"], "no guest runner")
         for runner_id, (account, state) in self.inventory["jit"].items():
-            if state == "active" and runner_id not in known and now - self.spawned.get(runner_id, (0, 0, 0))[2] > STARTING:
+            if state == "active" and runner_id not in known and now - self.spawned.get(runner_id, ("", "", 0.0))[2] > STARTING:
                 self.guest.call("stop", str(runner_id))
                 log(f"{account}: stopped guest runner {runner_id}, which GitHub no longer knows")
         if any(state != "active" for _, state in self.inventory["jit"].values()):
@@ -361,11 +448,17 @@ class Dispatcher:
     def cycle(self):
         self.refresh()
         live = sum(1 for _, state in self.inventory["jit"].values() if state == "active")
-        for account, repository in sorted(self.inventory["dispatch"].items()):
+        for name, repository in sorted(self.inventory["dispatch"].items()):
             try:
-                live += self.serve(account, repository, live)
-            except (urllib.error.URLError, RuntimeError, KeyError, ValueError) as error:
-                log(f"{repository}: this cycle failed: {error}")
+                live += self.serve(name, repository, live)
+            except (urllib.error.URLError, RuntimeError, KeyError, ValueError, Incomplete) as error:
+                log(f"{repository}: this cycle failed, so its waiting runners go: {error}")
+                try:
+                    runners = self.github.every(f"/repos/{repository}/actions/runners", "runners")
+                    self.retire_waiting(repository, {r["id"]: r for r in runners if r["name"].startswith(f"{VM}-jit-")},
+                                        "the cycle could not judge everything")
+                except Exception as again:  # the guest's lease is the backstop
+                    log(f"{repository}: could not retire waiting runners: {again}")
         self.reconcile()
 
 
@@ -396,7 +489,7 @@ def audit(github=None, guest=None):
             findings.append(f"{repository}: a standing runner registration ({account}) on a repository that is not private")
         else:
             notes.append(f"{repository}: private, standing runner ({account})")
-    for account, repository in sorted(inventory["dispatch"].items()):
+    for name, repository in sorted(inventory["dispatch"].items()):
         policy = github.get(f"/repos/{repository}/actions/permissions/fork-pr-contributor-approval").get("approval_policy")
         if policy != "all_external_contributors":
             findings.append(f"{repository}: fork pull requests from outside contributors run without approval ({policy})")
@@ -408,7 +501,7 @@ def audit(github=None, guest=None):
             value = trusted
         if sorted(str(v).casefold() for v in (value if isinstance(value, list) else [value])) != sorted(LABELS):
             findings.append(f"{repository}: FACTORY_RUNS_ON_TRUSTED is {trusted}, not factory-ci's labels")
-        notes.append(f"{repository}: dispatch ({account}), FACTORY_RUNS_ON_TRUSTED {'set' if trusted else 'unset'}, fork approval {policy}")
+        notes.append(f"{repository}: dispatch (fci-{name}, fcj-{name}), FACTORY_RUNS_ON_TRUSTED {'set' if trusted else 'unset'}, fork approval {policy}")
     for repository in sorted(public):
         runners = github.get(f"/repos/{repository}/actions/runners?per_page=100").get("runners", [])
         standing = [r["name"] for r in runners if not r["name"].startswith(f"{VM}-jit-")]

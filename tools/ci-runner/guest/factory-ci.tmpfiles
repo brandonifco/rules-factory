@@ -8,3 +8,4 @@ f /run/factory-ci/slot-4.lock 0644 root root -
 # The dispatcher's admissions (decision 0080): root's alone, so a runner account can read whether
 # its run was admitted and cannot admit one.
 d /run/factory-ci-trust 0755 root root -
+d /run/factory-ci-trust/runners 0755 root root -

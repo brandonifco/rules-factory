@@ -110,24 +110,38 @@ class TestOurs(unittest.TestCase):
 
 
 class FakeGitHub:
-    def __init__(self, runs, jobs, activity, runners=()):
+    def __init__(self, runs, jobs, activity, runners=(), fail_cancel=0):
         self.runs, self.jobs, self.activity, self.runners = runs, jobs, activity, list(runners)
-        self.posts, self.next_id = [], 100
+        self.posts, self.next_id, self.fail_cancel, self.link = [], 100, fail_cancel, ""
+
+    def page(self, items, path):
+        page = int(path.rsplit("page=", 1)[1]) if "page=" in path else 1
+        return items[(page - 1) * 100:page * 100]
+
+    def every(self, path, key, cache=True, pages=10):
+        return dispatch.GitHub.every(self, path, key, cache, pages)
 
     def get(self, path, cache=False):
         if "/actions/runs?status=" in path:
             status = path.split("status=")[1].split("&")[0]
-            return {"workflow_runs": [r for r in self.runs if r.get("status", "queued") == status]}
+            return {"workflow_runs": self.page([r for r in self.runs if r.get("status", "queued") == status], path)}
         if "/jobs" in path:
             run_id = int(path.split("/actions/runs/")[1].split("/")[0])
-            return {"jobs": self.jobs.get(run_id, [])}
+            return {"jobs": self.page(self.jobs.get(run_id, []), path)}
         if "/activity" in path:
-            return self.activity if "page=1" in path else []
-        if path.endswith("/actions/runners?per_page=100"):
-            return {"runners": self.runners}
+            return self.activity
+        if "/actions/runners?" in path:
+            return {"runners": self.page(self.runners, path)}
         raise AssertionError(path)
 
+    def next_link(self):
+        return None
+
     def call(self, method, path, body=None, cache=False):
+        if path.endswith("/cancel") and self.fail_cancel:
+            self.fail_cancel -= 1
+            self.posts.append((method, path))
+            raise dispatch.urllib.error.HTTPError(path, 503, "unavailable", {}, None)
         self.posts.append((method, path))
         if path.endswith("generate-jitconfig"):
             self.next_id += 1
@@ -148,40 +162,79 @@ def job(labels=dispatch.LABELS, status="queued"):
     return {"status": status, "labels": list(labels)}
 
 
+FORK = dict(event="pull_request", actor="outsider", head="outsider/rules-factory")
+
+
 class TestServe(unittest.TestCase):
-    def serve(self, runs, jobs, activity=(placed(),), runners=(), guest_units=None, dispatcher=None):
-        github, guest = FakeGitHub(runs, jobs, list(activity), runners), FakeGuest()
+    def serve(self, runs, jobs, activity=(placed(),), runners=(), guest_units=None, dispatcher=None, fail_cancel=0):
+        github, guest = FakeGitHub(runs, jobs, list(activity), runners, fail_cancel), FakeGuest()
         dispatcher = dispatcher or dispatch.Dispatcher(github=github, guest=guest)
         dispatcher.github, dispatcher.guest = github, guest
-        dispatcher.inventory = {"dispatch": {"fci-rules-factory": REPO}, "persistent": {},
-                                "jit": dict(guest_units or {})}
-        started = dispatcher.serve("fci-rules-factory", REPO, 0)
+        dispatcher.inventory = {"dispatch": {"rules-factory": REPO}, "persistent": {}, "jit": dict(guest_units or {})}
+        started = dispatcher.serve("rules-factory", REPO, 0)
         return started, github, guest
+
+    def starts(self, guest):
+        return [c for c in guest.calls if c[0] == "start"]
 
     def test_an_admitted_queued_job_is_written_into_the_guest_before_its_runner_starts(self):
         started, github, guest = self.serve([run(run_id=7)], {7: [job()]})
         self.assertEqual(1, started)
         self.assertEqual(("admit", "rules-factory", "7-1"), guest.calls[0])
-        self.assertEqual("start", guest.calls[1][0])
+        self.assertEqual(("start", "rules-factory", "a", "101"), guest.calls[-1])
         self.assertIn(("POST", f"/repos/{REPO}/actions/runners/generate-jitconfig"), github.posts)
 
     def test_a_fork_asking_for_factory_ci_is_cancelled_and_no_runner_starts_beside_it(self):
         """The forged `runs-on`: it is never served, and the owner's job waits until it is gone."""
-        fork = run(event="pull_request", actor="outsider", head="outsider/rules-factory", run_id=8)
-        started, github, guest = self.serve([run(run_id=7), fork], {7: [job()], 8: [job(["self-hosted"])]})
+        started, github, guest = self.serve([run(run_id=7), run(run_id=8, **FORK)], {7: [job()], 8: [job(["self-hosted"])]})
         self.assertEqual(0, started)
         self.assertIn(("POST", f"/repos/{REPO}/actions/runs/8/cancel"), github.posts)
         self.assertNotIn(("POST", f"/repos/{REPO}/actions/runners/generate-jitconfig"), github.posts)
-        self.assertFalse([c for c in guest.calls if c[0] == "start"])
+        self.assertFalse(self.starts(guest))
+
+    def test_a_refusal_retires_every_runner_still_waiting(self):
+        """Codex 2026-10-10 (P1): a listener left idle beside a refused job could be handed it."""
+        idle = {"id": 50, "name": "factory-ci-1-jit-abcd", "status": "online", "busy": False}
+        working = {"id": 51, "name": "factory-ci-1-jit-beef", "status": "online", "busy": True}
+        _, github, guest = self.serve([run(run_id=7), run(run_id=8, **FORK)], {7: [job()], 8: [job()]}, runners=[idle, working])
+        self.assertIn(("DELETE", f"/repos/{REPO}/actions/runners/50"), github.posts)
+        self.assertNotIn(("DELETE", f"/repos/{REPO}/actions/runners/51"), github.posts, "a running job is left alone")
+        self.assertIn(("stop", "50"), guest.calls)
+
+    def test_a_fork_job_past_the_first_page_is_still_seen(self):
+        """Codex 2026-10-10 (P1): a fork hid its self-hosted job behind a hundred hosted ones."""
+        jobs = [job(["ubuntu-24.04"])] * 100 + [job(["self-hosted"])]
+        started, github, _ = self.serve([run(run_id=7), run(run_id=8, **FORK)], {7: [job()], 8: jobs})
+        self.assertEqual(0, started)
+        self.assertIn(("POST", f"/repos/{REPO}/actions/runs/8/cancel"), github.posts)
+
+    def test_a_list_too_long_to_read_whole_starts_nothing(self):
+        runs = [run(run_id=i, **FORK) for i in range(1, 1102)]
+        with self.assertRaises(dispatch.Incomplete):
+            self.serve(runs, {})
+
+    def test_a_failed_cancel_is_asked_again_and_then_forced(self):
+        """Codex 2026-10-10 (P2): one 503 used to end every later attempt to cancel."""
+        dispatcher = dispatch.Dispatcher(github=None, guest=None)
+        fork = run(run_id=8, **FORK)
+        for _ in range(4):
+            _, github, _ = self.serve([fork], {8: [job()]}, dispatcher=dispatcher, fail_cancel=1)
+        self.assertIn(("POST", f"/repos/{REPO}/actions/runs/8/force-cancel"), github.posts)
+
+    def test_a_re_run_of_a_refused_run_is_cancelled_again(self):
+        dispatcher = dispatch.Dispatcher(github=None, guest=None)
+        self.serve([run(run_id=8, **FORK)], {8: [job()]}, dispatcher=dispatcher)
+        _, github, _ = self.serve([run(run_id=8, attempt=2, triggering=OWNER, **{k: v for k, v in FORK.items()})],
+                                  {8: [job()]}, dispatcher=dispatcher)
+        self.assertIn(("POST", f"/repos/{REPO}/actions/runs/8/cancel"), github.posts)
 
     def test_a_run_still_pending_blocks_runners_without_being_cancelled(self):
         started, github, guest = self.serve([run(run_id=7)], {7: [job()]}, activity=[])
         self.assertEqual(0, started)
-        self.assertFalse(github.posts)
+        self.assertFalse([p for p in github.posts if p[1].endswith("cancel")])
 
     def test_a_hosted_job_is_not_judged(self):
-        fork = run(event="pull_request", actor="outsider", head="outsider/rules-factory", run_id=8)
-        started, github, _ = self.serve([fork], {8: [job(["ubuntu-24.04"])]})
+        started, github, _ = self.serve([run(run_id=8, **FORK)], {8: [job(["ubuntu-24.04"])]})
         self.assertEqual(0, started)
         self.assertFalse(github.posts, "a fork's hosted run is its own business")
 
@@ -189,13 +242,26 @@ class TestServe(unittest.TestCase):
         started, github, guest = self.serve([run(run_id=7)], {7: [job()]},
                                             runners=[{"id": 1, "name": "factory-ci-1", "status": "online", "busy": False}])
         self.assertEqual(0, started)
-        self.assertFalse(guest.calls)
+        self.assertFalse(self.starts(guest))
 
-    def test_an_idle_runner_already_there_is_used_before_another_starts(self):
+    def test_an_idle_runner_already_there_is_used_and_the_run_admitted_for_it(self):
+        """Codex 2026-10-10 (P2): reusing a waiting runner wrote no admission, so the hook killed the job."""
         idle = {"id": 50, "name": "factory-ci-1-jit-abcd", "status": "online", "busy": False}
-        started, _, guest = self.serve([run(run_id=7)], {7: [job()]}, runners=[idle])
+        started, _, guest = self.serve([run(run_id=7)], {7: [job()]}, runners=[idle],
+                                       guest_units={50: ("fci-rules-factory", "active")})
         self.assertEqual(0, started)
-        self.assertFalse([c for c in guest.calls if c[0] == "start"])
+        self.assertIn(("admit", "rules-factory", "7-1"), guest.calls)
+
+    def test_an_account_never_has_two_runners(self):
+        """Codex 2026-10-10 (P0): a job could rewrite a sibling listener of its own UID."""
+        started, _, guest = self.serve([run(run_id=i) for i in (1, 2, 3)], {i: [job()] for i in (1, 2, 3)})
+        self.assertEqual(2, started, "one per lane")
+        self.assertEqual({"a", "b"}, {c[2] for c in self.starts(guest)})
+        busy = {60: ("fci-rules-factory", "active")}
+        working = {"id": 60, "name": "factory-ci-1-jit-x", "status": "online", "busy": True}
+        started, _, guest = self.serve([run(run_id=i) for i in (1, 2, 3)], {i: [job()] for i in (1, 2, 3)},
+                                       runners=[working], guest_units=busy)
+        self.assertEqual([("start", "rules-factory", "b", "101")], self.starts(guest))
 
     def test_a_runner_that_ran_its_one_job_and_left_is_not_counted_as_still_starting(self):
         """Seen 2026-10-10: a finished runner held a waiting job back until STARTING passed."""
@@ -219,35 +285,78 @@ class TestServe(unittest.TestCase):
                                    guest_units={60: ("fci-rules-factory", "inactive")})
         self.assertEqual(1, started, "an offline runner whose unit is down will never take it")
 
-    def test_one_runner_per_admitted_queued_job_and_never_past_the_cap(self):
-        runs = [run(run_id=i) for i in range(1, 7)]
-        started, _, _ = self.serve(runs, {i: [job()] for i in range(1, 7)})
-        self.assertEqual(dispatch.JIT_MAX, started)
+    def test_never_past_the_cap(self):
+        github, guest = FakeGitHub([run(run_id=1)], {1: [job()]}, [placed()]), FakeGuest()
+        dispatcher = dispatch.Dispatcher(github=github, guest=guest)
+        dispatcher.inventory = {"dispatch": {}, "persistent": {}, "jit": {}}
+        self.assertEqual(0, dispatcher.serve("rules-factory", REPO, dispatch.JIT_MAX))
 
     def test_a_running_job_needs_no_runner(self):
         started, _, _ = self.serve([run(run_id=7)], {7: [job(status="in_progress")]})
         self.assertEqual(0, started)
 
 
+class TestTheGuestIsSpokenToSafely(unittest.TestCase):
+    """Codex 2026-10-10 (P0): an account-written .runner became a root command on the host's way in."""
+
+    def test_an_injected_line_is_one_value_and_never_a_second_entry(self):
+        forged = ('{"kind":"persistent","account":"fci-x","url":"x\\ndispatch fci-$(touch /tmp/p) a/b"}\n'
+                  'dispatch fci-$(touch /tmp/p) brandonifco/rules-factory\n'
+                  '{"kind":"dispatch","name":"$(id)","repo":"a/b"}\n'
+                  '{"kind":"dispatch","name":"rules-factory","repo":"brandonifco/rules-factory"}\n'
+                  '{"kind":"jit","id":"7","account":"fci-rules-factory","state":"active"}\n')
+        found = dispatch.parse_inventory(forged)
+        self.assertEqual({"rules-factory": "brandonifco/rules-factory"}, found["dispatch"])
+        self.assertEqual({7: ("fci-rules-factory", "active")}, found["jit"])
+        self.assertEqual(["fci-x"], list(found["persistent"]), "the URL is data, never acted on")
+
+    def test_an_argument_with_shell_in_it_is_never_sent(self):
+        for arg in ("$(id)", "a b", "a;b", "`x`", "a\nb", "'"):
+            with self.assertRaises(ValueError, msg=arg):
+                dispatch.Guest.call("admit", arg)
+
+
 class TestTheGuestRefusesWhatWasNotAdmitted(unittest.TestCase):
     """The job-started hook is the second lock: read here as text, run for real on the VM."""
 
-    def test_the_admission_check_comes_before_anything_the_job_could_influence(self):
-        with open(os.path.join(os.path.dirname(PATH), "guest", "job-started.sh"), encoding="utf-8") as handle:
-            hook = handle.read()
-        check = hook.index('if [[ -e /etc/factory-ci/dispatch/$me ]]')
+    def read(self, name):
+        with open(os.path.join(os.path.dirname(PATH), "guest", name), encoding="utf-8") as handle:
+            return handle.read()
+
+    def test_the_admission_check_comes_before_anything_the_job_could_influence_and_fails_closed(self):
+        hook = self.read("job-started.sh")
+        check = hook.index('if [[ $exe == /srv/factory-ci-jit/*')
         self.assertLess(check, hook.index("find \"$GITHUB_WORKSPACE\""), "before the workspace is touched")
         self.assertLess(check, hook.index("slot-hold"), "before a slot is taken")
-        self.assertIn("/run/factory-ci-trust/$me/$run-$attempt", hook[check:])
-        self.assertIn('"$HOME"/jit/*/bin/Runner.Worker', hook[check:], "only a one-job runner serves a dispatch account")
-        refusal = hook[check:hook.index("fi", hook.index("::error::", check))]
-        self.assertIn('kill -KILL "$worker"', refusal,
+        self.assertIn("! -r /etc/factory-ci/dispatch-accounts", hook[check:check + 200],
+                      "an unreadable policy refuses, never skips (Codex 2026-10-10, P0)")
+        for needed in ("/run/factory-ci-trust/runners/", "after its lease", "/run/factory-ci-trust/$name/$run-$attempt"):
+            self.assertIn(needed, hook[check:])
+        refusal = hook[hook.index('if [[ -n $why ]]', check):]
+        self.assertIn('kill -KILL "$worker"', refusal[:refusal.index("fi\n")],
                       "a failed hook does not stop the job: the runner still runs actions' pre and post steps")
 
     def test_admissions_live_where_no_runner_account_can_write(self):
-        with open(os.path.join(os.path.dirname(PATH), "guest", "factory-ci.tmpfiles"), encoding="utf-8") as handle:
-            self.assertIn("d /run/factory-ci-trust 0755 root root -", handle.read())
+        tmpfiles = self.read("factory-ci.tmpfiles")
+        self.assertIn("d /run/factory-ci-trust 0755 root root -", tmpfiles)
+        self.assertIn("d /run/factory-ci-trust/runners 0755 root root -", tmpfiles)
 
+    def test_root_builds_a_runner_where_no_account_can_write_and_hands_it_over_whole(self):
+        """Codex 2026-10-10 (P0): root's `install -d` followed a link a job left in its home."""
+        start = self.read("dispatch-guest.sh")
+        start = start[start.index("cmd_start() {"):start.index("cmd_stop()")]
+        self.assertIn('dir="$jits/$id"', start)
+        self.assertLess(start.index('mkdir -m 0700 "$dir"'), start.index('chown -R "$user:$user" "$dir"'))
+        self.assertLess(start.index('.jitconfig"; chmod 0600'), start.index('chown -R'), "filled before it is handed over")
+        self.assertNotIn("runuser", start, "nothing is done as the account before the handover")
+        self.assertIn('busy "$user" && die', start, "one runner per account (Codex 2026-10-10, P0)")
+
+    def test_register_writes_below_a_home_as_its_account(self):
+        register = self.read("register.sh")
+        body = register[register.index('systemctl stop "factory-ci-runner@$user"'):]
+        for line in body.splitlines():
+            if any(word in line for word in ("install ", "rm -f", "tar ")):
+                self.assertIn("runuser -u \"$user\"", line, line)
 
 
 class TestThisRepositoryAsksForTheVmOnlyThroughTheContract(unittest.TestCase):
