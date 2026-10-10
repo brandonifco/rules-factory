@@ -16,7 +16,8 @@
 # registered with a public repository would take a fork's job. Two rules keep a job of the owner's
 # that runs a hostile dependency from reaching past its own job:
 #   * root never writes through a path a runner account can change. A one-job runner's directory is
-#     made under the root-owned /srv/factory-ci-jit, filled as root, and only then handed over;
+#     made under the root-owned /srv/factory-ci-jit (0755: the runner refuses to start unless it can
+#     list every directory above it), filled as root, and only then handed over;
 #   * an account has at most one runner at a time, so no job shares a UID with a listener that is
 #     still waiting for a job. Two accounts per repository keep its two jobs parallel.
 set -euo pipefail
@@ -50,7 +51,7 @@ cmd_trust() {
     chmod 0700 "$home"
   done
   install -d -m 0755 "$marks" "$accounts" "$trust" "$trust/runners"
-  install -d -m 0711 "$jits"
+  install -d -m 0755 "$jits"
   printf '%s\n' "$2" >"$marks/.$1.tmp"; chmod 0644 "$marks/.$1.tmp"; mv -f "$marks/.$1.tmp" "$marks/$1"
   for user in $(lanes "$1"); do printf '%s\n' "$1" >"$accounts/$user"; chmod 0644 "$accounts/$user"; done
   install -d -m 0755 "$trust/$1"
@@ -88,11 +89,12 @@ cmd_start() {
   dir="$jits/$id" unit="factory-ci-jit-$id"
   IFS= read -r config; [[ $config =~ ^[A-Za-z0-9+/=]+$ ]] || die "no JIT configuration on stdin"
   [[ -e $dir || -e $units/$unit.service ]] && die "runner $id exists already"
-  install -d -m 0711 "$jits"
+  install -d -m 0755 "$jits"
   # Made and filled as root, in a directory only root can write, then handed over whole: there is
   # no moment at which the account can put a link where root is about to write.
   mkdir -m 0700 "$dir"
   tar -xzf /opt/factory-ci/dist/actions-runner-linux-x64.tar.gz -C "$dir" --no-same-owner
+  chmod 0700 "$dir"  # the archive's own "." entry widens it
   install -m 0600 /etc/factory-ci/runner.env "$dir/.env"
   sed -n 's/^PATH=//p' /etc/factory-ci/runner.env >"$dir/.path"; chmod 0600 "$dir/.path"
   printf '%s' "$config" >"$dir/.jitconfig"; chmod 0600 "$dir/.jitconfig"

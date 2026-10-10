@@ -35,6 +35,6 @@ runuser -u "$user" -- env -i HOME="$home" PATH=/usr/bin:/bin LANG=C.UTF-8 ACTION
   --labels "$labels" --work _work --replace >/dev/null
 runuser -u "$user" -- install -m 0600 /etc/factory-ci/runner.env "$dir/.env"
 # runsvc.sh exports .path as the listener's PATH; keep it the one runner.env names.
-sed -n 's/^PATH=//p' /etc/factory-ci/runner.env | runuser -u "$user" -- install -m 0600 /dev/stdin "$dir/.path"
+sed -n 's/^PATH=//p' /etc/factory-ci/runner.env | runuser -u "$user" -- sh -c 'umask 077 && cat >"$1"' sh "$dir/.path"
 systemctl enable --now "factory-ci-runner@$user" >/dev/null
 echo "registered $(hostname) for $repo as $user (labels: self-hosted, Linux, X64, $labels)"

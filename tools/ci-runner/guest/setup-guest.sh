@@ -88,7 +88,7 @@ install -m 0700 "$here/register.sh" /opt/factory-ci/bin/register
 # drives, the one-job runner's ExecStart, and the directory that says which accounts it serves.
 install -m 0700 "$here/dispatch-guest.sh" /opt/factory-ci/bin/dispatch-guest
 install -m 0755 "$here/jit-run.sh" /opt/factory-ci/bin/jit-run
-install -d -m 0711 /srv/factory-ci-jit
+install -d -m 0755 /srv/factory-ci-jit
 install -m 0644 "$here/runner.env" /etc/factory-ci/runner.env
 # Two job slots, as measured on 2026-10-09 (docs/self-hosted-runners.md, Everyday operation).
 [[ -f /etc/factory-ci/slots ]] || echo 2 > /etc/factory-ci/slots
@@ -109,7 +109,7 @@ for d in /srv/factory-ci/fci-*/runner; do
   # As the account, not root: the directory is the account's, and root does not write through a
   # path its owner could have pointed elsewhere.
   runuser -u "$u" -- install -m 0600 /etc/factory-ci/runner.env "$d/.env"
-  sed -n 's/^PATH=//p' /etc/factory-ci/runner.env | runuser -u "$u" -- install -m 0600 /dev/stdin "$d/.path"
+  sed -n 's/^PATH=//p' /etc/factory-ci/runner.env | runuser -u "$u" -- sh -c 'umask 077 && cat >"$1"' sh "$d/.path"
 done
 for u in $(systemctl list-units --plain --no-legend 'factory-ci-runner@*' | awk '{print $1}'); do
   systemctl restart "$u"
