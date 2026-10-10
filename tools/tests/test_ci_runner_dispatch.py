@@ -368,6 +368,52 @@ class TestTheGuestRefusesWhatWasNotAdmitted(unittest.TestCase):
                 self.assertIn("runuser -u \"$user\"", line, line)
 
 
+class TestTheDispatcherSTokenFile(unittest.TestCase):
+    """#641: a boot cannot unlock the keyring `gh` keeps its token in, so the service reads a file."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.tmp))
+        self.path = os.path.join(self.tmp, "dispatch-token")
+
+    def write(self, text, mode=0o600):
+        with open(self.path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.chmod(self.path, mode)
+
+    def test_no_file_means_the_gh_login(self):
+        self.assertIsNone(dispatch.read_token_file(self.path))
+
+    def test_the_file_s_token_is_read_whole(self):
+        self.write("github_pat_abc123\n")
+        self.assertEqual("github_pat_abc123", dispatch.read_token_file(self.path))
+
+    def test_a_file_anyone_else_can_read_or_write_is_refused(self):
+        for mode in (0o640, 0o604, 0o660, 0o644):
+            self.write("github_pat_abc123", mode)
+            with self.assertRaises(PermissionError, msg=oct(mode)):
+                dispatch.read_token_file(self.path)
+
+    def test_a_link_is_refused_even_to_a_good_file(self):
+        self.write("github_pat_abc123")
+        link = os.path.join(self.tmp, "link")
+        os.symlink(self.path, link)
+        with self.assertRaises(PermissionError):
+            dispatch.read_token_file(link)
+
+    def test_an_empty_or_two_token_file_is_refused(self):
+        for text in ("", "\n", "one two"):
+            self.write(text)
+            with self.assertRaises(ValueError, msg=repr(text)):
+                dispatch.read_token_file(self.path)
+
+    def test_the_client_takes_the_file_over_gh_and_says_so(self):
+        self.write("github_pat_abc123")
+        client = dispatch.GitHub(token_file=self.path)
+        self.assertEqual(("github_pat_abc123", self.path), (client.token, client.source))
+
+
 class TestThisRepositoryAsksForTheVmOnlyThroughTheContract(unittest.TestCase):
     """rules-factory is public: a literal self-hosted label in its workflows would be the direct path."""
 

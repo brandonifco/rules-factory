@@ -150,8 +150,12 @@ tools/ci-runner/factory-ci timings brandonifco/rules-factory 20   # queue and ru
 **The dispatcher** is the user service `factory-ci-dispatch` on the host, installed by
 `factory-ci install-dispatcher` from the checkout it should run (the primary one, on `main`). It
 stops at logout unless lingering is on for the host account (`loginctl enable-linger <user>`, a
-one-time setting the owner makes). `factory-ci status` shows whether it is active and which
-one-job runners exist. A public repository's run that sits queued with nothing in `logs dispatch`
+one-time setting the owner makes). Lingering starts it at boot, but `gh` keeps its token in the
+desktop keyring, which stays locked until a graphical login: on 2026-10-10 the dispatcher failed
+eight times after a reboot until the owner logged in. So it reads its token from
+`~/.config/factory-ci/dispatch-token` when that file exists ([Credentials](#credentials)), and
+its journal's first line says which one it used (`token from ...`). `factory-ci status` shows
+whether it is active and which one-job runners exist. A public repository's run that sits queued with nothing in `logs dispatch`
 means the dispatcher is down: `systemctl --user restart factory-ci-dispatch`. A line `1 admitted
 job(s) wait` means an unadmitted job is still unfinished in that repository; it clears when that
 job is cancelled, which takes GitHub up to about a minute and a half.
@@ -302,6 +306,20 @@ and `factory-ci ssh 'sar -u -r 10'` before changing any of them.
 
 ## Credentials
 
+- **The dispatcher's token** is a fine-grained personal access token in
+  `~/.config/factory-ci/dispatch-token` on the host: one line, mode 0600, owned by the host
+  account; the dispatcher refuses a file anyone else can read, or a link. It is scoped to the
+  repositories served by dispatch and nothing else, with these repository permissions: **Actions**
+  read and write (read queued runs, cancel a refused one), **Administration** read and write
+  (create and delete one-job runners), **Contents** read (the activity log), **Metadata** read
+  (always included). It never leaves the host. `factory-ci dispatch-check` proves it can do every
+  one of those things on every served repository, the two writes without effect (a cancel of a
+  finished run, and a one-job runner created and deleted unstarted); run it after creating or
+  rotating the token, and after `trust`ing a new repository, which must be added to the token's
+  repositories first. Rotate it before it expires: create the new one, replace the file, run
+  `dispatch-check`, `systemctl --user restart factory-ci-dispatch`, then delete the old token on
+  GitHub. Without the file the dispatcher uses the owner's `gh` login, which works only after a
+  graphical login. `audit` and `timings` read every repository and always use `gh`.
 - **Registration tokens** are fetched by `factory-ci register` from the GitHub API and passed to the
   guest on stdin. They are never written to disk, an argument list, or a log, and they expire
   within an hour.
