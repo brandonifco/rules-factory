@@ -71,6 +71,26 @@ class TestTheVmHasOneFilteredNicOnThatNetwork(unittest.TestCase):
         self.assertEqual(1, verify("domain", DOMAIN.format(devices=NIC + "<hostdev mode='subsystem' type='pci'/>"))[0])
 
 
+class TestTheGateHoldsTheHostFileToTheInstalledRules(unittest.TestCase):
+    """Codex 2026-10-13 (P1): a host file's FACTORY_CI_BLOCK that the root ruleset never received."""
+
+    def gate(self, dns, block):
+        rules = os.path.join(KIT, "host", "isolation.nft")
+        with open(rules, encoding="utf-8") as handle:
+            text = handle.read().replace("@BLOCKED@", ", 131.238.0.0/16").replace("@RESOLVERS@", "1.1.1.1, 9.9.9.9")
+        result = subprocess.run([sys.executable, "-I", VERIFY, "gate", "/dev/stdin", "--dns", *dns, "--block", *block],
+                                input=text, capture_output=True, text=True)
+        return result.returncode
+
+    def test_a_host_file_the_rules_hold_passes(self):
+        self.assertEqual(0, self.gate(["1.1.1.1", "9.9.9.9"], ["131.238.0.0/16", "131.238.112.0/21"]))
+
+    def test_a_range_or_resolver_the_rules_lack_fails(self):
+        self.assertEqual(1, self.gate(["1.1.1.1"], ["4.0.0.0/8"]), "a blocked range the rules do not hold")
+        self.assertEqual(1, self.gate(["8.8.8.8"], []), "a resolver dnsmasq may not ask")
+        self.assertEqual(1, self.gate([], []), "no resolver: dnsmasq would ask the campus's")
+
+
 def namespaces_work():
     if not (shutil.which("unshare") and shutil.which("nft") and shutil.which("tcpdump")):
         return False

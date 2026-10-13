@@ -1,8 +1,9 @@
 #!/usr/sbin/nft -f
 # factory-ci host isolation (decision 0081): the host's own layer under the guest's nwfilter.
-# prepare-host.sh installs it as /etc/factory-ci/isolation.nft with its --block ranges added to the
-# set `blocked`, and the unit factory-ci-isolation loads it before libvirtd, which requires it: no
-# VM starts without it.
+# prepare-host.sh installs it as /etc/factory-ci/isolation.nft, with the host's own networks and its
+# --block ranges added to the set `blocked`, its --dns resolvers as `resolvers`, and the uid libvirt's
+# dnsmasq runs as. The unit factory-ci-isolation loads it before libvirtd, which requires it, and
+# factory-ci-isolation-watch puts it back within seconds if anything removes or changes it.
 #
 # It owns two tables, inet and bridge factory_ci, and touches nothing else: never the whole
 # ruleset, ufw's tables or libvirt's. Loading it replaces only these, atomically. Every chain only
@@ -12,7 +13,10 @@
 #     put into it by mistake never carries a guest frame, so no guest MAC reaches the physical link;
 #   * the guest reaches only TCP 80/443 and NTP on public addresses, never the blocked ranges, and
 #     the host only for DHCP and DNS on the bridge;
-#   * nothing outside opens a connection to the guest;
+#   * nothing outside opens a connection to the guest, and only replies reach it: a connection that
+#     was open before this loaded, or one to a range blocked since, gets nothing further;
+#   * the host's dnsmasq, which answers the guest's DNS, asks only the resolvers named here, never
+#     the host's own (a campus resolver answers for internal names);
 #   * a guest packet that was not translated to the host's address (libvirt's NAT missing) is
 #     dropped before it leaves, never sent with the guest's address;
 #   * no IPv6 to or from the bridge.
@@ -34,11 +38,15 @@ table inet factory_ci {
 		elements = { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12,
 		             192.0.0.0/24, 192.168.0.0/16, 198.18.0.0/15, 224.0.0.0/3 @BLOCKED@ }
 	}
+	set resolvers {
+		type ipv4_addr
+		elements = { @RESOLVERS@ }
+	}
 
 	chain input {
 		type filter hook input priority -10; policy accept;
 		iifname "virbr-fci" meta nfproto ipv6 drop
-		iifname "virbr-fci" ct state established,related accept
+		iifname "virbr-fci" ct state established ct direction reply accept
 		iifname "virbr-fci" ip saddr 192.168.150.0/24 ip daddr 192.168.150.1 udp dport { 53, 67 } accept
 		iifname "virbr-fci" ip saddr 192.168.150.0/24 ip daddr 192.168.150.1 tcp dport 53 accept
 		iifname "virbr-fci" udp sport 68 udp dport 67 accept
@@ -49,14 +57,20 @@ table inet factory_ci {
 		type filter hook forward priority -10; policy accept;
 		iifname "virbr-fci" meta nfproto ipv6 drop
 		oifname "virbr-fci" meta nfproto ipv6 drop
-		oifname "virbr-fci" ct state established,related accept
+		oifname "virbr-fci" ct state established,related ct direction reply accept
 		oifname "virbr-fci" drop
 		iifname "virbr-fci" ip saddr != 192.168.150.0/24 drop
 		iifname "virbr-fci" ip daddr @blocked drop
-		iifname "virbr-fci" ct state established,related accept
-		iifname "virbr-fci" ct state new tcp dport { 80, 443 } accept
-		iifname "virbr-fci" ct state new udp dport 123 accept
+		iifname "virbr-fci" ct direction reply drop
+		iifname "virbr-fci" tcp dport { 80, 443 } accept
+		iifname "virbr-fci" udp dport 123 accept
 		iifname "virbr-fci" drop
+	}
+
+	chain output {
+		type filter hook output priority -10; policy accept;
+		meta skuid @DNSMASQ_UID@ meta nfproto ipv6 meta l4proto { tcp, udp } th dport 53 drop
+		meta skuid @DNSMASQ_UID@ meta l4proto { tcp, udp } th dport 53 ip daddr != @resolvers drop
 	}
 
 	chain postrouting {

@@ -31,11 +31,28 @@ virsh() { command virsh -c qemu:///system "$@"; }
 guest() { ssh -i "$KEY" -o UserKnownHostsFile="$KNOWN" -o StrictHostKeyChecking=accept-new -o BatchMode=yes \
             -o ConnectTimeout=5 "ciadmin@$IP" "$@"; }
 die() { echo "factory-ci: $*" >&2; exit 1; }
-isolated() {
-  [[ $ISOLATION == required ]] || return 0
-  systemctl is-active --quiet factory-ci-isolation.service &&
-    [[ " $(systemctl show libvirtd.service -p Requires --value) " == *" factory-ci-isolation.service "* ]] ||
-    die "the host's isolation is not active, or libvirtd does not require it (sudo host/prepare-host.sh; decision 0081)"
+# Isolation is required on a host prepare-host.sh prepared and for any VM but the first, whatever
+# the host file says: a missing or partial host file must not make a workstation's VM unguarded.
+needs_isolation() {
+  [[ $ISOLATION == required || $VM != factory-ci-1 || -e /etc/systemd/system/factory-ci-isolation.service ]]
+}
+isolated() { # die unless the host's isolation is live and matches this host file
+  needs_isolation || return 0
+  local state at
+  systemctl is-active --quiet factory-ci-isolation.service ||
+    die "factory-ci-isolation is not active (sudo host/prepare-host.sh; decision 0081)"
+  [[ " $(systemctl show libvirtd.service -p Requires --value) " == *" factory-ci-isolation.service "* ]] ||
+    die "libvirtd does not require factory-ci-isolation (sudo host/prepare-host.sh)"
+  read -r state at 2>/dev/null </run/factory-ci-isolation/status || die "no isolation watch status (factory-ci-isolation-watch.timer)"
+  [[ $state =~ ^(loaded|reloaded)$ && $at =~ ^[0-9]+$ ]] && (( $(date +%s) - at < 60 )) ||
+    die "the isolation watch says ${state:-nothing} ${at:+at $(date -d "@$at" +%T)}: not live within the last minute"
+  python3 -I "$kit/host/verify.py" gate /etc/factory-ci/isolation.nft --dns $DNS --block $BLOCK >/dev/null ||
+    die "this host file's FACTORY_CI_DNS or FACTORY_CI_BLOCK is not what the installed isolation holds (verify.py gate)"
+}
+safe_network() { # die unless libvirt's network factory-ci is the NAT network this kit defines
+  needs_isolation || return 0
+  virsh net-dumpxml factory-ci | python3 -I "$kit/host/verify.py" network $DNS >/dev/null ||
+    die "network factory-ci is not the NAT network this kit defines; refusing to start it (factory-ci verify)"
 }
 name_of() { local r="${1#*/}"; r="${r,,}"; echo "${r//[^a-z0-9-]/-}"; }
 need_repo() { [[ ${1:-} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "give OWNER/REPO"; }
@@ -52,6 +69,7 @@ cmd_provision() { # create the network, filter and VM from the pinned cloud imag
     sed -e "s#factory-ci-1#$VM#g" -e "s#<dns enable='yes'/>#<dns enable='yes'>$fwd</dns>#" "$kit/host/network.xml" >"$net"
     virsh net-define "$net"; rm -f "$net"; virsh net-autostart factory-ci
   fi
+  safe_network
   virsh net-start factory-ci 2>/dev/null || true
   cmd_filter
   local work base="factory-ci-base-noble-${IMAGE_RELEASE#release-}.qcow2"
@@ -104,8 +122,9 @@ cmd_verify() { # prove this host's isolation (decision 0081): ruleset, host, lib
       ok "/etc/factory-ci/isolation.nft passes"; else no "/etc/factory-ci/isolation.nft fails: run host/test-isolation.sh"; fi
   else no "no /etc/factory-ci/isolation.nft (sudo host/prepare-host.sh)"; fi
   echo "== the host"
-  if [[ $ISOLATION == required ]]; then
-    if (isolated) 2>/dev/null; then ok "factory-ci-isolation is active and libvirtd requires it"; else no "factory-ci-isolation is not active, or libvirtd does not require it"; fi
+  if needs_isolation; then
+    local why; if why="$( (isolated) 2>&1)"; then ok "isolation live: unit active, libvirtd requires it, watch $(cut -d' ' -f1 /run/factory-ci-isolation/status), host file matches the installed rules"
+    else no "isolation: ${why#factory-ci: }"; fi
   fi
   for port in /sys/class/net/*/brif/*; do
     [[ -e $port && -e /sys/class/net/${port##*/}/device ]] && no "a bridge holds the physical port ${port##*/}"
@@ -248,7 +267,9 @@ cmd_runner() { # start|stop|restart [OWNER/REPO]: the runner service(s) in the g
 cmd_ssh() { # [COMMAND]: the guest's admin shell
   guest "$@"; }
 cmd_start() { # start the VM (it also starts with the host: autostart)
-  isolated; virsh start "$VM"; }
+  isolated; safe_network; virsh dumpxml "$VM" | python3 -I "$kit/host/verify.py" domain >/dev/null ||
+    { needs_isolation && die "$VM is not the VM this kit defines (factory-ci verify)"; }
+  virsh start "$VM"; }
 cmd_stop() { # shut the VM down gracefully: a running job may finish first (TimeoutStopSec)
   virsh shutdown "$VM"; }
 cmd_restart() { # reboot the VM; the runners come back by themselves

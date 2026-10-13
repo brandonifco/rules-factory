@@ -6,9 +6,15 @@
   verify.py domain                the VM's XML on stdin: one NIC, on factory-ci, under the egress
                                   filter; nothing passed through; freed memory returned
   verify.py guest LAN CAMPUS_DNS  run in the guest: what it may reach and what it may not
+  verify.py gate RULES --dns IP... --block CIDR...
+                                  the host file against the installed isolation: at least one
+                                  resolver, each public and unblocked, and every resolver and
+                                  blocked range present in RULES
 
 Each prints one line per check, `ok` or `X`, and exits 1 when any is X.
 """
+import ipaddress
+import re
 import socket
 import sys
 import xml.etree.ElementTree as ET
@@ -88,6 +94,22 @@ def guest(lan, campus_dns):
         say(got == want, f"{what}: {got}" + ("" if got == want else f", want {want}"))
 
 
+def gate(rules_path, dns, block):
+    with open(rules_path, encoding="utf-8") as handle:
+        rules = handle.read()
+    sets = {name: {ipaddress.ip_network(e.strip(), strict=False) for e in body.split(",") if e.strip()}
+            for name, body in re.findall(r"set (\w+) \{[^}]*?elements = \{([^}]*)\}", rules, re.S)}
+    blocked, resolvers = sets.get("blocked", set()), sets.get("resolvers", set())
+    say(bool(dns), f"the host file names resolvers ({' '.join(dns) or 'none'})")
+    for r in dns:
+        a = ipaddress.ip_address(r)
+        say(a.version == 4 and a.is_global and not any(a in n for n in blocked), f"resolver {r} is public and not blocked")
+        say(ipaddress.ip_network(r) in resolvers, f"resolver {r} is one the installed rules let dnsmasq ask")
+    for b in block:
+        net = ipaddress.ip_network(b, strict=False)
+        say(any(net.subnet_of(n) for n in blocked if n.version == 4), f"{b} is blocked by the installed rules")
+
+
 if __name__ == "__main__":
     kind, args = sys.argv[1], sys.argv[2:]
     text = sys.stdin.read() if kind in ("network", "domain") else ""
@@ -99,6 +121,9 @@ if __name__ == "__main__":
         domain(text)
     elif kind == "guest":
         guest(args[0], args[1])
+    elif kind == "gate":
+        cut = args.index("--block") if "--block" in args else len(args)
+        gate(args[0], [a for a in args[1:cut] if a != "--dns"], args[cut + 1:])
     else:
         print(__doc__, file=sys.stderr)
         sys.exit(2)
