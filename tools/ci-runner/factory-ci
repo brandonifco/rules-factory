@@ -6,6 +6,11 @@
 # change goes through the guest's admin account over SSH.
 set -euo pipefail
 kit="$(cd "$(dirname "$0")" && pwd)"
+# This host's VM: its name, size and peers. Every host but the first has one, because the defaults
+# name factory-ci-1, and a second VM of that name would replace the first's registrations on GitHub.
+HOST_ENV="${FACTORY_CI_HOST_ENV:-$HOME/.config/factory-ci/host.env}"
+# shellcheck source=/dev/null
+[[ -f $HOST_ENV ]] && { set -a; . "$HOST_ENV"; set +a; }
 VM="${FACTORY_CI_VM:-factory-ci-1}"
 IP="${FACTORY_CI_IP:-192.168.150.11}"
 KEY="${FACTORY_CI_KEY:-$HOME/.ssh/factory-ci_ed25519}"
@@ -14,6 +19,9 @@ GH="${FACTORY_CI_GH:-gh}"
 IMAGE_RELEASE="${FACTORY_CI_IMAGE_RELEASE:-release-20260926}"
 IMAGE_SHA256="${FACTORY_CI_IMAGE_SHA256:-6a81c37564db9b1ee84e141922625e1d7c5b389b99bb3c572e0243607d5bb4d2}"
 VCPUS="${FACTORY_CI_VCPUS:-6}" MEMORY_MB="${FACTORY_CI_MEMORY_MB:-12288}" DISK="${FACTORY_CI_DISK:-100G}"
+# Ranges the guest may not reach besides the private ones the filter names: this host's own
+# networks always, and these (CIDR, space-separated), e.g. an institution's public address space.
+BLOCK="${FACTORY_CI_BLOCK:-}"
 LABELS='["self-hosted","linux","x64","factory-ci"]'
 virsh() { command virsh -c qemu:///system "$@"; }
 guest() { ssh -i "$KEY" -o UserKnownHostsFile="$KNOWN" -o StrictHostKeyChecking=accept-new -o BatchMode=yes \
@@ -27,9 +35,12 @@ dispatch_py() { python3 -I "$kit/dispatch.py" "$@"; }
 cmd_provision() { # create the network, filter and VM from the pinned cloud image
   virsh dominfo "$VM" >/dev/null 2>&1 && die "$VM already exists (rebuild: factory-ci destroy-vm first)"
   [[ -f $KEY ]] || ssh-keygen -q -t ed25519 -N '' -C "factory-ci admin (host only)" -f "$KEY"
-  virsh net-info factory-ci >/dev/null 2>&1 || { virsh net-define "$kit/host/network.xml"; virsh net-autostart factory-ci; }
+  if ! virsh net-info factory-ci >/dev/null 2>&1; then
+    local net; net="$(mktemp)"; sed "s#factory-ci-1#$VM#g" "$kit/host/network.xml" >"$net"
+    virsh net-define "$net"; rm -f "$net"; virsh net-autostart factory-ci
+  fi
   virsh net-start factory-ci 2>/dev/null || true
-  virsh nwfilter-define "$kit/host/nwfilter.xml" >/dev/null
+  cmd_filter
   local work base="factory-ci-base-noble-${IMAGE_RELEASE#release-}.qcow2"
   work="$(mktemp -d)"; trap 'rm -rf "$work"' RETURN
   if ! virsh vol-info --pool default "$base" >/dev/null 2>&1; then
@@ -59,12 +70,29 @@ cmd_provision() { # create the network, filter and VM from the pinned cloud imag
   echo "waiting for cloud-init..."; for _ in $(seq 60); do guest 'cloud-init status --wait' 2>/dev/null && return 0; sleep 5; done
   die "guest did not come up"
 }
+cmd_filter() { # (re)define the guest's egress filter: this host's own networks and BLOCK dropped too
+  local net drops=
+  for net in $(ip -4 -o addr show scope global | awk '{print $4}') $BLOCK; do
+    [[ $net =~ ^([0-9]{1,3}(\.[0-9]{1,3}){3})/([0-9]{1,2})$ ]] || die "not an IPv4 CIDR: $net"
+    drops+="  <rule action='drop' direction='out' priority='300'><all dstipaddr='${BASH_REMATCH[1]}' dstipmask='${BASH_REMATCH[3]}'/></rule>"$'\n'
+  done
+  local xml; xml="$(mktemp)"
+  DROPS="$drops" awk '/<!-- @HOST_NETWORKS@ -->/ { printf "%s", ENVIRON["DROPS"]; next } { print }' "$kit/host/nwfilter.xml" >"$xml"
+  virsh nwfilter-define "$xml" >/dev/null; rm -f "$xml"
+  echo "egress filter: also dropped $(ip -4 -o addr show scope global | awk '{print $4}' | tr '\n' ' ')$BLOCK"
+}
 cmd_setup() { # install or update the guest baseline (toolchain, hooks, units)
   tar -C "$kit/guest" -czf - . | guest 'rm -rf ~/kit && mkdir ~/kit && tar -xzf - -C ~/kit && sudo ~/kit/setup-guest.sh'
 }
 cmd_register() { # OWNER/REPO: register (or re-register) this VM's runner for one private repository
   need_repo "${1:-}"; local repo="$1" name; name="$(name_of "$repo")"
   is_private "$repo" || die "$repo is public: a standing runner would take a fork's job; use trust (decision 0080)"
+  # The runner is named for the guest, and --replace takes over a runner of that name: never another VM's.
+  [[ "$(guest hostname)" == "$VM" ]] || die "the guest at $IP is $(guest hostname), not $VM: check $HOST_ENV"
+  if ! guest "sudo test -f /srv/factory-ci/fci-$name/runner/.runner" &&
+     [[ -n "$("$GH" api "repos/$repo/actions/runners" --jq ".runners[] | select(.name == \"$VM\" and .status == \"online\") | .id")" ]]; then
+    die "$repo has an online runner named $VM that this guest does not hold: another host's VM has this name ($HOST_ENV)"
+  fi
   "$GH" api -X POST "repos/$repo/actions/runners/registration-token" --jq .token |
     guest "sudo /opt/factory-ci/bin/register '$name' '$repo'"
   cmd_runners "$repo"

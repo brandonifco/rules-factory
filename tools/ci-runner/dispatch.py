@@ -30,6 +30,12 @@ guest. Every POLL seconds, for each repository the guest serves by dispatch:
 The two job slots in the guest still bound how many jobs run at once; a one-job runner adds no
 capacity. `judge` is pure and is what the tests hold; everything else is I/O around it.
 
+Another host may run a second VM, a peer, named in FACTORY_CI_PEERS (the host file). A private
+repository is registered on every VM, and GitHub gives each job to one runner. A public repository
+is served by one VM's dispatcher only: an admission is written into the guest of the dispatcher that
+judged the run, so a job handed to a peer's waiting runner before the peer admitted it would be
+killed. A dispatcher that finds a peer's one-job runner in a repository it serves serves it no more.
+
 Usage:
   dispatch.py run                      the dispatcher loop (factory-ci dispatch; a user service)
   dispatch.py audit                    the boundary as one: registrations, visibility, variables,
@@ -64,6 +70,7 @@ from datetime import datetime, timezone
 KIT = os.path.dirname(os.path.abspath(__file__))
 FACTORY_CI = os.path.join(KIT, "factory-ci")
 VM = os.environ.get("FACTORY_CI_VM", "factory-ci-1")
+PEERS = tuple(os.environ.get("FACTORY_CI_PEERS", "").split())
 LABELS = ("self-hosted", "linux", "x64", "factory-ci")
 POLL = float(os.environ.get("FACTORY_CI_DISPATCH_POLL", "10"))
 JIT_MAX = int(os.environ.get("FACTORY_CI_JIT_MAX", "4"))
@@ -88,6 +95,15 @@ def ours(labels):
     job to a runner whose labels include every one the job names, ignoring case."""
     wanted = {label.casefold() for label in labels or ()}
     return bool(wanted) and wanted <= {label.casefold() for label in LABELS}
+
+
+def fleet_vm(runner):
+    """The factory-ci VM, this one or a peer, whose standing or one-job runner this runner name is;
+    None for any other runner."""
+    for vm in (VM,) + PEERS:
+        if runner == vm or runner.startswith(f"{vm}-jit-"):
+            return vm
+    return None
 
 
 def login(user):
@@ -370,6 +386,12 @@ class Dispatcher:
         runners = self.github.every(f"/repos/{repository}/actions/runners", "runners")
         mine = {r["id"]: r for r in runners if r["name"].startswith(f"{VM}-jit-")}
         foreign = [r["name"] for r in runners if r["id"] not in mine]
+        peers = [n for n in foreign if fleet_vm(n) in PEERS and n != fleet_vm(n)]
+        if peers:
+            self.retire_waiting(name, repository, mine, "a peer VM's dispatcher serves it too")
+            log(f"{repository}: NOT SERVED: one-job runner(s) {', '.join(peers)} of a peer VM; a public repository "
+                f"is served by one VM's dispatcher (factory-ci untrust on one of them)")
+            return 0
         if foreign:
             self.retire_waiting(name, repository, mine, "a runner registered outside dispatch")
             log(f"{repository}: NOT SERVED: runner(s) {', '.join(foreign)} registered outside dispatch; "
@@ -499,7 +521,7 @@ class Dispatcher:
 
 def run_forever():
     dispatcher = Dispatcher()
-    log(f"dispatcher up: VM {VM}, labels {','.join(LABELS)}, poll {POLL}s, at most {JIT_MAX} one-job runners, "
+    log(f"dispatcher up: VM {VM}{', peers ' + ' '.join(PEERS) if PEERS else ''}, labels {','.join(LABELS)}, poll {POLL}s, at most {JIT_MAX} one-job runners, "
         f"token from {dispatcher.github.source}")
     while True:
         started = time.monotonic()
@@ -540,14 +562,17 @@ def audit(github=None, guest=None):
         notes.append(f"{repository}: dispatch (fci-{name}, fcj-{name}), FACTORY_RUNS_ON_TRUSTED {'set' if trusted else 'unset'}, fork approval {policy}")
     for repository in sorted(public):
         runners = github.get(f"/repos/{repository}/actions/runners?per_page=100").get("runners", [])
-        standing = [r["name"] for r in runners if not r["name"].startswith(f"{VM}-jit-")]
+        standing = [r["name"] for r in runners if fleet_vm(r["name"]) in (None, r["name"])]
         if standing:
             findings.append(f"{repository}: public, with standing runner(s) {', '.join(standing)}")
         variables = {v["name"] for v in github.get(f"/repos/{repository}/actions/variables?per_page=30").get("variables", [])}
         if "FACTORY_RUNS_ON" in variables:
             findings.append(f"{repository}: public, with FACTORY_RUNS_ON set: every fork pull request would ask for it")
         if "FACTORY_RUNS_ON_TRUSTED" in variables and repository not in inventory["dispatch"].values():
-            findings.append(f"{repository}: FACTORY_RUNS_ON_TRUSTED set, but the guest does not serve it by dispatch")
+            if PEERS:  # this host cannot see a peer's guest; the peer's own audit holds it
+                notes.append(f"{repository}: FACTORY_RUNS_ON_TRUSTED set, not served by {VM}: audit on {', '.join(PEERS)}")
+            else:
+                findings.append(f"{repository}: FACTORY_RUNS_ON_TRUSTED set, but the guest does not serve it by dispatch")
     for line in notes:
         print(f"  ok  {line}")
     for line in findings:
@@ -581,7 +606,7 @@ def timings(repository, count=10):
             created, started, done = (datetime.fromisoformat(job[k].replace("Z", "+00:00")) for k in ("created_at", "started_at", "completed_at"))
             queue, took = (started - created).total_seconds(), (done - started).total_seconds()
             runner = job.get("runner_name") or "-"
-            kind = "factory-ci" if runner.startswith(VM) else "hosted"
+            kind = fleet_vm(runner) or "hosted"
             print(f"{run['id']:>12} {(run['name'] + '/' + job['name'])[:38]:<38} {runner[:26]:<26} {queue:>5.0f}s {took:>5.0f}s {job.get('conclusion')}")
             groups.setdefault((run["name"], job["name"], run["event"], kind), []).append((queue, took))
     print()

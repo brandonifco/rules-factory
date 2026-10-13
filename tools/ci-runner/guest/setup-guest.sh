@@ -100,6 +100,15 @@ systemd-tmpfiles --create /etc/tmpfiles.d/factory-ci.conf
 install -d -m 0755 /srv/factory-ci
 
 install -m 0644 "$here/factory-ci.slice" /etc/systemd/system/factory-ci.slice
+# The slice's caps are a 12 GiB guest's. A smaller one, such as a workstation's, would be capped by
+# nothing, so it keeps the same 1 and 2 GiB back for itself.
+mem="$(awk '/^MemTotal:/ { print int($2 / 1024) }' /proc/meminfo)"
+if (( mem < 11 * 1024 )); then
+  install -d -m 0755 /etc/systemd/system/factory-ci.slice.d
+  printf '[Slice]\nMemoryHigh=%dM\nMemoryMax=%dM\n' $((mem - 2048)) $((mem - 1024)) >/etc/systemd/system/factory-ci.slice.d/size.conf
+else
+  rm -f /etc/systemd/system/factory-ci.slice.d/size.conf
+fi
 install -m 0644 "$here/factory-ci-runner@.service" /etc/systemd/system/factory-ci-runner@.service
 systemctl daemon-reload
 # Registered runners take a changed runner.env and unit on restart.
