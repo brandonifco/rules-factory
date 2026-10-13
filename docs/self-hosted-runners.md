@@ -422,16 +422,23 @@ tools/ci-runner/factory-ci verify                 # 3: before provisioning: the 
 # 4: only when step 3 passes:
 tools/ci-runner/factory-ci provision              # 5: network, filter, VM (refuses unless isolation is active)
 tools/ci-runner/factory-ci verify                 # 6: with the guest running: libvirt's record and the guest's probes
-sudo tools/ci-runner/host/verify-root.sh          # 7: root's checks: live tables, a capture on eno1 (no other source MAC,
-                                                  #    no guest address), a listener control, the watch, NAT removed
+sudo tools/ci-runner/host/verify-root.sh          # 7: root's checks, read-only: live tables, filter binding, limits, and a
+                                                  #    capture on eno1 during controlled traffic (no guest MAC or address)
 tools/ci-runner/factory-ci setup
 tools/ci-runner/factory-ci register brandonifco/hallertau   # one repository first; then the other three
 ```
 
 **Verification.** `host/test-isolation.sh` needs no privilege. In network namespaces it first shows
 each probe connecting without the ruleset and refused with it, and checks NAT, NAT missing and the
-MAC capture. It is also a test, `tools/tests/test_ci_runner_isolation.py`, skipped where
-unprivileged namespaces are unavailable. `factory-ci verify` lists what else it checks (no physical
+MAC capture. It also holds the failures no live host should be put through: it removes a table, adds a rule
+and breaks the file under the watch (with stub `virsh` and `logger`), and removes libvirt's NAT. It
+is also a test, `tools/tests/test_ci_runner_isolation.py`, skipped where unprivileged namespaces are
+unavailable. `host/verify-root.sh` (sudo) is the live host's part, and only reads. It compares the
+live tables with the installed file, checks that `lo` is exempt only from the postrouting drop and
+that no rule names a physical interface, and checks the watch's freshness, the filter's binding to
+the guest's tap and the kernel's limits. It then captures passively on `eno1` while the guest
+reaches allowed destinations and is refused prohibited ones, each against a control from the host.
+It stops every capture and listener it started, and shuts the VM down again if it found it off. `factory-ci verify` lists what else it checks (no physical
 port in a bridge, no macvtap, the libvirt network and VM XML, the nwfilter's drops, nothing but the
 gateway listening on :53, the guest's reach). Until the live checks in step 6 have run, the
 properties above are **proven only in namespaces**: the real nftables load order with ufw and

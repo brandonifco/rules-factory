@@ -181,7 +181,8 @@ for f in "$work"/hold-*; do [[ $(cat "$f") == open ]] || { echo "  X   a held co
 # The template gets the test's ranges, resolver and uid. An installed file is loaded as it is but
 # for dnsmasq's uid, which becomes 0: the user namespace's root, which every process here runs as.
 sed -e "s#@BLOCKED@#$(for b in $blocked; do printf ', %s' "$b"; done)#" -e "s#@RESOLVERS@#$resolver#" \
-    -e "s#@DNSMASQ_UID@#0#" -e "s#meta skuid [0-9]\{1,10\} #meta skuid 0 #g" "${FCI_RULES:-$here/isolation.nft}" | nft -f -
+    -e "s#@DNSMASQ_UID@#0#" -e "s#meta skuid [0-9]\{1,10\} #meta skuid 0 #g" "${FCI_RULES:-$here/isolation.nft}" >"$work/rules.nft"
+nft -f "$work/rules.nft"
 $W tcpdump -Z root -l -n -e -i up0 "ether src $MAC" >"$work/w.pcap.txt" 2>/dev/null &
 $L tcpdump -Z root -l -n -e -i lan0 "ether src $MAC" >"$work/l.pcap.txt" 2>/dev/null &
 sleep 1
@@ -213,5 +214,24 @@ sleep 0.5
 frames=$(( $(wc -l <"$work/w.pcap.txt") + $(wc -l <"$work/l.pcap.txt") ))
 if [[ $frames == 0 ]]; then echo "  ok  no frame from the guest's MAC $MAC on any outside link"
 else echo "  X   $frames frame(s) from the guest's MAC outside:"; cat "$work/w.pcap.txt" "$work/l.pcap.txt"; fail=1; fi
-[[ $fail == 0 ]] && echo "isolation: PASS ($n probes, NAT, MAC)" || echo "isolation: FAIL"
+# The watch (isolation-watch.sh), on these tables: a removed table and an added rule are put back,
+# and a file that cannot load takes the guest's bridge down. Its virsh and logger are stubs first
+# on PATH, so nothing here can reach the host's libvirt or journal.
+mkdir "$work/bin" "$work/run"
+printf '#!/bin/sh\necho "$*" >>"%s/virsh.calls"\n' "$work" >"$work/bin/virsh"; printf '#!/bin/sh\n:\n' >"$work/bin/logger"
+chmod +x "$work/bin/virsh" "$work/bin/logger"
+sed -e "s#^rules=/etc/factory-ci/isolation.nft dir=/run/factory-ci-isolation#rules=$work/rules.nft dir=$work/run#" \
+    "$here/isolation-watch.sh" >"$work/watch.sh"
+watch() { PATH="$work/bin:$PATH" bash "$work/watch.sh"; cut -d' ' -f1 "$work/run/status"; }
+w1="$(watch)"; nft delete table inet factory_ci; w2="$(watch)"; nft list table inet factory_ci >/dev/null 2>&1 && back=yes || back=no
+nft add rule inet factory_ci forward accept; w3="$(watch)"
+[[ "$(nft list chain inet factory_ci forward | grep -c '^\s*accept$' || true)" == 0 ]] && clean=yes || clean=no
+if [[ $w1 == loaded && $w2 == reloaded && $back == yes && $w3 == reloaded && $clean == yes ]]; then
+  echo "  ok  the watch puts back a removed table and drops an added rule"; else
+  echo "  X   the watch: intact $w1, removed $w2 (back: $back), added rule $w3 (gone: $clean)"; fail=1; fi
+echo 'table inet factory_ci { chain broken' >"$work/rules.nft"; w4="$(watch || true)"
+if [[ $w4 == failed && "$(cat /sys/class/net/virbr-fci/operstate)" == down ]] && grep -q "net-destroy factory-ci" "$work/virsh.calls"; then
+  echo "  ok  a file the watch cannot load takes the guest's bridge down and stops its network"; else
+  echo "  X   the watch with an unloadable file: $w4, bridge $(cat /sys/class/net/virbr-fci/operstate)"; fail=1; fi
+[[ $fail == 0 ]] && echo "isolation: PASS ($n probes, NAT, MAC, watch)" || echo "isolation: FAIL"
 exit "$fail"
