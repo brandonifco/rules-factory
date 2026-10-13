@@ -66,10 +66,15 @@ This record does not reimplement it.
    own, `inet` and `bridge factory_ci`, which never flush or replace ufw's or libvirt's. The guest
    bridge forwards frames only to the guest's tap. The guest reaches only TCP 80/443 and NTP on
    addresses outside the blocked ranges, and the host only for DHCP and DNS. Nothing outside opens a
-   connection to it. A guest packet that leaves untranslated is dropped, and nothing passes over
-   IPv6. `prepare-host.sh` installs the layer before libvirt, through a unit that `libvirtd`
-   requires. With `FACTORY_CI_ISOLATION=required`, `provision` and `start` refuse unless the layer
-   is active. `host/test-isolation.sh` proves the ruleset in unprivileged network namespaces: each
+   connection to it, and only replies reach it, so a connection open before the rules loaded
+   carries nothing after. A guest packet that leaves untranslated is dropped, and nothing passes
+   over IPv6. The host's dnsmasq may ask only the named resolvers. `prepare-host.sh` installs
+   libvirt with service starts held back, then the layer, through a unit that `libvirtd` requires.
+   A timer compares the live tables with the file every 10 seconds, reloads them if anything
+   removed or changed them, and takes the guest's bridge down if it cannot. Isolation is required
+   on any host that installed it and for any VM but `factory-ci-1`. There, `provision` and `start`
+   refuse unless the layer is live and holds the host file's ranges and resolvers. They also refuse
+   a network or VM that is not the kit's. `host/test-isolation.sh` proves the ruleset in unprivileged network namespaces: each
    probe first connects without it, then is refused with it. `factory-ci verify` checks a live
    host: libvirt's record of the network and the VM, every bridge, the DNS listeners, and probes
    from inside the guest.
@@ -106,7 +111,16 @@ This record does not reimplement it.
   Acceptable Use, 2022; IT Remote Access, 2025) do not say. So `factory-ci-2` is provisioned only
   after UDit's written authorization. Nothing here disguises the guest or evades campus controls.
 - A full flush of the host's ruleset by root removes every layer at once, libvirt's and ufw's
-  included. That is outside this design. `factory-ci verify` detects it.
+  included. The watch restores this layer within about 10 seconds, or takes the guest's bridge
+  down. For those seconds the guest is unfiltered, behind NAT that is gone too.
+- The design was reviewed independently (AGENTS.md §6, Codex, at `dc6288a`) before the host was
+  prepared. It found nine gaps: isolation was opt-in; a stale network was trusted; the unit stayed
+  active after its tables were gone; dnsmasq could ask any resolver; removal read a failed `virsh`
+  as no VM; held connections survived a load; the root ruleset lacked the host file's ranges; a
+  failed install left the default network autostarting; and the leak test watched only the MAC.
+  Each is answered in point 5. `test-isolation.sh` holds the ruleset's share of them, and each
+  check of it fails under a mutation of its rule. The one exception is the drop of a guest's reply
+  on a connection opened from outside, which the untranslated-packet drop also covers.
 - A workstation is not always on. When it sleeps or shuts down, its VM is saved by libvirt-guests,
   and its runners are offline until it resumes. A job it held when it went away fails as a job on
   a dead VM does, and is re-run (the runbook, Host restart). GitHub sends nothing to an offline

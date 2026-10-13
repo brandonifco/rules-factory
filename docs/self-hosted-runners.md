@@ -343,8 +343,12 @@ FACTORY_CI_ISOLATION=required
 FACTORY_CI_DNS="1.1.1.1 9.9.9.9"
 ```
 
-`FACTORY_CI_BLOCK` adds ranges the guest may not reach to the host's own networks. `required`
-makes `provision` and `start` refuse unless the host's isolation is active. `register` refuses when
+`FACTORY_CI_BLOCK` adds ranges the guest may not reach to the host's own networks. Isolation is
+required whenever this says `required`, the VM is not `factory-ci-1`, or `prepare-host.sh` has
+installed it, whatever the file says. Then `provision` and `start` refuse unless it is live: the
+unit active, libvirtd requiring it, the watch's status good within the last minute, and this file's
+resolvers and ranges present in the installed rules. They also refuse a `factory-ci` network or a VM
+that is not the one this kit defines. `register` refuses when
 the guest's hostname is not `FACTORY_CI_VM`, or when an online runner of that name exists that this
 guest does not hold. The runner's `config.sh` runs with `--replace`, so without that a host that
 forgot its file would take over `factory-ci-1`'s registrations.
@@ -372,14 +376,20 @@ bridged, macvtap, direct or passed through. Two layers hold it:
   `/etc/systemd/system/libvirtd.service.d/10-factory-ci-isolation.conf`), so no VM starts without
   it. It owns the tables `inet factory_ci` and `bridge factory_ci` and never flushes ufw's or
   libvirt's. It holds: `virbr-fci` forwards frames only to `vnet*` taps; the guest reaches only TCP
-  80/443 and UDP 123 on non-blocked addresses, and the host only for DHCP and DNS; nothing opens a
-  connection in to the guest; a guest packet that would leave untranslated (NAT missing) is dropped;
-  no IPv6.
+  80/443 and UDP 123 on non-blocked addresses, and the host only for DHCP and DNS at the gateway;
+  only replies reach the guest, so a connection open before the rules loaded carries nothing after;
+  the host's dnsmasq asks only the named resolvers; a guest packet that would leave untranslated
+  (NAT missing) is dropped; no IPv6. The timer `factory-ci-isolation-watch` compares the live tables
+  with the file every 10 seconds, loads it again if anything removed or changed them, and if that
+  fails takes `virbr-fci` down. It records the result in `/run/factory-ci-isolation/status`.
 
-DNS: the guest's dnsmasq forwards to `FACTORY_CI_DNS` (1.1.1.1, 9.9.9.9), never the campus
-resolvers (10.72.27.23, .24), which answer for internal names; DNS to anything but the gateway is
-dropped. `prepare-host.sh` also turns off the libvirt package's stock `default` network (virbr0) and
-its autostart, and turns `ip_forward` off when no NAT network runs.
+DNS: the guest's dnsmasq forwards to `FACTORY_CI_DNS` (1.1.1.1, 9.9.9.9; `prepare-host.sh --dns`
+refuses anything not public, or inside a blocked or host network), never the campus resolvers
+(10.72.27.23, .24), which answer for internal names; DNS to anything but the gateway is dropped.
+`prepare-host.sh` installs libvirt with every service start held back, removes the autostart of the
+libvirt package's stock `default` network (on failure too) and stops it, and turns `ip_forward` off
+when no NAT network runs. It refuses while a VM runs, and restarting the isolation unit restarts
+libvirtd, which `Requires=` it.
 
 **Resource controls** (`machine.slice`, set by `prepare-host.sh`; change live with `sudo systemctl
 set-property machine.slice ...`):
@@ -404,8 +414,8 @@ NAT network, which changes host networking, so it **waits for the university's w
 authorization** (below). The tcpdump in step 6 needs sudo.
 
 ```bash
-tools/ci-runner/host/prepare-host.sh --dry-run --block 131.238.0.0/16 --cpu 6 --memory-max 10G --io-bandwidth 500M --io-iops 20000   # 1: read every step
-sudo tools/ci-runner/host/prepare-host.sh --block 131.238.0.0/16 --cpu 6 --memory-max 10G --io-bandwidth 500M --io-iops 20000        # 2: sudo
+tools/ci-runner/host/prepare-host.sh --dry-run --dns 1.1.1.1 --dns 9.9.9.9 --block 131.238.0.0/16 --cpu 6 --memory-max 10G --io-bandwidth 500M --io-iops 20000   # 1: read every step
+sudo tools/ci-runner/host/prepare-host.sh --dns 1.1.1.1 --dns 9.9.9.9 --block 131.238.0.0/16 --cpu 6 --memory-max 10G --io-bandwidth 500M --io-iops 20000        # 2: sudo
 tools/ci-runner/factory-ci verify                 # 3: before provisioning: the ruleset passes test-isolation; host checks
 # 4: only after UDit has authorized host NAT for this workstation:
 tools/ci-runner/factory-ci provision              # 5: network, filter, VM (refuses unless isolation is active)
@@ -434,7 +444,7 @@ fails and is re-run.
 tools/ci-runner/factory-ci deregister brandonifco/<repo>    # each private repository; GitHub then sends everything to factory-ci-1
 tools/ci-runner/factory-ci destroy-vm
 virsh -c qemu:///system net-destroy factory-ci && virsh -c qemu:///system net-undefine factory-ci
-sudo tools/ci-runner/host/prepare-host.sh --remove          # refuses while a VM runs
+sudo tools/ci-runner/host/prepare-host.sh --remove          # refuses unless it can show no VM runs
 ```
 
 The packages stay unless removed with apt.
