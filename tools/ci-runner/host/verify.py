@@ -90,10 +90,13 @@ def guest(lan, campus_dns):
 
 if __name__ == "__main__":
     kind, args = sys.argv[1], sys.argv[2:]
-    if kind == "network":
-        network(sys.stdin.read(), args)
+    text = sys.stdin.read() if kind in ("network", "domain") else ""
+    if kind in ("network", "domain") and not text.strip():
+        say(False, f"libvirt has no {'network factory-ci' if kind == 'network' else 'such VM'}")
+    elif kind == "network":
+        network(text, args)
     elif kind == "domain":
-        domain(sys.stdin.read())
+        domain(text)
     elif kind == "guest":
         guest(args[0], args[1])
     else:
