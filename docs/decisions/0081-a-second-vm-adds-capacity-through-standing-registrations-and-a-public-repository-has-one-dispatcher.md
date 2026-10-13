@@ -22,6 +22,9 @@ one VM, and reading it found four places where that matters:
   public address. The home server's LAN is private. The Office host's is not: it sits in the
   University of Dayton's public 131.238.0.0/16, so a job could have reached the host's own LAN
   address and the institution's internal web services from an address inside it.
+- The campus network filters by MAC address, and a switch port that sees a second MAC may shut
+  down. A guest MAC on the physical link would cost the workstation its network. Nothing in the kit
+  bridged the guest to a physical NIC, but nothing on the host would have stopped it.
 - The guest slice caps all runners at 11G, which is a 12 GiB guest's number. A smaller guest,
   which a workstation calls for, would have had no effective cap.
 - The dispatcher assumes it is alone. An admission is written into the guest of the dispatcher that
@@ -56,12 +59,34 @@ This record does not reimplement it.
 4. **The egress filter drops the host's own networks.** `factory-ci filter` defines the filter. It
    adds a drop for each global IPv4 network on the host and for each range in `FACTORY_CI_BLOCK`,
    ahead of the 80/443 accept. Run it again when the host changes networks.
-5. **A guest smaller than the slice's caps keeps the same headroom.** Below 11 GiB, `setup` caps
+5. **A workstation host has its own isolation layer, and no VM starts without it.** The guest is
+   only ever on the libvirt NAT network `factory-ci`, bound to no interface: never bridged,
+   macvtap, direct or passed through, so the only MAC on the physical link is the host's.
+   `host/isolation.nft` is a second layer under the guest's nwfilter, in two nftables tables of its
+   own, `inet` and `bridge factory_ci`, which never flush or replace ufw's or libvirt's. The guest
+   bridge forwards frames only to the guest's tap. The guest reaches only TCP 80/443 and NTP on
+   addresses outside the blocked ranges, and the host only for DHCP and DNS. Nothing outside opens a
+   connection to it. A guest packet that leaves untranslated is dropped, and nothing passes over
+   IPv6. `prepare-host.sh` installs the layer before libvirt, through a unit that `libvirtd`
+   requires. With `FACTORY_CI_ISOLATION=required`, `provision` and `start` refuse unless the layer
+   is active. `host/test-isolation.sh` proves the ruleset in unprivileged network namespaces: each
+   probe first connects without it, then is refused with it. `factory-ci verify` checks a live
+   host: libvirt's record of the network and the VM, every bridge, the DNS listeners, and probes
+   from inside the guest.
+6. **The guest's DNS bypasses the host's resolver.** `FACTORY_CI_DNS` makes the network's dnsmasq
+   forward to public resolvers. A campus resolver answers for internal names. DNS to anywhere but
+   the gateway is dropped.
+7. **A guest smaller than the slice's caps keeps the same headroom.** Below 11 GiB, `setup` caps
    the slice at the guest's memory less 1 GiB (`MemoryMax`) and less 2 GiB (`MemoryHigh`). A
    12 GiB guest keeps the slice file's 10G and 11G.
-6. **A workstation host yields to its user.** `host/prepare-host.sh`, run once with sudo, installs
-   libvirt and lowers `machine.slice`'s CPU weight to 50 against the user's 100. Under contention
-   the VM takes idle CPU, not the user's. The VM's vCPU count and memory are hard upper bounds.
+8. **A workstation host yields to its user, within hard caps.** `prepare-host.sh` sets
+   `machine.slice`, which holds every VM. CPU weight 50 against the user's 100 means the user wins
+   under contention. Optional hard limits cap CPU time (`--cpu`), memory (`--memory-max`, with
+   `MemoryHigh` 1G under it), and bandwidth and IOPS on the disk that holds the images. All of them
+   can be changed live with `systemctl set-property`. The VM's balloon returns freed guest memory
+   to the host, so an idle VM does not hold the memory it once used. On Office the limits are 6
+   CPUs, 10G, and 500 MB/s and 20,000 IOPS each way. The VM has 6 vCPU, 8 GiB, a 100 GiB thin disk
+   and two job slots.
 
 ## Consequences
 
@@ -75,6 +100,13 @@ This record does not reimplement it.
 - Serving one public repository from both VMs at once needs one place that writes admissions into
   both guests: a single dispatcher driving two guests, or admissions both can read. This record
   does not build that. It keeps the safe refusal until there is a measured need.
+- NAT keeps the guest's MAC off the physical link. It does not hide the guest's traffic, which
+  leaves from the workstation's address. Whether the university permits a VM behind host NAT on a
+  wired port is the university's decision. Its published policies (Fair, Responsible and
+  Acceptable Use, 2022; IT Remote Access, 2025) do not say. So `factory-ci-2` is provisioned only
+  after UDit's written authorization. Nothing here disguises the guest or evades campus controls.
+- A full flush of the host's ruleset by root removes every layer at once, libvirt's and ufw's
+  included. That is outside this design. `factory-ci verify` detects it.
 - A workstation is not always on. When it sleeps or shuts down, its VM is saved by libvirt-guests,
   and its runners are offline until it resumes. A job it held when it went away fails as a job on
   a dead VM does, and is re-run (the runbook, Host restart). GitHub sends nothing to an offline
