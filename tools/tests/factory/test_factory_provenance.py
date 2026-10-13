@@ -29,7 +29,9 @@ The engine's gate carries a narrower check of the same record, without the facto
 tree the gate fails is one recompute also fails, naming at least one of the same paths.
 
 The embedded copy is only exercised by `dotnet test` on a produced engine, which needs the
-SDK the kernel pins and network access to nuget.org; that test skips, saying why, without them.
+SDK the kernel pins and network access to nuget.org (for the kernel; the map is restored from the
+package the test packed, so its version need not be published); that test skips, saying why,
+without the SDK.
 
 Run: python3 -m unittest discover -s tools/tests -t tools
 """
@@ -68,6 +70,8 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "factory-test", "GIT_AUTHOR_EMAIL": "factory-test@
 sys.path.insert(0, FACTORY)
 import provenance  # noqa: E402
 import scaffold  # noqa: E402  (the managed recipes, to name them once)
+sys.path.insert(0, HERE)
+import local_map_feed  # noqa: E402  (beside this file: the one NuGet.config edit the engine builds share)
 
 # What a `--no-verify` produce exits: NOT VERIFIED, never 0. Read from the CLI it names, so the
 # two cannot drift (the factory itself is run as a child process here).
@@ -871,9 +875,16 @@ class TestEmbeddedCopyBuilds(ProvenanceCase):
         if not any(line.split(" ")[0] == pins.SDK_VERSION for line in sdks.splitlines()):
             self.skipTest(f"the .NET SDK {pins.SDK_VERSION} the kernel pins is not installed")
         hoyle = pack(HOYLE, os.path.join(self.tmp, "hoyle"))
-        out = self.produced(package=hoyle, corpus=os.path.join(HOYLE, "hoyle.txt"), name="HoyleBackgammon")
+        corpus = os.path.join(HOYLE, "hoyle.txt")
+        out = self.produced(package=hoyle, corpus=corpus, name="HoyleBackgammon")
+        # The map is restored from the package just packed, not from nuget.org, which does not serve a version
+        # that is bumped before its tag publishes it (local_map_feed.py). NuGet.config is managed, so the
+        # localised copy is adopted into the record, and the generated provenance test recomputes it as such.
+        local_map_feed.localize(out, os.path.dirname(hoyle))
+        self.produced(package=hoyle, corpus=corpus, name="HoyleBackgammon", extra=("--adopt", "NuGet.config"))
+        env = {**os.environ, "NUGET_PACKAGES": os.path.join(self.tmp, "nuget-packages")}
         done = subprocess.run([dotnet, "test", os.path.join(out, "HoyleBackgammon.slnx")],
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
         self.assertEqual(done.returncode, 0, done.stdout[-4000:])
 
 
