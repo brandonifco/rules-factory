@@ -67,6 +67,11 @@ FACTS = ("Every_offered_action_is_accepted", "Nothing_throws", "Nothing_stalls_w
 MEMBERS = ("Configurations", "Start", "IsOver", "LegalActions", "Apply", "Render")
 
 
+#: The version `pack` gives the package: the one the map declares, not a literal that goes stale at its next bump.
+with open(os.path.join(HOYLE, "map-package.json"), encoding="utf-8") as _handle:
+    HOYLE_VERSION = json.load(_handle)["version"]
+
+
 def pack(map_dir, out):
     subprocess.run([sys.executable, PACK, map_dir, "--out", out], check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -74,17 +79,45 @@ def pack(map_dir, out):
     return os.path.join(out, name)
 
 
-def produce(package, out, expect=factory.NOT_VERIFIED):
+def produce(package, out, *extra, expect=factory.NOT_VERIFIED):
     """`factory produce --no-verify` in this process: (exit code, output)."""
     buffer = io.StringIO()
     with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
         code = factory.main(["produce", "--package", package, "--corpus", os.path.join(HOYLE, "hoyle.txt"),
                              "--name", NAME, "--out", out,
                              "--allow-dirty",  # this checkout's state is not under test here
-                             "--no-verify"])  # nor is building it: that is the dotnet class's
+                             "--no-verify",  # nor is building it: that is the dotnet class's
+                             *extra])
     if expect is not None and code != expect:
         raise AssertionError(f"produce exited {code}, not {expect}\n{buffer.getvalue()}")
     return code, buffer.getvalue()
+
+
+def restore_packed_map(engine, feed):
+    """Scratch engine only: restore the map package from `feed`, the folder `pack` wrote it to.
+
+    The engine's NuGet.config maps `RulesFactory.Maps.*` to nuget.org, so without this the build
+    restores whatever nuget.org holds at the version the map declares, which is not the package this
+    suite packed, and is nothing at all while a new version is not yet published (a map's version is
+    bumped, reviewed and merged before its tag publishes it). As in test_factory_gate.py's
+    `localize`, the map's id pattern moves to a local folder feed. Restores go to a scratch
+    NUGET_PACKAGES (`TestHarnessRunsInDotnet.dotnet`), so the unpublished package never enters the
+    user's cache, and the user's global packages folder is a read-only fallback.
+    """
+    path = os.path.join(engine, "NuGet.config")
+    with open(path, encoding="utf-8") as handle:
+        text = handle.read()
+    fallback = os.path.join(os.path.expanduser("~"), ".nuget", "packages")
+    localized = (text
+                 .replace("<clear />", f'<clear />\n    <add key="local-maps" value="{feed}" />', 1)
+                 .replace("  </packageSourceMapping>", '    <packageSource key="local-maps">\n'
+                          '      <package pattern="RulesFactory.Maps.*" />\n    </packageSource>\n'
+                          "  </packageSourceMapping>" + (f'\n  <fallbackPackageFolders>\n    <add key="user" value="{fallback}" />\n'
+                                                         "  </fallbackPackageFolders>" if os.path.isdir(fallback) else ""), 1))
+    if localized.count("local-maps") != 2:
+        raise AssertionError(f"NuGet.config did not take the local map feed:\n{localized}")
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(localized)
 
 
 def write(path, text):
@@ -233,7 +266,7 @@ class TestDeclaredSurface(Case):
                     handle.write(archive.read(part))
         args = ["regenerate", "--package-map", os.path.join(self.tmp, "package-map.json"),
                 "--package-manifest", os.path.join(self.tmp, "package-manifest.json"),
-                "--package-id", "RulesFactory.Maps.HoyleBackgammon", "--package-version", "6.0.0", "--name", NAME]
+                "--package-id", "RulesFactory.Maps.HoyleBackgammon", "--package-version", HOYLE_VERSION, "--name", NAME]
         code, output = self.script(engine, *args)
         self.assertEqual(code, 0, output)
         write_declaration(engine, dict(DECLARATION, seedsPerConfiguration=21))
@@ -467,20 +500,25 @@ class TestHarnessRunsInDotnet(Case):
     def setUpClass(cls):
         super().setUpClass()
         cls.base = os.path.join(cls.shared, "base")
+        cls.packages = os.path.join(cls.shared, "nuget-packages")
         produce(cls.nupkg, cls.base)
         write_declaration(cls.base)
         shutil.copyfile(FIXTURE, os.path.join(cls.base, *ADAPTER.split("/")))
-        produce(cls.nupkg, cls.base)
+        restore_packed_map(cls.base, os.path.dirname(cls.nupkg))
+        # NuGet.config is managed (tools/factory/ownership.py), so the localised copy is a hand edit
+        # that a re-produce would refuse; adopting it once, as test_factory_gate.py does, carries it
+        # into every copy of this engine below.
+        produce(cls.nupkg, cls.base, "--adopt", "NuGet.config")
         code, output = cls.dotnet(cls.base, "build", f"tests/{NAME}.Tests/{NAME}.Tests.csproj", "-f", "net10.0",
                                   "-warnaserror", "-nologo")
         if code != 0:
             raise AssertionError("the fixture engine does not build:\n" + output[-4000:])
 
-    @staticmethod
-    def dotnet(engine, *args, variant=None):
+    @classmethod
+    def dotnet(cls, engine, *args, variant=None):
         env = {k: v for k, v in os.environ.items() if k not in ("CI", "ACTION_SURFACE_FIXTURE")}
         env.update({"DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_NOLOGO": "1", "MSBUILDDISABLENODEREUSE": "1",
-                    "DOTNET_CLI_USE_MSBUILD_SERVER": "0"})
+                    "DOTNET_CLI_USE_MSBUILD_SERVER": "0", "NUGET_PACKAGES": cls.packages})
         if variant:
             env["ACTION_SURFACE_FIXTURE"] = variant
         # No compiler server and no reused build node: nothing is left running after the tests.
