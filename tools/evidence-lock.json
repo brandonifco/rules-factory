@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "6644647a01966e8c7503ff64ab25256c8ab20a45",
+  "measuredAt": "2a598496cfd046df35df7c479112e38fad50e2a8",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,8 +17,8 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 526,
-    "trackedBytes": 22790051
+    "trackedFiles": 556,
+    "trackedBytes": 23174433
   },
   "artifacts": [
     {
@@ -45,10 +45,8 @@
       "path": "examples/acceptance-4-5/check-provenance.sh",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e",
       "bytes": 2248,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -65,8 +63,10 @@
       "path": "examples/blind-mapping-trial/blind-map.json",
       "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1",
       "bytes": 37125,
-      "role": "archived",
-      "readBy": [],
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
       "archive": null
     },
     {
@@ -1015,7 +1015,7 @@
     },
     {
       "path": "examples/hoyle-backgammon/map-package.json",
-      "sha256": "aa24c96269da0f3b600d3bd97ce1e7d190d3095d133feceacc531401c8184afd",
+      "sha256": "8f62d49fab43f7a3910883433f59e008c5e00e886d1665b1c68b57e8b6583995",
       "bytes": 85,
       "role": "release",
       "readBy": [
