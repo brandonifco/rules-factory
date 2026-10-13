@@ -3,10 +3,11 @@
 
 The packages are built here with tools/pack-map.py from examples/, not downloaded: the tests
 need no network, and pack-map.py is deterministic, so `examples/hoyle-backgammon` packs to
-RulesFactory.Maps.HoyleBackgammon 6.0.0 with the map, manifest, checker and props that
+RulesFactory.Maps.HoyleBackgammon at the version map-package.json declares (6.0.0 when this was written),
+with the map, manifest, checker and props that
 nuget.org serves (their bytes were compared against the published 2.0.0 package when this test
 was written; the published package adds only nuget.org's signature, and later versions differ
-from 2.0.0 in the checker's bytes and, from #95, #102, 0025, 0026 and #125, the map's; from 0023, the packaged licence). When that published package is in the NuGet global
+from 2.0.0 in the checker's bytes and, from #95, #102, 0025, 0026 and #125, the map's; from 0023, the packaged licence). When the published legacy 6.0.0 package is in the NuGet global
 packages folder it is also run through intake, and that test says it was skipped otherwise.
 
 Each refusal starts from a package that passes and changes exactly one thing, and asserts a
@@ -49,7 +50,13 @@ HOYLE_TEXT = os.path.join(REPO, "examples", "hoyle-backgammon", "hoyle.txt")
 from tests.factory.corpus_recipe import carry_recipe  # noqa: E402
 
 PART107_XML = os.path.join(REPO, "examples", "faa-part-107", "part107.xml")
-HOYLE_ID, HOYLE_VERSION = "RulesFactory.Maps.HoyleBackgammon", "6.0.0"
+HOYLE_ID = "RulesFactory.Maps.HoyleBackgammon"
+#: The version the suite packs: the one the example declares, which a bump changes before its tag publishes it.
+with open(os.path.join(REPO, "examples", "hoyle-backgammon", "map-package.json"), encoding="utf-8") as _handle:
+    HOYLE_VERSION = json.load(_handle)["version"]
+#: A version nuget.org already serves, kept as data: the legacy package `test_the_published_package_when_cached` refuses.
+#: It is not the example's version, which is whatever map-package.json declares.
+HOYLE_LEGACY_VERSION = "6.0.0"
 PART107_ID = "RulesFactory.Maps.FaaPart107"
 
 
@@ -208,11 +215,12 @@ class TestAccepts(IntakeCase):
         self.assertEqual(classes, {"hoyle-1909": "public-domain", "cfr-14-107": "public-domain", "srd-5.2.1": "open"})
 
     def test_the_published_package_when_cached(self):
-        cached = os.path.join(intake._global_packages_folder(), HOYLE_ID.lower(), HOYLE_VERSION,
-                              f"{HOYLE_ID.lower()}.{HOYLE_VERSION}.nupkg")
+        version = HOYLE_LEGACY_VERSION
+        cached = os.path.join(intake._global_packages_folder(), HOYLE_ID.lower(), version,
+                              f"{HOYLE_ID.lower()}.{version}.nupkg")
         if not os.path.isfile(cached):
-            self.skipTest(f"{HOYLE_ID} {HOYLE_VERSION} as served by nuget.org is not in the global packages folder")
-        self.assert_refused(f"{HOYLE_ID}@{HOYLE_VERSION}", HOYLE_TEXT,
+            self.skipTest(f"{HOYLE_ID} {version} as served by nuget.org is not in the global packages folder")
+        self.assert_refused(f"{HOYLE_ID}@{version}", HOYLE_TEXT,
                             "no Verification", "legacy/unbound")
 
 
