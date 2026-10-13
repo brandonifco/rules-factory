@@ -215,14 +215,14 @@ class TestServe(unittest.TestCase):
 
     def test_a_failed_cancel_is_asked_again_and_then_forced(self):
         """Codex 2026-10-10 (P2): one 503 used to end every later attempt to cancel."""
-        dispatcher = dispatch.Dispatcher(github=None, guest=None)
+        dispatcher = dispatch.Dispatcher(github=FakeGitHub([], {}, [], (), 0), guest=FakeGuest())
         fork = run(run_id=8, **FORK)
         for _ in range(4):
             _, github, _ = self.serve([fork], {8: [job()]}, dispatcher=dispatcher, fail_cancel=1)
         self.assertIn(("POST", f"/repos/{REPO}/actions/runs/8/force-cancel"), github.posts)
 
     def test_a_re_run_of_a_refused_run_is_cancelled_again(self):
-        dispatcher = dispatch.Dispatcher(github=None, guest=None)
+        dispatcher = dispatch.Dispatcher(github=FakeGitHub([], {}, [], (), 0), guest=FakeGuest())
         self.serve([run(run_id=8, **FORK)], {8: [job()]}, dispatcher=dispatcher)
         _, github, _ = self.serve([run(run_id=8, attempt=2, triggering=OWNER, **{k: v for k, v in FORK.items()})],
                                   {8: [job()]}, dispatcher=dispatcher)
@@ -265,7 +265,7 @@ class TestServe(unittest.TestCase):
 
     def test_a_runner_that_ran_its_one_job_and_left_is_not_counted_as_still_starting(self):
         """Seen 2026-10-10: a finished runner held a waiting job back until STARTING passed."""
-        dispatcher = dispatch.Dispatcher(github=None, guest=None)
+        dispatcher = dispatch.Dispatcher(github=FakeGitHub([], {}, [], (), 0), guest=FakeGuest())
         first, _, _ = self.serve([run(run_id=7)], {7: [job()]}, dispatcher=dispatcher)
         self.assertEqual(1, first)
         runner_id = next(iter(dispatcher.spawned))[1]
