@@ -240,7 +240,7 @@ must name `factory-ci-1` (a standing runner) or `factory-ci-1-jit-<hex>` (a one-
 | rules-corpus | public | dispatch | since 2026-10-10 (rules-corpus#22); `build-and-test` |
 | rules-kernel | public | dispatch | since 2026-10-10 (rules-kernel#83); `build-and-test` (`pcg-vectors` hosted: it needs a C compiler; `publish` hosted) |
 | tax-121-principal-residence, hoyle-blind-rebuild | public | hosted | **Not migrated.** Their workflows are factory-generated, so they change only by re-producing, and they cannot be re-produced: each consumes a map published before decision 0048 (no `map/verification.json`) and has no rules-corpus build definition (0074). A new map version is a publication, the owner's decision. |
-| hoyle-backgammon | public | hosted | **Not migrated yet.** Map 7.0.0 carries the 0048 verification record (the owner authorized its publication on 2026-10-13), so the engine can be re-produced from factory 1.6.0 once it commits its rules-corpus build definition (hoyle-backgammon#20). |
+| hoyle-backgammon | public | hosted | **Not migrated.** Re-produced from factory 1.6.0 and map 7.0.0 on 2026-10-13 (hoyle-backgammon#22), so its workflows carry the `FACTORY_RUNS_ON` routing; no repository variable is set and the dispatcher does not serve it, so they run hosted (`validate` on `ubuntu-24.04`). |
 | brandonifco.github.io, brandonifco, hollow-crown | public | — | No workflows. |
 
 ### Running the boundary probe
