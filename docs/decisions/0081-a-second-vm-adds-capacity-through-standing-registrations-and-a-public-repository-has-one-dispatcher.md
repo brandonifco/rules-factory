@@ -108,8 +108,12 @@ This record does not reimplement it.
 - NAT keeps the guest's MAC off the physical link. It does not hide the guest's traffic, which
   leaves from the workstation's address. Whether the university permits a VM behind host NAT on a
   wired port is the university's decision. Its published policies (Fair, Responsible and
-  Acceptable Use, 2022; IT Remote Access, 2025) do not say. So `factory-ci-2` is provisioned only
-  after UDit's written authorization. Nothing here disguises the guest or evades campus controls.
+  Acceptable Use, 2022; IT Remote Access, 2025) do not say. The owner holds its written
+  authorization for a VM behind NAT on this workstation (recorded 2026-10-13). Its restriction is
+  on unauthorized routers and additional MAC addresses on the physical network. The authorization
+  covers host-only NAT, with no guest MAC on the physical link, no bridge, macvtap or direct
+  attachment, and no guest DHCP, DNS or routing offered to the campus. A change beyond that goes
+  back to the university. Nothing here disguises the guest or evades campus controls.
 - A full flush of the host's ruleset by root removes every layer at once, libvirt's and ufw's
   included. The watch restores this layer within about 10 seconds, or takes the guest's bridge
   down. For those seconds the guest is unfiltered, behind NAT that is gone too.

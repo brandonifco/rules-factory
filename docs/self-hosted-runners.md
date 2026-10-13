@@ -355,9 +355,11 @@ forgot its file would take over `factory-ci-1`'s registrations.
 
 ## A workstation host
 
-**Status: pending.** `factory-ci-2` is not provisioned. Host isolation is not yet installed, and the
-university's authorization for host NAT is not yet obtained. Everything below is the procedure and
-the configuration, and nothing in it has been run or measured on Office. Office is Ubuntu 24.04,
+**Status: pending.** `factory-ci-2` is not provisioned, and host isolation is not yet installed.
+The owner holds the university's written authorization for a VM behind host NAT on this
+workstation (recorded 2026-10-13), which covers this NAT-only arrangement and nothing wider.
+Everything below is the procedure and the configuration, and nothing in it has been run or measured
+on Office. Office is Ubuntu 24.04,
 an i7-13700 (24 threads) with 31 GiB, NVMe measured at 3.3 GB/s write and 4.4 GB/s read, on the
 University of Dayton's wired network (131.238.112.0/21, inside 131.238.0.0/16), with ufw active
 and forwarding dropped.
@@ -410,14 +412,14 @@ jobs, and Office's desktop already using about 9 GB. To resize, shut the VM down
 setvcpus` and `setmaxmem` with `--config`; the host's caps change with `set-property`.
 
 **Bring-up**, in this order. Step 2 needs sudo and installs the host's firewall layer and libvirt. Step 5 onward starts libvirt's
-NAT network, which changes host networking, so it **waits for the university's written
-authorization** (below). The tcpdump in step 6 needs sudo.
+NAT network. It waits for step 3 to pass, and stays within the authorized arrangement (below). The
+tcpdump in step 6 needs sudo.
 
 ```bash
 tools/ci-runner/host/prepare-host.sh --dry-run --dns 1.1.1.1 --dns 9.9.9.9 --block 131.238.0.0/16 --cpu 6 --memory-max 10G --io-bandwidth 500M --io-iops 20000   # 1: read every step
 sudo tools/ci-runner/host/prepare-host.sh --dns 1.1.1.1 --dns 9.9.9.9 --block 131.238.0.0/16 --cpu 6 --memory-max 10G --io-bandwidth 500M --io-iops 20000        # 2: sudo
 tools/ci-runner/factory-ci verify                 # 3: before provisioning: the ruleset passes test-isolation; host checks
-# 4: only after UDit has authorized host NAT for this workstation:
+# 4: only when step 3 passes:
 tools/ci-runner/factory-ci provision              # 5: network, filter, VM (refuses unless isolation is active)
 tools/ci-runner/factory-ci verify                 # 6: with the guest running: guest probes; then root's nft listing and
                                                   #    a tcpdump on eno1 for ether src 52:54:00:fc:01:01 (must show no frame)
@@ -453,9 +455,13 @@ The packages stay unless removed with apt.
 2003 guidelines say nothing specific about NAT or VMs. The guidelines forbid DNS or DHCP servers
 that interfere with the university network (libvirt's dnsmasq binds only to `virbr-fci`, and
 `verify` checks that nothing else listens on :53). The 2025 IT Remote Access policy says solutions
-that circumvent routing and security controls will be disabled. So host NAT for `factory-ci-2` waits
-for UDit's written authorization. NAT hides the guest's MAC, not its traffic, and nothing here is
-meant to evade campus controls.
+that circumvent routing and security controls will be disabled. The owner holds written
+authorization to run a VM behind NAT on this workstation; the university's restriction is on
+unauthorized routers and additional MAC addresses on the physical network. The authorization covers
+host-only NAT, with no guest MAC on `eno1`, no bridge, macvtap or direct attachment, and no guest
+DHCP, DNS or routing offered to the campus. Any change beyond that is a new question for the
+university, not a configuration choice. NAT hides the guest's MAC, not its traffic, and nothing here
+is meant to evade campus controls.
 
 ## Credentials
 
