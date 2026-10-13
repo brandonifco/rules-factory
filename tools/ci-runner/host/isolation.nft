@@ -39,8 +39,8 @@ table inet factory_ci {
 		type filter hook input priority -10; policy accept;
 		iifname "virbr-fci" meta nfproto ipv6 drop
 		iifname "virbr-fci" ct state established,related accept
-		iifname "virbr-fci" ip saddr 192.168.150.0/24 udp dport { 53, 67 } accept
-		iifname "virbr-fci" ip saddr 192.168.150.0/24 tcp dport 53 accept
+		iifname "virbr-fci" ip saddr 192.168.150.0/24 ip daddr 192.168.150.1 udp dport { 53, 67 } accept
+		iifname "virbr-fci" ip saddr 192.168.150.0/24 ip daddr 192.168.150.1 tcp dport 53 accept
 		iifname "virbr-fci" udp sport 68 udp dport 67 accept
 		iifname "virbr-fci" drop
 	}

@@ -91,6 +91,7 @@ g|203.0.113.10|53|closed|DNS anywhere but the gateway
 g|131.238.112.1|443|closed|the campus on HTTPS
 g|131.238.119.32|22|closed|the host's LAN address
 g|131.238.119.32|443|closed|the host's LAN address on HTTPS
+g|131.238.119.32|53|closed|DNS at the host's LAN address
 g|192.168.150.1|22|closed|the host at the gateway
 g|192.168.150.50|443|closed|a LAN host on a physical port in the guest's bridge
 g|2001:db8::10|443|closed|the internet over IPv6
