@@ -1,8 +1,8 @@
 # Self-hosted runners
 
 The owner's CI runs on KVM virtual machines the owner hosts, whatever the repository's visibility:
-`factory-ci-1` on the home server, and, pending (see [A workstation host](#a-workstation-host)),
-`factory-ci-2` on the owner's Office workstation. **Trust decides where a run executes, not
+`factory-ci-1` on the home server, and, since 2026-10-13, `factory-ci-2` on the owner's Office
+workstation (see [A workstation host](#a-workstation-host)). **Trust decides where a run executes, not
 visibility**
 ([decision 0080](decisions/0080-execution-trust-not-visibility-decides-whether-a-run-reaches-the-self-hosted-runner.md)): the owner's own runs go to a VM, and everybody else's (a fork's pull
 request, a bot's update, a contributor's edited workflow) stay on GitHub-hosted runners and can
@@ -23,7 +23,7 @@ installs. Nothing in it is a credential.
 
 | Runs | Runner | How they get there |
 |---|---|---|
-| Every run of a private repository (since 2026-10-09: reykholt, reykholt-web, reykholt-art, hallertau) | `factory-ci-1` VM, standing registration; `factory-ci-2` too once provisioned (pending), and GitHub picks one | The variable `FACTORY_RUNS_ON` ([0079](decisions/0079-a-repository-chooses-its-runner-through-factory-runs-on.md)). Only the owner and the owner's agents can start a run there, and GitHub runs no fork pull request of a private repository while its Actions setting for that stays off (keep it off). |
+| Every run of a private repository (since 2026-10-09: reykholt, reykholt-web, reykholt-art, hallertau) | `factory-ci-1` VM, standing registration; `factory-ci-2` too (since 2026-10-13), and GitHub picks one | The variable `FACTORY_RUNS_ON` ([0079](decisions/0079-a-repository-chooses-its-runner-through-factory-runs-on.md)). Only the owner and the owner's agents can start a run there, and GitHub runs no fork pull request of a private repository while its Actions setting for that stays off (keep it off). |
 | The owner's own runs of a public repository (since 2026-10-10: see [Repositories](#repositories)) | `factory-ci-1` VM only, one one-job runner per job | The variable `FACTORY_RUNS_ON_TRUSTED` routes them; the **trusted dispatcher** on the home server admits each one and starts its runner ([The boundary](#the-boundary-for-public-repositories)). Never `trust` a public repository on a second VM. |
 | Everything else in a public repository: fork pull requests, bots (Dependabot), a re-run of either | GitHub-hosted `ubuntu-24.04` | The runner line sends them there unmodified. A fork that rewrites its `runs-on` gets a job that is never served and is cancelled. Hosted runs are free on public repositories. |
 | Publishing (`publish-map.yml`, a library's `publish.yml`) and manual maintenance workflows | GitHub-hosted `ubuntu-24.04` | Pinned in the file. The NuGet key is never on the VM. |
@@ -255,7 +255,7 @@ must name `factory-ci-1` or `factory-ci-2` (a standing runner) or `factory-ci-1-
 
 | Repository | Visibility | Runner | Note |
 |---|---|---|---|
-| reykholt, reykholt-web, reykholt-art, hallertau | private | standing | `factory-ci-1` since 2026-10-09; `factory-ci-2` standing too, **pending** (not provisioned) |
+| reykholt, reykholt-web, reykholt-art, hallertau | private | standing | `factory-ci-1` since 2026-10-09; `factory-ci-2` since 2026-10-13 |
 | rules-factory | public | dispatch | since 2026-10-10; `validate`, `engine`, `documentation` (`publish-map`, `judge-rebuild` hosted) |
 | faa-part-107 | public | dispatch | since 2026-10-10, re-produced from factory 1.6.0 (faa-part-107#147); `validate`, `pr-policy`, `conformance-gate`, `verdict-requeue` (`package`, `publish` hosted) |
 | srd-52-combat | public | dispatch | since 2026-10-10, re-produced from factory 1.6.0 (srd-52-combat#81) |
@@ -356,11 +356,10 @@ forgot its file would take over `factory-ci-1`'s registrations.
 
 ## A workstation host
 
-**Status: pending.** `factory-ci-2` is not provisioned, and host isolation is not yet installed.
-The owner holds the university's written authorization for a VM behind host NAT on this
-workstation (recorded 2026-10-13), which covers this NAT-only arrangement and nothing wider.
-Everything below is the procedure and the configuration, and nothing in it has been run or measured
-on Office. Office is Ubuntu 24.04,
+**Status: in service since 2026-10-13**, for the four private repositories, after
+`verify-live.sh` passed on the live host (below, Measured on Office). The owner holds the
+university's written authorization for a VM behind host NAT on this workstation (recorded
+2026-10-13), which covers this NAT-only arrangement and nothing wider. Office is Ubuntu 24.04,
 an i7-13700 (24 threads) with 31 GiB, NVMe measured at 3.3 GB/s write and 4.4 GB/s read, on the
 University of Dayton's wired network (131.238.112.0/21, inside 131.238.0.0/16), with ufw active
 and forwarding dropped.
@@ -432,24 +431,49 @@ tools/ci-runner/factory-ci register brandonifco/hallertau   # one repository fir
 
 **Verification.** `host/test-isolation.sh` needs no privilege. In network namespaces it first shows
 each probe connecting without the ruleset and refused with it, and checks NAT, NAT missing and the
-MAC capture. It also holds the failures no live host should be put through: it removes a table, adds a rule
-and breaks the file under the watch (with stub `virsh` and `logger`), and removes libvirt's NAT. It
-is also a test, `tools/tests/test_ci_runner_isolation.py`, skipped where unprivileged namespaces are
-unavailable. `host/verify-live.sh` is the live host's part, and only reads. It runs unprivileged: the two
-facts only root can read, the live tables and frames on `eno1`, come from
+MAC capture. It also holds the failures no live host should be put through: it removes a table, adds
+a rule and breaks the file under the watch (with stub `virsh` and `logger`), and removes libvirt's
+NAT. It is also a test, `tools/tests/test_ci_runner_isolation.py`, skipped where unprivileged
+namespaces are unavailable. `host/verify-live.sh` is the live host's part, and only reads. It runs
+unprivileged: the two facts only root can read, the live tables and frames on `eno1`, come from
 `/usr/local/sbin/factory-ci-collect` through `sudo -n`. `host/install-collector.sh` installs that
 program root-owned, with a sudoers rule letting the owner's account, and only it, run its two fixed
-forms (`tables`, `capture SECONDS` up to 300) without a password. It prints headers only and changes
-nothing; `install-collector.sh --remove` takes it away. `verify-live.sh` compares the
-live tables with the installed file, checks that `lo` is exempt only from the postrouting drop and
-that no rule names a physical interface, and checks the watch's freshness, the filter's binding to
-the guest's tap and the kernel's limits. It then captures passively on `eno1` while the guest
-reaches allowed destinations and is refused prohibited ones, each against a control from the host.
-It stops every capture and listener it started, and shuts the VM down again if it found it off. `factory-ci verify` lists what else it checks (no physical
-port in a bridge, no macvtap, the libvirt network and VM XML, the nwfilter's drops, nothing but the
-gateway listening on :53, the guest's reach). Until the live checks in step 6 have run, the
-properties above are **proven only in namespaces**: the real nftables load order with ufw and
-libvirt, libvirt's actual NAT rules, and that no frame leaves `eno1` are not yet shown.
+forms (`tables`, `capture SECONDS` up to 300) without a password. It prints addresses only, never a
+payload, and changes nothing; `install-collector.sh --remove` takes it away. Its capture is a raw
+socket on its own clock, not tcpdump: Ubuntu's AppArmor profile for tcpdump refuses signals from a
+confined session such as Claude Desktop's, so a tcpdump started from one could not be stopped.
+`verify-live.sh` compares the live tables with the installed file, checks that `lo` is exempt only
+from the postrouting drop and that no rule names a physical interface, and checks the watch's
+freshness, the filter's binding to the guest's tap and the kernel's limits. It then captures
+passively on `eno1` while the guest reaches allowed destinations and is refused prohibited ones,
+each against a control from the host. It stops every listener it started, and shuts the VM down
+again if it found it off. `factory-ci verify` lists what else it checks (no physical port in a
+bridge, no macvtap, the libvirt network and VM XML, the nwfilter's drops, nothing but the gateway
+listening on :53, the guest's reach).
+
+`verify-live.sh` passed on Office on 2026-10-13, with the VM running: the live tables equal the
+installed file, `lo` is exempt only from the postrouting drop, no rule names a physical interface,
+the watch was fresh, the filter was bound to `vnet0`, the kernel enforced every limit, and the six
+controls held (`api.nuget.org` and `github.com` on 443 open from both; `udayton.edu:443`,
+`github.com:22`, `1.1.1.1:53` and a listener on `192.168.150.1` open from the host and closed from
+the guest). In 75 seconds the capture saw 5,423 frames on `eno1`: none to or from a libvirt MAC or
+192.168.150.0/24, and none leaving with a source MAC but `eno1`'s own. The failures (a removed
+table, an unloadable file, libvirt's NAT gone) were exercised in namespaces only, on the installed
+rules, at the owner's direction: none was injected into the live host.
+
+**Measured on Office** (2026-10-13; idle baseline: a fixed CPU task took 5.0 ms on the host):
+
+| Load on `factory-ci-2` | VM CPU (cap 600%) | VM memory | Disk | Host task, mean / max | User CPU pressure |
+|---|---|---|---|---|---|
+| one real job (hallertau `validate`, 31 s) | peak 472% | 6.0 GiB | 26 MB/s | 5.1 / 7.4 ms | 0.84 peak |
+| three real jobs queued at once (reykholt, reykholt-web, reykholt-art); two ran, the third waited 68 s for a slot | mean 432%, peak 595% | 8.1 GiB | 42 MB/s | 6.2 / 9.8 ms | 0.00 |
+| synthetic worst case: 6 vCPU busy and direct writes, 90 s | mean 598%, peak 600% | 5.6 GiB | 498 MB/s (cap 500) | 5.9 / 11.5 ms | 0.00 |
+
+The caps hold, and the workstation's own work barely notices. The VM's memory settles near its
+8 GiB once builds have filled the guest's page cache: the balloon returns freed pages, not cache.
+Lower `FACTORY_CI_MEMORY_MB` (with `setmaxmem`) if the workstation needs it back. In the same runs,
+jobs of one repository went to both VMs and each ran once.
+
 
 **Availability.** A workstation may sleep or shut down. libvirt-guests saves the VM; its runners go
 offline, and GitHub sends private-repository jobs to `factory-ci-1`. A job it held at that moment
