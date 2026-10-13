@@ -6,7 +6,7 @@
 #
 # It changes no firewall rule, table, NAT rule, libvirt definition or limit. What it starts it stops:
 # a listener on the bridge address, and the VM itself, which it shuts down again if it found it off.
-# The capture is root's and ends by itself. Failure injection (a removed table, a removed NAT rule,
+# The capture is root's and ends on its own clock; nothing here signals it. Failure injection (a removed table, a removed NAT rule,
 # an unloadable ruleset) runs in network namespaces, in test-isolation.sh, never on the live host.
 #
 #   1. the live tables equal what the installed file loads into an empty namespace; the only
@@ -33,9 +33,8 @@ fail=0 pids=() work= vm= started=
 ok() { echo "  ok  $*"; }; no() { echo "  X   $*"; fail=1; }
 cleanup() { # the listener, the files, and the VM back as it was found
   local p
-  for p in "${pids[@]}"; do kill "$p" 2>/dev/null || true; done
-  wait 2>/dev/null || true
-  [[ -n $work ]] && rm -rf "$work"
+  for p in "${pids[@]}"; do kill "$p" 2>/dev/null || true; wait "$p" 2>/dev/null || true; done
+  [[ -n $work ]] && rm -rf "$work"  # root's capture, if still running, ends on its own clock
   if [[ -n $started ]]; then fci stop >/dev/null 2>&1 || true; echo "  ..  $vm was off when this began; it is shutting down again"; fi
 }
 trap cleanup EXIT
@@ -119,8 +118,9 @@ expect 1.1.1.1:53 open closed "DNS past the gateway"
 expect 192.168.150.1:18443 open closed "a host service on the bridge address"
 fci ssh 'curl -fsS -o /dev/null https://api.nuget.org/v3/index.json; ping -6 -c 2 ff02::1%ci0 >/dev/null 2>&1; sudo networkctl renew ci0; sleep 3; ping -c 1 -W 1 192.168.150.77 >/dev/null 2>&1; true'
 wait "$capture" || true
-read -r _ _ dev mac < <(grep '^== uplink ' "$work/capture") || { no "the capture said nothing: $(cat "$work/capture.err")"; dev=; }
+read -r _ _ dev mac frames < <(grep '^== uplink ' "$work/capture") || { no "the capture said nothing: $(cat "$work/capture.err")"; dev=; }
 if [[ -n $dev ]]; then
+  if (( frames > 0 )); then ok "the capture on $dev saw $frames frames in 75 s"; else no "the capture on $dev saw no frame at all, so it proves nothing"; fi
   guest="$(sed -n '/^== uplink /,/^== other$/{/^== /d;p}' "$work/capture")"
   other="$(sed '1,/^== other$/d' "$work/capture")"
   if [[ -z $guest ]]; then ok "no frame on $dev to or from a libvirt MAC (52:54:00:...) or 192.168.150.0/24, guest MAC $gmac"
