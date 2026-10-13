@@ -413,7 +413,7 @@ setvcpus` and `setmaxmem` with `--config`; the host's caps change with `set-prop
 
 **Bring-up**, in this order. Step 2 needs sudo and installs the host's firewall layer and libvirt. Step 5 onward starts libvirt's
 NAT network. It waits for step 3 to pass, and stays within the authorized arrangement (below). The
-root checks in step 7 need sudo.
+collector in step 7 needs sudo once.
 
 ```bash
 tools/ci-runner/host/prepare-host.sh --dry-run --dns 1.1.1.1 --dns 9.9.9.9 --block 131.238.0.0/16 --cpu 6 --memory-max 10G --io-bandwidth 500M --io-iops 20000   # 1: read every step
@@ -422,8 +422,9 @@ tools/ci-runner/factory-ci verify                 # 3: before provisioning: the 
 # 4: only when step 3 passes:
 tools/ci-runner/factory-ci provision              # 5: network, filter, VM (refuses unless isolation is active)
 tools/ci-runner/factory-ci verify                 # 6: with the guest running: libvirt's record and the guest's probes
-sudo tools/ci-runner/host/verify-root.sh          # 7: root's checks, read-only: live tables, filter binding, limits, and a
-                                                  #    capture on eno1 during controlled traffic (no guest MAC or address)
+sudo tools/ci-runner/host/install-collector.sh    # 7: once, sudo: the read-only collector, run without a password
+tools/ci-runner/host/verify-live.sh               # 8: live checks, unprivileged: live tables, filter binding, limits, and
+                                                  #    a capture on eno1 during controlled traffic (no guest MAC or address)
 tools/ci-runner/factory-ci setup
 tools/ci-runner/factory-ci register brandonifco/hallertau   # one repository first; then the other three
 ```
@@ -433,7 +434,12 @@ each probe connecting without the ruleset and refused with it, and checks NAT, N
 MAC capture. It also holds the failures no live host should be put through: it removes a table, adds a rule
 and breaks the file under the watch (with stub `virsh` and `logger`), and removes libvirt's NAT. It
 is also a test, `tools/tests/test_ci_runner_isolation.py`, skipped where unprivileged namespaces are
-unavailable. `host/verify-root.sh` (sudo) is the live host's part, and only reads. It compares the
+unavailable. `host/verify-live.sh` is the live host's part, and only reads. It runs unprivileged: the two
+facts only root can read, the live tables and frames on `eno1`, come from
+`/usr/local/sbin/factory-ci-collect` through `sudo -n`. `host/install-collector.sh` installs that
+program root-owned, with a sudoers rule letting the owner's account, and only it, run its two fixed
+forms (`tables`, `capture SECONDS` up to 300) without a password. It prints headers only and changes
+nothing; `install-collector.sh --remove` takes it away. `verify-live.sh` compares the
 live tables with the installed file, checks that `lo` is exempt only from the postrouting drop and
 that no rule names a physical interface, and checks the watch's freshness, the filter's binding to
 the guest's tap and the kernel's limits. It then captures passively on `eno1` while the guest

@@ -109,6 +109,18 @@ class TestTheHostRulesetInNetworkNamespaces(unittest.TestCase):
         self.assertIn("isolation: PASS", result.stdout)
 
 
+class TestTheCollectorTakesOnlyItsTwoForms(unittest.TestCase):
+    """Root runs it without a password (install-collector.sh): every other argument is refused first."""
+
+    def test_anything_but_tables_or_capture_1_to_300_is_refused(self):
+        script = os.path.join(KIT, "host", "collect.sh")
+        for args in ([], ["tables", "x"], ["capture"], ["capture", "0"], ["capture", "301"], ["capture", "5;id"],
+                     ["capture", "-1"], ["capture", "5", "6"], ["shell"], ["--help"]):
+            result = subprocess.run([script, *args], capture_output=True, text=True)
+            self.assertEqual(2, result.returncode, args)
+            self.assertEqual("", result.stdout, args)
+
+
 class TestPrepareHostRefusesWhatItCannotCheck(unittest.TestCase):
     def test_a_bad_argument_changes_nothing(self):
         script = os.path.join(KIT, "host", "prepare-host.sh")
