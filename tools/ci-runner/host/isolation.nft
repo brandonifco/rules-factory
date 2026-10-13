@@ -1,0 +1,65 @@
+#!/usr/sbin/nft -f
+# factory-ci host isolation (decision 0081): the host's own layer under the guest's nwfilter.
+# prepare-host.sh installs it as /etc/factory-ci/isolation.nft with @BLOCKED@ filled in, and the
+# unit factory-ci-isolation loads it before libvirtd, which requires it: no VM starts without it.
+#
+# It owns one table and touches nothing else: it never flushes the ruleset, ufw's tables or
+# libvirt's. Loading it replaces only this table, atomically. Every chain only drops; accepting here
+# lets a packet on to ufw's and libvirt's chains, which still decide.
+#
+#   * the guest bridge, virbr-fci, forwards frames only to the guest's tap (vnet*): a physical port
+#     put into it by mistake never carries a guest frame, so no guest MAC reaches the physical link;
+#   * the guest reaches only TCP 80/443 and NTP on public addresses, never the blocked ranges, and
+#     the host only for DHCP and DNS on the bridge;
+#   * nothing outside opens a connection to the guest;
+#   * a guest packet that was not translated to the host's address (libvirt's NAT missing) is
+#     dropped before it leaves, never sent with the guest's address;
+#   * no IPv6 to or from the bridge.
+table inet factory_ci
+delete table inet factory_ci
+table bridge factory_ci
+delete table bridge factory_ci
+
+table bridge factory_ci {
+	chain forward {
+		type filter hook forward priority -10; policy accept;
+		meta ibrname "virbr-fci" oifname != "vnet*" drop
+	}
+}
+
+table inet factory_ci {
+	set blocked {
+		type ipv4_addr; flags interval; auto-merge
+		elements = { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12,
+		             192.0.0.0/24, 192.168.0.0/16, 198.18.0.0/15, 224.0.0.0/3 @BLOCKED@ }
+	}
+
+	chain input {
+		type filter hook input priority -10; policy accept;
+		iifname "virbr-fci" meta nfproto ipv6 drop
+		iifname "virbr-fci" ct state established,related accept
+		iifname "virbr-fci" ip saddr 192.168.150.0/24 udp dport { 53, 67 } accept
+		iifname "virbr-fci" ip saddr 192.168.150.0/24 tcp dport 53 accept
+		iifname "virbr-fci" udp sport 68 udp dport 67 accept
+		iifname "virbr-fci" drop
+	}
+
+	chain forward {
+		type filter hook forward priority -10; policy accept;
+		iifname "virbr-fci" meta nfproto ipv6 drop
+		oifname "virbr-fci" meta nfproto ipv6 drop
+		oifname "virbr-fci" ct state established,related accept
+		oifname "virbr-fci" drop
+		iifname "virbr-fci" ip saddr != 192.168.150.0/24 drop
+		iifname "virbr-fci" ip daddr @blocked drop
+		iifname "virbr-fci" ct state established,related accept
+		iifname "virbr-fci" ct state new tcp dport { 80, 443 } accept
+		iifname "virbr-fci" ct state new udp dport 123 accept
+		iifname "virbr-fci" drop
+	}
+
+	chain postrouting {
+		type filter hook postrouting priority srcnat + 10; policy accept;
+		oifname != "virbr-fci" ip saddr 192.168.150.0/24 drop
+	}
+}
