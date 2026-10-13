@@ -28,6 +28,13 @@ mount -t tmpfs tmpfs /run && mkdir -p /run/netns
 ip netns add g; ip netns add w; ip netns add l
 G="ip netns exec g" W="ip netns exec w" L="ip netns exec l"
 MAC=52:54:00:fc:01:01
+# The resolver dnsmasq may ask: the template's is the test's own; an installed file names real ones,
+# and ns w answers for the first of them.
+resolver=203.0.113.53
+if [[ -n ${FCI_RULES:-} ]]; then
+  resolver="$(sed -n '/set resolvers/,/}/s/.*elements = { *\([0-9.]*\).*/\1/p' "$FCI_RULES")"
+  [[ $resolver =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || { echo "no resolver in $FCI_RULES"; exit 1; }
+fi
 
 # The host: the guest's bridge, its tap, the uplink, forwarding, and libvirt's NAT.
 ip link set lo up
@@ -51,7 +58,7 @@ $G ip addr add 192.168.150.11/24 dev eth0; $G ip addr add fd00:fc::11/64 dev eth
 $G ip route add default via 192.168.150.1; $G ip -6 route add default via fd00:fc::1
 # Outside: campus, internet and a resolver in w, a LAN host in l.
 $W ip link set lo up; $W ip link set up0 up
-$W ip addr add 131.238.112.1/21 dev up0; $W ip addr add 203.0.113.10/32 dev up0; $W ip addr add 203.0.113.53/32 dev up0
+$W ip addr add 131.238.112.1/21 dev up0; $W ip addr add 203.0.113.10/32 dev up0; $W ip addr add "$resolver/32" dev up0
 $W ip addr add 2001:db8::10/64 dev up0 nodad
 $W ip route add 192.168.150.0/24 via 131.238.119.32; $W ip -6 route add fd00:fc::/64 via 2001:db8::32
 $L ip link set lo up; $L ip link set lan0 up; $L ip addr add 192.168.150.50/24 dev lan0
@@ -134,7 +141,7 @@ g|192.168.150.50|443|closed|a LAN host on a physical port in the guest's bridge
 g|2001:db8::10|443|closed|the internet over IPv6
 g|fd00:fc::1|22|closed|the host over IPv6
 w|192.168.150.11|22|closed|the campus opening a connection to the guest
-h|203.0.113.53|53|open|dnsmasq asking the approved resolver
+h|$resolver|53|open|dnsmasq asking the approved resolver
 h|131.238.112.1|53|closed|dnsmasq asking another resolver (the campus's)
 "
 # from|to|port|source port|why: connections opened before the ruleset loads, held across the load.
@@ -170,10 +177,10 @@ sleep 2
 for f in "$work"/hold-*; do [[ $(cat "$f") == open ]] || { echo "  X   a held connection did not open without isolation"; fail=1; }; done
 [[ $fail == 0 ]] && echo "  ok  all $(grep -c '|' <<<"$checks") probes and $i held connections get through"
 : >"$work/w.log"
-# FCI_RULES is already rendered; the template gets the test's ranges, resolver and uid (0, the
-# user namespace's root, which every process here runs as).
-sed -e "s#@BLOCKED@#$(for b in $blocked; do printf ', %s' "$b"; done)#" -e "s#@RESOLVERS@#203.0.113.53#" \
-    -e "s#@DNSMASQ_UID@#0#" "${FCI_RULES:-$here/isolation.nft}" | nft -f -
+# The template gets the test's ranges, resolver and uid. An installed file is loaded as it is but
+# for dnsmasq's uid, which becomes 0: the user namespace's root, which every process here runs as.
+sed -e "s#@BLOCKED@#$(for b in $blocked; do printf ', %s' "$b"; done)#" -e "s#@RESOLVERS@#$resolver#" \
+    -e "s#@DNSMASQ_UID@#0#" -e "s#meta skuid [0-9]\{1,10\} #meta skuid 0 #g" "${FCI_RULES:-$here/isolation.nft}" | nft -f -
 $W tcpdump -Z root -l -n -e -i up0 "ether src $MAC" >"$work/w.pcap.txt" 2>/dev/null &
 $L tcpdump -Z root -l -n -e -i lan0 "ether src $MAC" >"$work/l.pcap.txt" 2>/dev/null &
 sleep 1
