@@ -107,7 +107,7 @@ for target in sys.argv[1:]:
         print(target, "closed")
 EOF
 targets="api.nuget.org:443 github.com:443 udayton.edu:443 github.com:22 1.1.1.1:53 192.168.150.1:18443"
-from_host="$(runuser -u "$SUDO_USER" -- python3 -I "$work/probe.py" $targets)"
+from_host="$(runuser -u "$SUDO_USER" -- python3 -I - $targets <"$work/probe.py")"  # stdin: $work is root's
 from_guest="$(fci ssh python3 -I - $targets <"$work/probe.py")"
 expect() { # target, host's, guest's, why
   local h g; h="$(awk -v t="$1" '$1 == t {print $2}' <<<"$from_host")"; g="$(awk -v t="$1" '$1 == t {print $2}' <<<"$from_guest")"

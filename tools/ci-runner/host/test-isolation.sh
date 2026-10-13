@@ -229,9 +229,12 @@ nft add rule inet factory_ci forward accept; w3="$(watch)"
 if [[ $w1 == loaded && $w2 == reloaded && $back == yes && $w3 == reloaded && $clean == yes ]]; then
   echo "  ok  the watch puts back a removed table and drops an added rule"; else
   echo "  X   the watch: intact $w1, removed $w2 (back: $back), added rule $w3 (gone: $clean)"; fail=1; fi
+# The bridge's state by netlink, which answers for this namespace; /sys here is still the host's.
+admin() { [[ "$(ip -o link show virbr-fci)" =~ \<([^>]*,)?UP(,[^>]*)?\> ]] && echo up || echo down; }
+before="$(admin)"
 echo 'table inet factory_ci { chain broken' >"$work/rules.nft"; w4="$(watch || true)"
-if [[ $w4 == failed && "$(cat /sys/class/net/virbr-fci/operstate)" == down ]] && grep -q "net-destroy factory-ci" "$work/virsh.calls"; then
+if [[ $before == up && $w4 == failed && "$(admin)" == down ]] && grep -q "net-destroy factory-ci" "$work/virsh.calls"; then
   echo "  ok  a file the watch cannot load takes the guest's bridge down and stops its network"; else
-  echo "  X   the watch with an unloadable file: $w4, bridge $(cat /sys/class/net/virbr-fci/operstate)"; fail=1; fi
+  echo "  X   the watch with an unloadable file: $w4, bridge $before then $(admin)"; fail=1; fi
 [[ $fail == 0 ]] && echo "isolation: PASS ($n probes, NAT, MAC, watch)" || echo "isolation: FAIL"
 exit "$fail"
