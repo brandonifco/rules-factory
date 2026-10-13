@@ -6,6 +6,11 @@
 # change goes through the guest's admin account over SSH.
 set -euo pipefail
 kit="$(cd "$(dirname "$0")" && pwd)"
+# This host's VM: its name, size and peers. Every host but the first has one, because the defaults
+# name factory-ci-1, and a second VM of that name would replace the first's registrations on GitHub.
+HOST_ENV="${FACTORY_CI_HOST_ENV:-$HOME/.config/factory-ci/host.env}"
+# shellcheck source=/dev/null
+[[ -f $HOST_ENV ]] && { set -a; . "$HOST_ENV"; set +a; }
 VM="${FACTORY_CI_VM:-factory-ci-1}"
 IP="${FACTORY_CI_IP:-192.168.150.11}"
 KEY="${FACTORY_CI_KEY:-$HOME/.ssh/factory-ci_ed25519}"
@@ -14,11 +19,41 @@ GH="${FACTORY_CI_GH:-gh}"
 IMAGE_RELEASE="${FACTORY_CI_IMAGE_RELEASE:-release-20260926}"
 IMAGE_SHA256="${FACTORY_CI_IMAGE_SHA256:-6a81c37564db9b1ee84e141922625e1d7c5b389b99bb3c572e0243607d5bb4d2}"
 VCPUS="${FACTORY_CI_VCPUS:-6}" MEMORY_MB="${FACTORY_CI_MEMORY_MB:-12288}" DISK="${FACTORY_CI_DISK:-100G}"
+# Ranges the guest may not reach besides the private ones the filter names: this host's own
+# networks always, and these (CIDR, space-separated), e.g. an institution's public address space.
+BLOCK="${FACTORY_CI_BLOCK:-}"
+# A workstation host (decision 0081): `required` refuses to provision or start the VM unless the
+# host's own isolation (host/prepare-host.sh) is active. DNS: the resolvers the guest's DNS forwards
+# to, instead of the host's (a campus resolver answers for internal names).
+ISOLATION="${FACTORY_CI_ISOLATION:-}" DNS="${FACTORY_CI_DNS:-}"
 LABELS='["self-hosted","linux","x64","factory-ci"]'
 virsh() { command virsh -c qemu:///system "$@"; }
 guest() { ssh -i "$KEY" -o UserKnownHostsFile="$KNOWN" -o StrictHostKeyChecking=accept-new -o BatchMode=yes \
             -o ConnectTimeout=5 "ciadmin@$IP" "$@"; }
 die() { echo "factory-ci: $*" >&2; exit 1; }
+# Isolation is required on a host prepare-host.sh prepared and for any VM but the first, whatever
+# the host file says: a missing or partial host file must not make a workstation's VM unguarded.
+needs_isolation() {
+  [[ $ISOLATION == required || $VM != factory-ci-1 || -e /etc/systemd/system/factory-ci-isolation.service ]]
+}
+isolated() { # die unless the host's isolation is live and matches this host file
+  needs_isolation || return 0
+  local state at
+  systemctl is-active --quiet factory-ci-isolation.service ||
+    die "factory-ci-isolation is not active (sudo host/prepare-host.sh; decision 0081)"
+  [[ " $(systemctl show libvirtd.service -p Requires --value) " == *" factory-ci-isolation.service "* ]] ||
+    die "libvirtd does not require factory-ci-isolation (sudo host/prepare-host.sh)"
+  read -r state at 2>/dev/null </run/factory-ci-isolation/status || die "no isolation watch status (factory-ci-isolation-watch.timer)"
+  [[ $state =~ ^(loaded|reloaded)$ && $at =~ ^[0-9]+$ ]] && (( $(date +%s) - at < 60 )) ||
+    die "the isolation watch says ${state:-nothing} ${at:+at $(date -d "@$at" +%T)}: not live within the last minute"
+  python3 -I "$kit/host/verify.py" gate /etc/factory-ci/isolation.nft --dns $DNS --block $BLOCK >/dev/null ||
+    die "this host file's FACTORY_CI_DNS or FACTORY_CI_BLOCK is not what the installed isolation holds (verify.py gate)"
+}
+safe_network() { # die unless libvirt's network factory-ci is the NAT network this kit defines
+  needs_isolation || return 0
+  virsh net-dumpxml factory-ci | python3 -I "$kit/host/verify.py" network $DNS >/dev/null ||
+    die "network factory-ci is not the NAT network this kit defines; refusing to start it (factory-ci verify)"
+}
 name_of() { local r="${1#*/}"; r="${r,,}"; echo "${r//[^a-z0-9-]/-}"; }
 need_repo() { [[ ${1:-} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "give OWNER/REPO"; }
 is_private() { [[ "$("$GH" api "repos/$1" --jq .private)" == true ]]; }
@@ -26,10 +61,17 @@ dispatch_py() { python3 -I "$kit/dispatch.py" "$@"; }
 
 cmd_provision() { # create the network, filter and VM from the pinned cloud image
   virsh dominfo "$VM" >/dev/null 2>&1 && die "$VM already exists (rebuild: factory-ci destroy-vm first)"
+  isolated
   [[ -f $KEY ]] || ssh-keygen -q -t ed25519 -N '' -C "factory-ci admin (host only)" -f "$KEY"
-  virsh net-info factory-ci >/dev/null 2>&1 || { virsh net-define "$kit/host/network.xml"; virsh net-autostart factory-ci; }
+  if ! virsh net-info factory-ci >/dev/null 2>&1; then
+    local net fwd= d; net="$(mktemp)"
+    for d in $DNS; do [[ $d =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || die "not an IPv4 address: $d"; fwd+="<forwarder addr='$d'/>"; done
+    sed -e "s#factory-ci-1#$VM#g" -e "s#<dns enable='yes'/>#<dns enable='yes'>$fwd</dns>#" "$kit/host/network.xml" >"$net"
+    virsh net-define "$net"; rm -f "$net"; virsh net-autostart factory-ci
+  fi
+  safe_network
   virsh net-start factory-ci 2>/dev/null || true
-  virsh nwfilter-define "$kit/host/nwfilter.xml" >/dev/null
+  cmd_filter
   local work base="factory-ci-base-noble-${IMAGE_RELEASE#release-}.qcow2"
   work="$(mktemp -d)"; trap 'rm -rf "$work"' RETURN
   if ! virsh vol-info --pool default "$base" >/dev/null 2>&1; then
@@ -54,10 +96,69 @@ cmd_provision() { # create the network, filter and VM from the pinned cloud imag
     --disk "vol=default/$VM.qcow2,bus=virtio,cache=none,discard=unmap" \
     --disk "vol=default/$VM-seed.iso,device=cdrom,bus=sata,readonly=on" \
     --network network=factory-ci,model=virtio,mac=52:54:00:fc:01:01,filterref=factory-ci-egress \
+    --memballoon model=virtio,freePageReporting=on \
     --graphics none --console pty,target_type=serial --noautoconsole --import --autostart
   ssh-keygen -R "$IP" -f "$KNOWN" >/dev/null 2>&1 || true
   echo "waiting for cloud-init..."; for _ in $(seq 60); do guest 'cloud-init status --wait' 2>/dev/null && return 0; sleep 5; done
   die "guest did not come up"
+}
+cmd_filter() { # (re)define the guest's egress filter: this host's own networks and BLOCK dropped too
+  local net drops=
+  for net in $(ip -4 -o addr show scope global | awk '$2 !~ /^virbr/ {print $4}') $BLOCK; do
+    [[ $net =~ ^([0-9]{1,3}(\.[0-9]{1,3}){3})/([0-9]{1,2})$ ]] || die "not an IPv4 CIDR: $net"
+    drops+="  <rule action='drop' direction='out' priority='300'><all dstipaddr='${BASH_REMATCH[1]}' dstipmask='${BASH_REMATCH[3]}'/></rule>"$'\n'
+  done
+  local xml; xml="$(mktemp)"
+  DROPS="$drops" awk '/<!-- @HOST_NETWORKS@ -->/ { printf "%s", ENVIRON["DROPS"]; next } { print }' "$kit/host/nwfilter.xml" >"$xml"
+  virsh nwfilter-define "$xml" >/dev/null; rm -f "$xml"
+  echo "egress filter: also dropped $(ip -4 -o addr show scope global | awk '$2 !~ /^virbr/ {print $4}' | tr '\n' ' ')$BLOCK"
+}
+cmd_verify() { # prove this host's isolation (decision 0081): ruleset, host, libvirt, guest; exit 1 on a failure
+  local bad=0 port links net lan dev
+  ok() { echo "  ok  $*"; }; no() { echo "  X   $*"; bad=1; }
+  echo "== the installed ruleset, in network namespaces (test-isolation)"
+  if [[ -r /etc/factory-ci/isolation.nft ]]; then
+    if FCI_RULES=/etc/factory-ci/isolation.nft "$kit/host/test-isolation.sh" | tail -1 | grep -q PASS; then
+      ok "/etc/factory-ci/isolation.nft passes"; else no "/etc/factory-ci/isolation.nft fails: run host/test-isolation.sh"; fi
+  else no "no /etc/factory-ci/isolation.nft (sudo host/prepare-host.sh)"; fi
+  echo "== the host"
+  if needs_isolation; then
+    local why; if why="$( (isolated) 2>&1)"; then ok "isolation live: unit active, libvirtd requires it, watch $(cut -d' ' -f1 /run/factory-ci-isolation/status), host file matches the installed rules"
+    else no "isolation: ${why#factory-ci: }"; fi
+  fi
+  for port in /sys/class/net/*/brif/*; do
+    [[ -e $port && -e /sys/class/net/${port##*/}/device ]] && no "a bridge holds the physical port ${port##*/}"
+  done
+  links="$(ip -d -o link)"
+  if grep -qE ' (macvtap|macvlan|ipvlan) ' <<<"$links"; then no "a macvtap/macvlan/ipvlan link exists"; else ok "no physical port in any bridge; no macvtap, macvlan or ipvlan link"; fi
+  if [[ -d /sys/class/net/virbr-fci ]]; then
+    for port in /sys/class/net/virbr-fci/brif/*; do [[ -e $port && ${port##*/} != vnet* ]] && no "virbr-fci holds ${port##*/}"; done
+    if [[ $(cat /proc/sys/net/ipv6/conf/virbr-fci/disable_ipv6) == 1 ]]; then ok "virbr-fci has IPv6 off"; else no "virbr-fci has IPv6 on"; fi
+    local dns53; dns53="$(ss -H -lntu | awk '$5 ~ /:53$/ {print $5}' | grep -vE '^(127\.|\[::1\]|192\.168\.150\.1:)' || true)"
+    if [[ -z $dns53 ]]; then ok "DNS on the host listens on 192.168.150.1 and loopback only"; else no "DNS also listens on $(tr '\n' ' ' <<<"$dns53")"; fi
+  fi
+  echo "== libvirt"
+  if ! virsh dominfo "$VM" >/dev/null 2>&1 && ! virsh net-info factory-ci >/dev/null 2>&1; then
+    echo "  ..  $VM and its network are not provisioned yet: their checks did not run"
+  else
+    virsh net-dumpxml factory-ci 2>/dev/null | python3 -I "$kit/host/verify.py" network $DNS || bad=1
+    virsh dumpxml "$VM" 2>/dev/null | python3 -I "$kit/host/verify.py" domain || bad=1
+    local drops; drops="$(virsh nwfilter-dumpxml factory-ci-egress 2>/dev/null || true)"
+    for net in $(ip -4 -o addr show scope global | awk '$2 !~ /^virbr/ {print $4}') $BLOCK; do
+      if grep -q "dstipaddr='${net%/*}' dstipmask='${net#*/}'" <<<"$drops"; then ok "the guest's nwfilter drops $net"; else no "the guest's nwfilter does not drop $net (factory-ci filter)"; fi
+    done
+  fi
+  echo "  ..  ip_forward $(cat /proc/sys/net/ipv4/ip_forward); machine.slice $(systemctl show machine.slice -p CPUWeight -p CPUQuotaPerSecUSec -p MemoryMax -p IOWriteBandwidthMax | tr '\n' ' ')"
+  dev="$(ip -o route get 1.1.1.1 | sed -n 's/.* dev \([^ ]*\).*/\1/p')"
+  lan="$(ip -o route get 1.1.1.1 | sed -n 's/.* src \([0-9.]*\).*/\1/p')"
+  if [[ "$(virsh domstate "$VM" 2>/dev/null)" == running ]]; then
+    echo "== from the guest"
+    guest "python3 -I - guest '$lan' '$(resolvectl dns "$dev" 2>/dev/null | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -1)'" <"$kit/host/verify.py" || bad=1
+  else echo "  ..  $VM is not running: the guest's probes did not run"; fi
+  echo "== root's part, not run here: sudo nft list table inet factory_ci && sudo nft list table bridge factory_ci"
+  echo "   and, while this runs again: sudo timeout 120 tcpdump -n -e -i $dev ether src 52:54:00:fc:01:01   (must print no frame)"
+  if [[ $bad == 0 ]]; then echo "verify: PASS"; else echo "verify: FAIL"; fi
+  return "$bad"
 }
 cmd_setup() { # install or update the guest baseline (toolchain, hooks, units)
   tar -C "$kit/guest" -czf - . | guest 'rm -rf ~/kit && mkdir ~/kit && tar -xzf - -C ~/kit && sudo ~/kit/setup-guest.sh'
@@ -65,6 +166,12 @@ cmd_setup() { # install or update the guest baseline (toolchain, hooks, units)
 cmd_register() { # OWNER/REPO: register (or re-register) this VM's runner for one private repository
   need_repo "${1:-}"; local repo="$1" name; name="$(name_of "$repo")"
   is_private "$repo" || die "$repo is public: a standing runner would take a fork's job; use trust (decision 0080)"
+  # The runner is named for the guest, and --replace takes over a runner of that name: never another VM's.
+  [[ "$(guest hostname)" == "$VM" ]] || die "the guest at $IP is $(guest hostname), not $VM: check $HOST_ENV"
+  if ! guest "sudo test -f /srv/factory-ci/fci-$name/runner/.runner" &&
+     [[ -n "$("$GH" api "repos/$repo/actions/runners" --jq ".runners[] | select(.name == \"$VM\" and .status == \"online\") | .id")" ]]; then
+    die "$repo has an online runner named $VM that this guest does not hold: another host's VM has this name ($HOST_ENV)"
+  fi
   "$GH" api -X POST "repos/$repo/actions/runners/registration-token" --jq .token |
     guest "sudo /opt/factory-ci/bin/register '$name' '$repo'"
   cmd_runners "$repo"
@@ -160,6 +267,8 @@ cmd_runner() { # start|stop|restart [OWNER/REPO]: the runner service(s) in the g
 cmd_ssh() { # [COMMAND]: the guest's admin shell
   guest "$@"; }
 cmd_start() { # start the VM (it also starts with the host: autostart)
+  isolated; safe_network; virsh dumpxml "$VM" | python3 -I "$kit/host/verify.py" domain >/dev/null ||
+    { needs_isolation && die "$VM is not the VM this kit defines (factory-ci verify)"; }
   virsh start "$VM"; }
 cmd_stop() { # shut the VM down gracefully: a running job may finish first (TimeoutStopSec)
   virsh shutdown "$VM"; }

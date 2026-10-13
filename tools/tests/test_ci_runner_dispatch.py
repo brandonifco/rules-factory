@@ -5,7 +5,9 @@ runner could be handed at all; `Dispatcher.serve` starts runners only for admitt
 while anything else is waiting. Each refusal here names the way a fork, a bot or an edited workflow
 would otherwise reach the owner's machine.
 """
+import contextlib
 import importlib.util
+import io
 import os
 import sys
 import unittest
@@ -301,6 +303,72 @@ class TestServe(unittest.TestCase):
     def test_a_running_job_needs_no_runner(self):
         started, _, _ = self.serve([run(run_id=7)], {7: [job(status="in_progress")]})
         self.assertEqual(0, started)
+
+
+class TestAPeerVm(unittest.TestCase):
+    """Issue #643: a second VM, factory-ci-2, beside factory-ci-1. A private repository is registered
+    on both and GitHub gives each job to one runner; a public one is served by one VM's dispatcher."""
+
+    def setUp(self):
+        self.saved = dispatch.VM, dispatch.PEERS
+        dispatch.VM, dispatch.PEERS = "factory-ci-1", ("factory-ci-2",)
+
+    def tearDown(self):
+        dispatch.VM, dispatch.PEERS = self.saved
+
+    def test_a_runner_is_known_as_this_vm_s_a_peer_s_or_neither(self):
+        self.assertEqual("factory-ci-1", dispatch.fleet_vm("factory-ci-1"))
+        self.assertEqual("factory-ci-1", dispatch.fleet_vm("factory-ci-1-jit-abcd"))
+        self.assertEqual("factory-ci-2", dispatch.fleet_vm("factory-ci-2-jit-abcd"))
+        for other in ("GitHub Actions 7", "factory-ci-10", "factory-ci-3-jit-a", "factory-ci-2x"):
+            self.assertIsNone(dispatch.fleet_vm(other), other)
+
+    def test_a_peer_s_one_job_runner_is_not_served_beside(self):
+        """Two dispatchers in one repository would each start runners for the same jobs, and a job
+        handed to the other's runner before that one admitted it would be killed."""
+        peer = {"id": 9, "name": "factory-ci-2-jit-abcd", "status": "online", "busy": True}
+        started, _, guest = TestServe.serve(TestServe(), [run(run_id=7)], {7: [job()]}, runners=[peer])
+        self.assertEqual(0, started)
+        self.assertFalse([c for c in guest.calls if c[0] == "start"])
+
+    def audit(self, runners, variables, served=()):
+        public = {"full_name": REPO, "private": False}
+        answers = {
+            "/user": {"login": OWNER},
+            f"/repos/{REPO}/actions/runners?per_page=100": {"runners": runners},
+            f"/repos/{REPO}/actions/variables?per_page=30": {"variables": variables},
+            f"/repos/{REPO}/actions/permissions/fork-pr-contributor-approval": {"approval_policy": "all_external_contributors"},
+        }
+
+        class GitHub:
+            def get(self, path, cache=False):
+                if path.startswith("/user/repos?"):
+                    return [public] if path.endswith("page=1") else []
+                return answers[path]
+
+        class Guest:
+            def inventory(self):
+                return {"dispatch": {"rules-factory": REPO} if REPO in served else {}, "persistent": {}, "jit": {}}
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = dispatch.audit(github=GitHub(), guest=Guest())
+        return code, out.getvalue()
+
+    def test_a_peer_s_one_job_runner_is_not_a_standing_registration(self):
+        code, out = self.audit([{"name": "factory-ci-2-jit-abcd"}], [], served=(REPO,))
+        self.assertEqual(0, code, out)
+        code, out = self.audit([{"name": "factory-ci-2"}], [], served=(REPO,))
+        self.assertEqual(1, code, "a peer's standing runner on a public repository is still a finding")
+
+    def test_a_repository_a_peer_may_serve_is_a_note_here_and_a_finding_with_no_peer(self):
+        trusted = [{"name": "FACTORY_RUNS_ON_TRUSTED", "value": '["self-hosted","linux","x64","factory-ci"]'}]
+        code, out = self.audit([], trusted)
+        self.assertEqual(0, code, out)
+        self.assertIn("factory-ci-2", out)
+        dispatch.PEERS = ()
+        code, _ = self.audit([], trusted)
+        self.assertEqual(1, code)
 
 
 class TestTheGuestIsSpokenToSafely(unittest.TestCase):

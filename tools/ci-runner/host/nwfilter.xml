@@ -1,6 +1,7 @@
 <!-- factory-ci-egress: the CI guest may reach the host's DNS and the public
      internet on 80/443 (and NTP); nothing on the host or any private network.
-     Only the host (the libvirt gateway) may open SSH to the guest. -->
+     Only the host (the libvirt gateway) may open SSH to the guest.
+     `factory-ci filter` defines it, adding the host's own networks below. -->
 <filter name='factory-ci-egress' chain='root' priority='-700'>
   <!-- L2: only ARP and IPv4; no IPv6 -->
   <rule action='accept' direction='inout' priority='-650'><mac protocolid='arp'/></rule>
@@ -23,6 +24,8 @@
   <rule action='drop' direction='out' priority='300'><all dstipaddr='100.64.0.0' dstipmask='10'/></rule>
   <rule action='drop' direction='out' priority='300'><all dstipaddr='127.0.0.0' dstipmask='8'/></rule>
   <rule action='drop' direction='out' priority='300'><all dstipaddr='224.0.0.0' dstipmask='3'/></rule>
+  <!-- the host's own networks and FACTORY_CI_BLOCK, for a host whose LAN is public address space -->
+  <!-- @HOST_NETWORKS@ -->
   <!-- public internet: HTTPS, HTTP (Ubuntu archive), NTP -->
   <rule action='accept' direction='out' priority='400'><tcp dstportstart='443' state='NEW'/></rule>
   <rule action='accept' direction='out' priority='400'><tcp dstportstart='80' state='NEW'/></rule>

@@ -1,10 +1,19 @@
 # Self-hosted runners
 
-The owner's CI runs on one KVM virtual machine on the owner's home server, `factory-ci-1`, whatever
-the repository's visibility. **Trust decides where a run executes, not visibility**
-([decision 0080](decisions/0080-execution-trust-not-visibility-decides-whether-a-run-reaches-the-self-hosted-runner.md)): the owner's own runs go to the VM, and everybody else's (a fork's pull
+The owner's CI runs on KVM virtual machines the owner hosts, whatever the repository's visibility:
+`factory-ci-1` on the home server, and, since 2026-10-13, `factory-ci-2` on the owner's Office
+workstation (see [A workstation host](#a-workstation-host)). **Trust decides where a run executes, not
+visibility**
+([decision 0080](decisions/0080-execution-trust-not-visibility-decides-whether-a-run-reaches-the-self-hosted-runner.md)): the owner's own runs go to a VM, and everybody else's (a fork's pull
 request, a bot's update, a contributor's edited workflow) stay on GitHub-hosted runners and can
-never reach it. GitHub still schedules every job and still reports every check and verdict.
+never reach one. GitHub still schedules every job and still reports every check and verdict.
+
+The two VMs are independent and share nothing: no network, key, token or cache
+([decision 0081](decisions/0081-a-second-vm-adds-capacity-through-standing-registrations-and-a-public-repository-has-one-dispatcher.md)).
+Each private repository has a standing registration on every VM, named for the VM, and GitHub gives
+each job to exactly one runner; a VM that is off is offline and gets nothing. Public repositories
+stay served only by `factory-ci-1`'s dispatcher. Sections that say "the VM" describe each VM; the
+numbers are `factory-ci-1`'s unless they say otherwise.
 
 The kit is [`tools/ci-runner/`](../tools/ci-runner/factory-ci): one host command, `factory-ci`, the
 dispatcher it runs ([`dispatch.py`](../tools/ci-runner/dispatch.py)), and the guest baseline it
@@ -14,8 +23,8 @@ installs. Nothing in it is a credential.
 
 | Runs | Runner | How they get there |
 |---|---|---|
-| Every run of a private repository (since 2026-10-09: reykholt, reykholt-web, reykholt-art, hallertau) | `factory-ci` VM, standing registration | The variable `FACTORY_RUNS_ON` ([0079](decisions/0079-a-repository-chooses-its-runner-through-factory-runs-on.md)). Only the owner and the owner's agents can start a run there, and GitHub runs no fork pull request of a private repository while its Actions setting for that stays off (keep it off). |
-| The owner's own runs of a public repository (since 2026-10-10: see [Repositories](#repositories)) | `factory-ci` VM, one one-job runner per job | The variable `FACTORY_RUNS_ON_TRUSTED` routes them; the **trusted dispatcher** admits each one and starts its runner ([The boundary](#the-boundary-for-public-repositories)). |
+| Every run of a private repository (since 2026-10-09: reykholt, reykholt-web, reykholt-art, hallertau) | `factory-ci-1` VM, standing registration; `factory-ci-2` too (since 2026-10-13), and GitHub picks one | The variable `FACTORY_RUNS_ON` ([0079](decisions/0079-a-repository-chooses-its-runner-through-factory-runs-on.md)). Only the owner and the owner's agents can start a run there, and GitHub runs no fork pull request of a private repository while its Actions setting for that stays off (keep it off). |
+| The owner's own runs of a public repository (since 2026-10-10: see [Repositories](#repositories)) | `factory-ci-1` VM only, one one-job runner per job | The variable `FACTORY_RUNS_ON_TRUSTED` routes them; the **trusted dispatcher** on the home server admits each one and starts its runner ([The boundary](#the-boundary-for-public-repositories)). Never `trust` a public repository on a second VM. |
 | Everything else in a public repository: fork pull requests, bots (Dependabot), a re-run of either | GitHub-hosted `ubuntu-24.04` | The runner line sends them there unmodified. A fork that rewrites its `runs-on` gets a job that is never served and is cancelled. Hosted runs are free on public repositories. |
 | Publishing (`publish-map.yml`, a library's `publish.yml`) and manual maintenance workflows | GitHub-hosted `ubuntu-24.04` | Pinned in the file. The NuGet key is never on the VM. |
 
@@ -26,8 +35,8 @@ are the owner and its code is this repository's, not a fork's. `FACTORY_RUNS_ON`
 enable` sets the right one for the repository's visibility, and `factory-ci audit` reports the
 wrong one.
 
-There is **no fallback**. When the VM or the dispatcher is down, a run that asked for it waits in
-GitHub's queue and fails after GitHub's 24-hour queue limit. It does not move to a billed hosted
+There is **no fallback**. When every VM that could take a run, or the dispatcher, is down, a run that
+asked for it waits in GitHub's queue and fails after GitHub's 24-hour queue limit. It does not move to a billed hosted
 runner. Moving a repository back to hosted runners is a deliberate act, described below.
 
 ## The boundary for public repositories
@@ -66,6 +75,14 @@ workflow can be the boundary. It is held in three places a fork cannot write:
 `factory-ci trust` also sets the repository's fork pull request approval to
 `all_external_contributors`. It is one more door, not the lock.
 
+A public repository is served by one VM's dispatcher only. An admission is written into the guest of
+the dispatcher that judged the run, so a job handed to a peer VM's waiting runner before the peer
+admitted it would be killed by its hook. A dispatcher that sees a peer's one-job runner (a name in
+`FACTORY_CI_PEERS`) in a repository it serves deletes its own waiting runners there, stops serving
+it, and logs `NOT SERVED ... of a peer VM`. `audit` and `timings` know the peers: a peer's one-job
+runner is not a standing registration, and a trusted repository this VM does not serve is a note
+pointing at the peer's audit, not a finding.
+
 What was verified on 2026-10-10 (runner 2.338.0), on a throwaway branch of rules-factory:
 
 | Probe | Result |
@@ -89,16 +106,19 @@ ours. [Running the boundary probe](#running-the-boundary-probe) says how.
 
 ## The VM
 
+The table is `factory-ci-1`'s. `factory-ci-2` differs in its size and its host's controls, which
+[A workstation host](#a-workstation-host) gives.
+
 | | |
 |---|---|
-| Name | `factory-ci-1`, libvirt `qemu:///system`, autostart |
+| Name | `factory-ci-1`, libvirt `qemu:///system`, autostart. The name is `FACTORY_CI_VM` ([The host file](#the-host-file)); the home server has no host file and keeps this default. |
 | Guest | Ubuntu Server 24.04, from the cloud image the script pins by release and SHA-256 |
-| Size | 6 vCPU (host-passthrough), 12 GiB, 100 GiB qcow2 in the `default` pool |
+| Size | 6 vCPU (host-passthrough), 12 GiB, 100 GiB qcow2 in the `default` pool. The balloon has `freePageReporting`, which returns freed guest memory to the host. |
 | Network | libvirt network `factory-ci`: NAT, bridge `virbr-fci`, 192.168.150.0/24, guest at .11 |
-| Egress | nwfilter `factory-ci-egress` on the guest's NIC. Allowed: DHCP; DNS to the gateway; outbound TCP 80/443 and NTP to public addresses. Dropped: everything else, including the host, the LAN, every RFC 1918, link-local and CGNAT range, other libvirt networks, and IPv6. Only the host may open SSH to the guest. |
+| Egress | nwfilter `factory-ci-egress` on the guest's NIC. Allowed: DHCP; DNS to the gateway; outbound TCP 80/443 and NTP to public addresses. Dropped: everything else, including the host, the LAN, every RFC 1918, link-local and CGNAT range, other libvirt networks, and IPv6. Only the host may open SSH to the guest. `factory-ci filter` defines it, and also drops the host's own global IPv4 networks and `FACTORY_CI_BLOCK`; on the home server (a private LAN) that adds nothing. |
 | Admin | `ciadmin`, key-only SSH from the host (`~/.ssh/factory-ci_ed25519`, made for this VM and used for nothing else); passwordless sudo |
 | Toolchain | `/opt/factory-ci` (root-owned, read-only to jobs): the .NET SDK the engines pin (10.0.112) and the .NET 8 runtime their tests also target, the GitHub CLI (the engines' `pr-policy` and `conformance-gate` call `gh`), Node, and the runner distribution. `/opt/hostedtoolcache` holds Python 3.12.15 and 3.12.14 (rules-factory's pin) in the hosted image's layout, for `actions/setup-python`. The Ubuntu packages a job would otherwise `sudo apt-get` (poppler-utils and others) are installed. All are pinned with hashes in [`guest/versions.env`](../tools/ci-runner/guest/versions.env). `actions/setup-dotnet` and `setup-python` find what they need and download nothing. A version that is not there fails the job, rather than being written into a cache another job could change. |
-| Runners | One system account per private repository, `fci-<repo>`, and two per public one, `fci-<repo>` and `fcj-<repo>`; home `/srv/factory-ci/<account>` (0700). No sudo, no login shell, no SSH key. A private repository's standing runner is the service `factory-ci-runner@fci-<repo>`; a public repository's one-job runners are `factory-ci-jit-<id>`, generated from the same unit, in `/srv/factory-ci-jit/<id>`, removed when done, at most one per account at a time. All are systemd-hardened (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, `ProtectProc=invisible`, so an account sees no other account's processes) and in `factory-ci.slice`, which caps all runners together at 11 GiB. |
+| Runners | One system account per private repository, `fci-<repo>`, and two per public one, `fci-<repo>` and `fcj-<repo>`; home `/srv/factory-ci/<account>` (0700). No sudo, no login shell, no SSH key. A private repository's standing runner is the service `factory-ci-runner@fci-<repo>`; a public repository's one-job runners are `factory-ci-jit-<id>`, generated from the same unit, in `/srv/factory-ci-jit/<id>`, removed when done, at most one per account at a time. All are systemd-hardened (`NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, `ProtectProc=invisible`, so an account sees no other account's processes) and in `factory-ci.slice`, which caps all runners together at 11 GiB on a 12 GiB guest (`setup` scales it down on a smaller guest, below). |
 | Concurrency | `/etc/factory-ci/slots`, which is 2 (measured; see Everyday operation). GitHub cannot share one runner registration between personal repositories, so each repository's listener could take a job at the same moment. The job-started hook takes one of N slot locks before the first step and keeps it until the job's worker exits. A job that waits says so in its log, and the wait counts against its `timeout-minutes`. |
 | Workspaces | The job-completed hook empties the checkout and `_temp`. The job-started hook empties whatever a job killed with the VM left behind. Every job starts from a fresh clone. |
 | Kept between jobs | Only each repository's own home: its NuGet global packages folder, and what `pip` installs for it under `~/.local` (the tool cache's Python is read-only). The engines' locked restore still verifies every package against its lock file. No cache is shared between repositories, and the shared toolchain is read-only. |
@@ -132,7 +152,9 @@ Rebuild the VM (below) if a job is ever suspected of tampering with it.
 ## Everyday operation
 
 Run these from a rules-factory checkout on the host. `gh` must be logged in as the owner with
-`repo` scope.
+`repo` scope. Each host's commands act on its own VM, the one its host file names; neither host
+reaches the other's VM. `runners` and `audit` show GitHub's view, which includes the other VM's
+runners.
 
 ```bash
 tools/ci-runner/factory-ci status                          # VM, services, slots, GitHub's view
@@ -208,7 +230,7 @@ produced before factory 1.3 first needs a rules-corpus build definition beside e
 decision 0074). A repository's own hand-written workflow uses the same line, copied from
 `RUNS_ON_LINE` in `tools/factory/repository.py`; a job that publishes keeps `ubuntu-24.04`.
 
-**A private repository:**
+**A private repository** (on every VM that should serve it; run `register` from each host):
 
 ```bash
 tools/ci-runner/factory-ci setup                          # if versions.env changed
@@ -227,13 +249,13 @@ tools/ci-runner/factory-ci enable brandonifco/<repo>      # sets FACTORY_RUNS_ON
 
 Then push a pull request and confirm in the job metadata that it ran on the VM:
 `gh api repos/O/R/actions/runs/<id>/jobs --jq '.jobs[]|[.name,.runner_name,(.labels|join(","))]'`
-must name `factory-ci-1` (a standing runner) or `factory-ci-1-jit-<hex>` (a one-job runner).
+must name `factory-ci-1` or `factory-ci-2` (a standing runner) or `factory-ci-1-jit-<hex>` (a one-job runner).
 
 ### Repositories
 
 | Repository | Visibility | Runner | Note |
 |---|---|---|---|
-| reykholt, reykholt-web, reykholt-art, hallertau | private | standing | since 2026-10-09 |
+| reykholt, reykholt-web, reykholt-art, hallertau | private | standing | `factory-ci-1` since 2026-10-09; `factory-ci-2` since 2026-10-13 |
 | rules-factory | public | dispatch | since 2026-10-10; `validate`, `engine`, `documentation` (`publish-map`, `judge-rebuild` hosted) |
 | faa-part-107 | public | dispatch | since 2026-10-10, re-produced from factory 1.6.0 (faa-part-107#147); `validate`, `pr-policy`, `conformance-gate`, `verdict-requeue` (`package`, `publish` hosted) |
 | srd-52-combat | public | dispatch | since 2026-10-10, re-produced from factory 1.6.0 (srd-52-combat#81) |
@@ -301,9 +323,184 @@ started to completed), successful runs only, against each repository's hosted hi
   189 samples, with a median of 48% and a 90th percentile of 82% when busy; it touched 90% twice
   (96% at the peak, two heavy jobs together). Memory in use peaked at 2.3 GiB of 12 GiB.
 
-Nothing measured asks for more capacity: a second slot's worth of CPU is rarely in use, memory is
-at a fifth, and a job almost never waits for a slot. The VM stays at 6 vCPU, 12 GiB and two slots. Re-measure with `factory-ci timings`
+These are `factory-ci-1`'s measurements; `factory-ci-2` has none. Nothing measured asks for more capacity: a second slot's worth of CPU is rarely in use, memory is
+at a fifth, and a job almost never waits for a slot. `factory-ci-1` stays at 6 vCPU, 12 GiB and two slots. Re-measure with `factory-ci timings`
 and `factory-ci ssh 'sar -u -r 10'` before changing any of them.
+
+## The host file
+
+Every `factory-ci` command and the dispatcher read `~/.config/factory-ci/host.env` (mode 0600;
+`FACTORY_CI_HOST_ENV` names another path). The home server has none and keeps the defaults:
+`factory-ci-1`, 6 vCPU, 12 GiB. Office's:
+
+```
+FACTORY_CI_VM=factory-ci-2
+FACTORY_CI_PEERS=factory-ci-1
+FACTORY_CI_VCPUS=6
+FACTORY_CI_MEMORY_MB=8192
+FACTORY_CI_DISK=100G
+FACTORY_CI_BLOCK=131.238.0.0/16
+FACTORY_CI_ISOLATION=required
+FACTORY_CI_DNS="1.1.1.1 9.9.9.9"
+```
+
+`FACTORY_CI_BLOCK` adds ranges the guest may not reach to the host's own networks. Isolation is
+required whenever this says `required`, the VM is not `factory-ci-1`, or `prepare-host.sh` has
+installed it, whatever the file says. Then `provision` and `start` refuse unless it is live: the
+unit active, libvirtd requiring it, the watch's status good within the last minute, and this file's
+resolvers and ranges present in the installed rules. They also refuse a `factory-ci` network or a VM
+that is not the one this kit defines. `register` refuses when
+the guest's hostname is not `FACTORY_CI_VM`, or when an online runner of that name exists that this
+guest does not hold. The runner's `config.sh` runs with `--replace`, so without that a host that
+forgot its file would take over `factory-ci-1`'s registrations.
+
+## A workstation host
+
+**Status: in service since 2026-10-13**, for the four private repositories, after
+`verify-live.sh` passed on the live host (below, Measured on Office). The owner holds the
+university's written authorization for a VM behind host NAT on this workstation (recorded
+2026-10-13), which covers this NAT-only arrangement and nothing wider. Office is Ubuntu 24.04,
+an i7-13700 (24 threads) with 31 GiB, NVMe measured at 3.3 GB/s write and 4.4 GB/s read, on the
+University of Dayton's wired network (131.238.112.0/21, inside 131.238.0.0/16), with ufw active
+and forwarding dropped.
+
+**The network rule.** The campus enforces MAC filtering and may shut a switch port that shows a
+second MAC. So **no guest MAC may ever reach the physical link**: the guest is only on libvirt's NAT
+network `factory-ci` (bridge `virbr-fci`, 192.168.150.0/24, bound to no physical interface), never
+bridged, macvtap, direct or passed through. Two layers hold it:
+
+- **The guest's nwfilter** `factory-ci-egress`, as above, which `factory-ci filter` defines with the
+  host's networks and `FACTORY_CI_BLOCK` dropped. Office's own address is public (131.238.0.0/16),
+  which the fixed private-range drops would not have covered.
+- **The host's layer**, [`host/isolation.nft`](../tools/ci-runner/host/isolation.nft), installed by
+  `host/prepare-host.sh` as `/etc/factory-ci/isolation.nft` and loaded by the unit
+  `factory-ci-isolation.service`, which `libvirtd.service` Requires (drop-in
+  `/etc/systemd/system/libvirtd.service.d/10-factory-ci-isolation.conf`), so no VM starts without
+  it. It owns the tables `inet factory_ci` and `bridge factory_ci` and never flushes ufw's or
+  libvirt's. It holds: `virbr-fci` forwards frames only to `vnet*` taps; the guest reaches only TCP
+  80/443 and UDP 123 on non-blocked addresses, and the host only for DHCP and DNS at the gateway;
+  only replies reach the guest, so a connection open before the rules loaded carries nothing after;
+  the host's dnsmasq asks only the named resolvers; a guest packet that would leave untranslated
+  (NAT missing) is dropped; no IPv6. The timer `factory-ci-isolation-watch` compares the live tables
+  with the file every 10 seconds, loads it again if anything removed or changed them, and if that
+  fails takes `virbr-fci` down. It records the result in `/run/factory-ci-isolation/status`.
+
+DNS: the guest's dnsmasq forwards to `FACTORY_CI_DNS` (1.1.1.1, 9.9.9.9; `prepare-host.sh --dns`
+refuses anything not public, or inside a blocked or host network), never the campus resolvers
+(10.72.27.23, .24), which answer for internal names; DNS to anything but the gateway is dropped.
+`prepare-host.sh` installs libvirt with every service start held back, removes the autostart of the
+libvirt package's stock `default` network (on failure too) and stops it, and turns `ip_forward` off
+when no NAT network runs. It refuses while a VM runs, and restarting the isolation unit restarts
+libvirtd, which `Requires=` it.
+
+**Resource controls** (`machine.slice`, set by `prepare-host.sh`; change live with `sudo systemctl
+set-property machine.slice ...`):
+
+| Control | Value | Kind |
+|---|---|---|
+| `CPUWeight` | 50 | soft: the user wins under contention |
+| `CPUQuota` | 600% | hard: 6 CPUs' time |
+| `MemoryHigh` / `MemoryMax` | 9G / 10G | hard; the guest's RAM is 8 GiB |
+| `IOReadBandwidthMax`, `IOWriteBandwidthMax` | 500M each | hard; about 15% of the measured bandwidth |
+| `IOReadIOPSMax`, `IOWriteIOPSMax` | 20000 each | hard; on the disk holding `/var/lib/libvirt/images` |
+
+The VM is 6 vCPU, 8 GiB and a 100 GiB thin qcow2, with 2 job slots. Freed guest memory goes back
+to the host (the balloon's `freePageReporting`), and `setup-guest.sh` scales the guest slice to
+leave 1 GiB (`MemoryMax`) and 2 GiB (`MemoryHigh`) for the guest's system whenever the guest has
+under 11 GiB. The size follows `factory-ci-1`'s peak of 2.3 GiB and 96% of 6 vCPU for two heavy
+jobs, and Office's desktop already using about 9 GB. To resize, shut the VM down and use `virsh
+setvcpus` and `setmaxmem` with `--config`; the host's caps change with `set-property`.
+
+**Bring-up**, in this order. Step 2 needs sudo and installs the host's firewall layer and libvirt. Step 5 onward starts libvirt's
+NAT network. It waits for step 3 to pass, and stays within the authorized arrangement (below). The
+collector in step 7 needs sudo once.
+
+```bash
+tools/ci-runner/host/prepare-host.sh --dry-run --dns 1.1.1.1 --dns 9.9.9.9 --block 131.238.0.0/16 --cpu 6 --memory-max 10G --io-bandwidth 500M --io-iops 20000   # 1: read every step
+sudo tools/ci-runner/host/prepare-host.sh --dns 1.1.1.1 --dns 9.9.9.9 --block 131.238.0.0/16 --cpu 6 --memory-max 10G --io-bandwidth 500M --io-iops 20000        # 2: sudo
+tools/ci-runner/factory-ci verify                 # 3: before provisioning: the ruleset passes test-isolation; host checks
+# 4: only when step 3 passes:
+tools/ci-runner/factory-ci provision              # 5: network, filter, VM (refuses unless isolation is active)
+tools/ci-runner/factory-ci verify                 # 6: with the guest running: libvirt's record and the guest's probes
+sudo tools/ci-runner/host/install-collector.sh    # 7: once, sudo: the read-only collector, run without a password
+tools/ci-runner/host/verify-live.sh               # 8: live checks, unprivileged: live tables, filter binding, limits, and
+                                                  #    a capture on eno1 during controlled traffic (no guest MAC or address)
+tools/ci-runner/factory-ci setup
+tools/ci-runner/factory-ci register brandonifco/hallertau   # one repository first; then the other three
+```
+
+**Verification.** `host/test-isolation.sh` needs no privilege. In network namespaces it first shows
+each probe connecting without the ruleset and refused with it, and checks NAT, NAT missing and the
+MAC capture. It also holds the failures no live host should be put through: it removes a table, adds
+a rule and breaks the file under the watch (with stub `virsh` and `logger`), and removes libvirt's
+NAT. It is also a test, `tools/tests/test_ci_runner_isolation.py`, skipped where unprivileged
+namespaces are unavailable. `host/verify-live.sh` is the live host's part, and only reads. It runs
+unprivileged: the two facts only root can read, the live tables and frames on `eno1`, come from
+`/usr/local/sbin/factory-ci-collect` through `sudo -n`. `host/install-collector.sh` installs that
+program root-owned, with a sudoers rule letting the owner's account, and only it, run its two fixed
+forms (`tables`, `capture SECONDS` up to 300) without a password. It prints addresses only, never a
+payload, and changes nothing; `install-collector.sh --remove` takes it away. Its capture is a raw
+socket on its own clock, not tcpdump: Ubuntu's AppArmor profile for tcpdump refuses signals from a
+confined session such as Claude Desktop's, so a tcpdump started from one could not be stopped.
+`verify-live.sh` compares the live tables with the installed file, checks that `lo` is exempt only
+from the postrouting drop and that no rule names a physical interface, and checks the watch's
+freshness, the filter's binding to the guest's tap and the kernel's limits. It then captures
+passively on `eno1` while the guest reaches allowed destinations and is refused prohibited ones,
+each against a control from the host. It stops every listener it started, and shuts the VM down
+again if it found it off. `factory-ci verify` lists what else it checks (no physical port in a
+bridge, no macvtap, the libvirt network and VM XML, the nwfilter's drops, nothing but the gateway
+listening on :53, the guest's reach).
+
+`verify-live.sh` passed on Office on 2026-10-13, with the VM running: the live tables equal the
+installed file, `lo` is exempt only from the postrouting drop, no rule names a physical interface,
+the watch was fresh, the filter was bound to `vnet0`, the kernel enforced every limit, and the six
+controls held (`api.nuget.org` and `github.com` on 443 open from both; `udayton.edu:443`,
+`github.com:22`, `1.1.1.1:53` and a listener on `192.168.150.1` open from the host and closed from
+the guest). In 75 seconds the capture saw 5,423 frames on `eno1`: none to or from a libvirt MAC or
+192.168.150.0/24, and none leaving with a source MAC but `eno1`'s own. The failures (a removed
+table, an unloadable file, libvirt's NAT gone) were exercised in namespaces only, on the installed
+rules, at the owner's direction: none was injected into the live host.
+
+**Measured on Office** (2026-10-13; idle baseline: a fixed CPU task took 5.0 ms on the host):
+
+| Load on `factory-ci-2` | VM CPU (cap 600%) | VM memory | Disk | Host task, mean / max | User CPU pressure |
+|---|---|---|---|---|---|
+| one real job (hallertau `validate`, 31 s) | peak 472% | 6.0 GiB | 26 MB/s | 5.1 / 7.4 ms | 0.84 peak |
+| three real jobs queued at once (reykholt, reykholt-web, reykholt-art); two ran, the third waited 68 s for a slot | mean 432%, peak 595% | 8.1 GiB | 42 MB/s | 6.2 / 9.8 ms | 0.00 |
+| synthetic worst case: 6 vCPU busy and direct writes, 90 s | mean 598%, peak 600% | 5.6 GiB | 498 MB/s (cap 500) | 5.9 / 11.5 ms | 0.00 |
+
+The caps hold, and the workstation's own work barely notices. The VM's memory settles near its
+8 GiB once builds have filled the guest's page cache: the balloon returns freed pages, not cache.
+Lower `FACTORY_CI_MEMORY_MB` (with `setmaxmem`) if the workstation needs it back. In the same runs,
+jobs of one repository went to both VMs and each ran once.
+
+
+**Availability.** A workstation may sleep or shut down. libvirt-guests saves the VM; its runners go
+offline, and GitHub sends private-repository jobs to `factory-ci-1`. A job it held at that moment
+fails and is re-run.
+
+**Rollback**, which never touches `factory-ci-1`:
+
+```bash
+tools/ci-runner/factory-ci deregister brandonifco/<repo>    # each private repository; GitHub then sends everything to factory-ci-1
+tools/ci-runner/factory-ci destroy-vm
+virsh -c qemu:///system net-destroy factory-ci && virsh -c qemu:///system net-undefine factory-ci
+sudo tools/ci-runner/host/prepare-host.sh --remove          # refuses unless it can show no VM runs
+```
+
+The packages stay unless removed with apt.
+
+**The university's policy.** The Fair, Responsible and Acceptable Use policy (approved 2022) and the
+2003 guidelines say nothing specific about NAT or VMs. The guidelines forbid DNS or DHCP servers
+that interfere with the university network (libvirt's dnsmasq binds only to `virbr-fci`, and
+`verify` checks that nothing else listens on :53). The 2025 IT Remote Access policy says solutions
+that circumvent routing and security controls will be disabled. The owner holds written
+authorization to run a VM behind NAT on this workstation; the university's restriction is on
+unauthorized routers and additional MAC addresses on the physical network. The authorization covers
+host-only NAT, with no guest MAC on `eno1`, no bridge, macvtap or direct attachment, and no guest
+DHCP, DNS or routing offered to the campus. Any change beyond that is a new question for the
+university, not a configuration choice. NAT hides the guest's MAC, not its traffic, and nothing here
+is meant to evade campus controls.
 
 ## Credentials
 
@@ -329,13 +526,16 @@ and `factory-ci ssh 'sar -u -r 10'` before changing any of them.
   the GitHub-side runner, and the old credentials are deleted first. To revoke one, run
   `factory-ci deregister OWNER/REPO`, or delete the runner under the repository's Settings → Actions →
   Runners.
-- **The admin key** `~/.ssh/factory-ci_ed25519` never leaves the host. To rotate it, generate a new
+- **Each host has its own** admin key, `gh` login and (on the home server only) dispatcher token;
+  none is copied between hosts. Office has no dispatcher token, because it runs no dispatcher.
+- **The admin key** `~/.ssh/factory-ci_ed25519` never leaves its host. To rotate it, generate a new
   key, append its public half to `ciadmin`'s `authorized_keys` through `factory-ci ssh`, test it,
   then remove the old line.
 
 ## Recovery
 
-**Rebuild from the baseline.** This covers a broken or suspect VM.
+**Rebuild from the baseline.** This covers a broken or suspect VM, on the host that holds it; the
+other VM is untouched. (`factory-ci-2`'s rollback is in [A workstation host](#a-workstation-host).)
 
 ```bash
 tools/ci-runner/factory-ci destroy-vm
@@ -354,7 +554,7 @@ GitHub; a public repository has none to replace.
 ## Hosted usage, and going back
 
 - **Which runner ran a job:** `gh api repos/O/R/actions/runs/<id>/jobs --jq '.jobs[].runner_name'`.
-  `factory-ci-1` means self-hosted, and self-hosted minutes are never billed. `GitHub Actions N`
+  `factory-ci-1` or `factory-ci-2` means self-hosted, and self-hosted minutes are never billed. `GitHub Actions N`
   means hosted.
 - **Why this matters:** on 2026-10-09 the account's hosted budget for private repositories ran out
   mid-migration. Every hosted job then failed before it started, with "The job was not started
