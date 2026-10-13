@@ -39,6 +39,12 @@ HOYLE = os.path.join(REPO, "examples", "hoyle-backgammon")
 CORPUS = os.path.join(HOYLE, "hoyle.txt")
 NAME = "HoyleBackgammon"
 
+# The version the packed example declares, and a later one for the tests that bump it. Neither is a
+# literal: a map's version is bumped before it is published, and the suite packs whatever it declares.
+with open(os.path.join(HOYLE, "map-package.json"), encoding="utf-8") as _handle:
+    HOYLE_VERSION = json.load(_handle)["version"]
+BUMPED_VERSION = f"{int(HOYLE_VERSION.split('.')[0]) + 1}.0.0"
+
 _spec = importlib.util.spec_from_file_location("factory_main_verify", os.path.join(FACTORY, "__main__.py"))
 factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
@@ -832,7 +838,7 @@ class TestRelock(VerifyCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.nupkg_bumped = pack_version(HOYLE, "7.0.0", cls.shared)
+        cls.nupkg_bumped = pack_version(HOYLE, BUMPED_VERSION, cls.shared)
 
     def produce_verified(self, package, **env):
         with mock.patch.dict(os.environ, {**self.env, **env}):
@@ -867,7 +873,7 @@ class TestRelock(VerifyCase):
         after = self.locks()
         for relative in after:
             self.assertNotEqual(before[relative], after[relative])
-            self.assertIn("[7.0.0]", after[relative])
+            self.assertIn(f"[{BUMPED_VERSION}]", after[relative])
         recorded = self.recorded_locks()
         self.assertEqual(sorted(recorded), sorted(after))
         for relative, text in after.items():
@@ -915,7 +921,7 @@ class TestRelock(VerifyCase):
         with open(props, encoding="utf-8") as handle:
             text = handle.read()
         with open(props, "w", encoding="utf-8") as handle:
-            handle.write(text.replace("[6.0.0]", "[7.0.0]"))
+            handle.write(text.replace(f"[{HOYLE_VERSION}]", f"[{BUMPED_VERSION}]"))
         before = self.locks()
         os.remove(self.log)
         with mock.patch.dict(os.environ, self.env):
@@ -1020,7 +1026,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.nupkg_bumped = pack_version(HOYLE, "7.0.0", cls.shared)
+        cls.nupkg_bumped = pack_version(HOYLE, BUMPED_VERSION, cls.shared)
         cls.kernel = verify_step.read_pins(cls.base)["ruleskernel"]
         cls.map_id = f"RulesFactory.Maps.{NAME}"
         assert cls.map_id.lower() in verify_step.read_pins(cls.base)
@@ -1048,7 +1054,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
         self.assertEqual(code, 1, output)
         self.assertIn("REFUSED -- --no-verify must re-lock the lock files that disagree with the generated pins", output)
         for relative in self.LOCKS:
-            self.assertIn(f"{relative}: {self.map_id} locked at 6.0.0, pinned at [7.0.0]", output)
+            self.assertIn(f"{relative}: {self.map_id} locked at {HOYLE_VERSION}, pinned at [{BUMPED_VERSION}]", output)
         self.assertIn("Nothing was produced.", output)
         self.assertNotIn("re-locks them", output)
         self.assertNotIn("--no-verify: re-locked", output)
@@ -1056,7 +1062,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
         self.assertEqual([n for n in os.listdir(self.tmp) if ".factory-produce-" in n], [])
 
     def test_stale_lock_files_are_re_locked_recorded_and_committed_unverified(self):
-        self.write_locks("6.0.0")
+        self.write_locks(HOYLE_VERSION)
         code, output = self.produce_bumped("--no-verify", **self.env)
         self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertEqual(self.dotnet_calls(), ["--version", "restore --force-evaluate"], "restore only: no build, no test")
@@ -1073,7 +1079,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
         for relative in self.LOCKS:
             with open(os.path.join(self.engine, *relative.split("/")), "rb") as handle:
                 data = handle.read()
-            self.assertIn(b"[7.0.0]", data)
+            self.assertIn(f"[{BUMPED_VERSION}]".encode(), data)
             self.assertEqual(recorded[relative], hashlib.sha256(data).hexdigest())
         for directory, dirs, _ in os.walk(self.engine):
             self.assertFalse({"bin", "obj"} & set(dirs), directory)
@@ -1081,7 +1087,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
         self.assertEqual(code, 0, recomputed)
 
     def test_the_relock_runs_on_the_sdk_override_and_commits_the_pinned_global_json(self):
-        self.write_locks("6.0.0")
+        self.write_locks(HOYLE_VERSION)
         sdk_log = os.path.join(self.tmp, "sdk.log")
         with open(os.path.join(self.engine, "global.json"), "rb") as handle:
             pinned_bytes = handle.read()
@@ -1099,7 +1105,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
                                                   f"{pinned}" + NOT_VERIFIED_TAIL)
 
     def test_without_any_sdk_the_refusal_names_the_pinned_sdk_and_the_command(self):
-        self.write_locks("6.0.0")
+        self.write_locks(HOYLE_VERSION)
         before = snapshot(self.engine)
         code, output = self.produce_bumped("--no-verify", **{**self.env, "FACTORY_DOTNET": os.path.join(self.tmp, "no", "dotnet")})
         self.assert_refused_unchanged(before, code, output)
@@ -1108,15 +1114,15 @@ class TestNoVerifyStaleLocks(VerifyCase):
 
     def test_without_any_sdk_nothing_before_the_refusal_says_restore_re_locks(self):
         """No SDK runs, so no restore runs: the lock files are named by the refusal alone."""
-        self.write_locks("6.0.0")
+        self.write_locks(HOYLE_VERSION)
         code, output = self.produce_bumped("--no-verify", **{**self.env, "FACTORY_DOTNET": os.path.join(self.tmp, "no", "dotnet")})
         self.assertEqual(code, 1, output)
-        (refusal,) = [line for line in output.splitlines() if "locked at 6.0.0" in line]
+        (refusal,) = [line for line in output.splitlines() if f"locked at {HOYLE_VERSION}" in line]
         self.assertIn("REFUSED -- --no-verify must re-lock", refusal)
         self.assertNotIn("--- relock", output)
 
     def test_without_the_pinned_sdk_the_refusal_names_the_override_at_an_installed_one(self):
-        self.write_locks("6.0.0")
+        self.write_locks(HOYLE_VERSION)
         before = snapshot(self.engine)
         code, output = self.produce_bumped("--no-verify", FAKE_DOTNET_FAIL="--version",
                                            FAKE_DOTNET_SDKS="8.0.100 10.0.111", **self.env)
@@ -1125,7 +1131,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
         self.assertIn(f"with one that is, run `{self.command('10.0.111')}`", output)
 
     def test_a_failing_relock_is_refused(self):
-        self.write_locks("6.0.0")
+        self.write_locks(HOYLE_VERSION)
         before = snapshot(self.engine)
         code, output = self.produce_bumped("--no-verify", FAKE_DOTNET_FAIL="restore", **self.env)
         self.assert_refused_unchanged(before, code, output)
@@ -1133,7 +1139,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
 
     def test_lock_files_a_relock_leaves_stale_are_never_committed(self):
         """#123's guarantee: whatever the relock did, stale lock files are refused, not committed."""
-        self.write_locks("6.0.0")
+        self.write_locks(HOYLE_VERSION)
         before = snapshot(self.engine)
         with mock.patch.object(verify_step, "relock", lambda engine, log: None):
             code, output = self.produce_bumped("--no-verify", **self.env)
@@ -1141,29 +1147,29 @@ class TestNoVerifyStaleLocks(VerifyCase):
         self.assertIn("after re-locking they still disagree", output)
 
     def test_lock_files_already_re_locked_are_committed_unverified(self):
-        self.write_locks("7.0.0")
+        self.write_locks(BUMPED_VERSION)
         before = snapshot(self.engine)
         code, output = self.produce_bumped("--no-verify", **self.env)
         self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertEqual(self.dotnet_calls(), [], "lock files that agree need no dotnet")
         self.assertEqual(output.splitlines()[-1],
                          f"produced {NAME} in {self.engine}, NOT VERIFIED" + NOT_VERIFIED_TAIL)
-        self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[7.0.0]")
+        self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], f"[{BUMPED_VERSION}]")
         after = snapshot(self.engine)
         for relative in self.LOCKS:
             self.assertEqual(before[relative.replace("/", os.sep)], after[relative.replace("/", os.sep)])
 
     def test_lock_files_whose_requested_range_alone_is_stale_are_re_locked(self):
         """The version agrees with the pin, the range does not: a locked restore refuses it, so it re-locks."""
-        self.write_locks("7.0.0", requested={self.map_id: "[7.0.0, )"})
+        self.write_locks(BUMPED_VERSION, requested={self.map_id: f"[{BUMPED_VERSION}, )"})
         code, output = self.produce_bumped("--no-verify", **self.env)
         self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertEqual(self.dotnet_calls(), ["--version", "restore --force-evaluate"])
-        self.assertIn(f"{self.LOCKS[0]}: {self.map_id} locked at [7.0.0, ), pinned at [7.0.0]", output)
+        self.assertIn(f"{self.LOCKS[0]}: {self.map_id} locked at [{BUMPED_VERSION}, ), pinned at [{BUMPED_VERSION}]", output)
         self.assertEqual(verify_step.stale_locks(self.engine, verify_step.read_pins(self.engine)), [])
 
     def test_lock_files_whose_requested_range_a_relock_leaves_stale_are_never_committed(self):
-        self.write_locks("7.0.0", requested={self.map_id: "[7.0.0, )"})
+        self.write_locks(BUMPED_VERSION, requested={self.map_id: f"[{BUMPED_VERSION}, )"})
         before = snapshot(self.engine)
         with mock.patch.object(verify_step, "relock", lambda engine, log: None):
             code, output = self.produce_bumped("--no-verify", **self.env)
@@ -1175,10 +1181,10 @@ class TestNoVerifyStaleLocks(VerifyCase):
         code, output = self.produce_bumped("--no-verify", **self.env)
         self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertEqual(self.dotnet_calls(), [])
-        self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[7.0.0]")
+        self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], f"[{BUMPED_VERSION}]")
 
     def test_the_verify_path_still_re_locks_stale_lock_files(self):
-        self.write_locks("6.0.0")
+        self.write_locks(HOYLE_VERSION)
         code, output = self.produce_bumped(**self.env)
         self.assertEqual(code, 0, output)
         self.assertIn("the generated pins changed, so this restore re-locks the 2 lock file(s)", output)
