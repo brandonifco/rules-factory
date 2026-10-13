@@ -143,6 +143,7 @@ g|fd00:fc::1|22|closed|the host over IPv6
 w|192.168.150.11|22|closed|the campus opening a connection to the guest
 h|$resolver|53|open|dnsmasq asking the approved resolver
 h|131.238.112.1|53|closed|dnsmasq asking another resolver (the campus's)
+h|192.168.150.1|2222|open|the host reaching its own bridge address (over lo)
 "
 # from|to|port|source port|why: connections opened before the ruleset loads, held across the load.
 # The campus's comes from port 443, so the guest's replies go to port 443, as HTTPS would.

@@ -75,6 +75,6 @@ table inet factory_ci {
 
 	chain postrouting {
 		type filter hook postrouting priority srcnat + 10; policy accept;
-		oifname != "virbr-fci" ip saddr 192.168.150.0/24 drop
+		oifname != { "virbr-fci", "lo" } ip saddr 192.168.150.0/24 drop
 	}
 }

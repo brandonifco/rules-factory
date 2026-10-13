@@ -413,7 +413,7 @@ setvcpus` and `setmaxmem` with `--config`; the host's caps change with `set-prop
 
 **Bring-up**, in this order. Step 2 needs sudo and installs the host's firewall layer and libvirt. Step 5 onward starts libvirt's
 NAT network. It waits for step 3 to pass, and stays within the authorized arrangement (below). The
-tcpdump in step 6 needs sudo.
+root checks in step 7 need sudo.
 
 ```bash
 tools/ci-runner/host/prepare-host.sh --dry-run --dns 1.1.1.1 --dns 9.9.9.9 --block 131.238.0.0/16 --cpu 6 --memory-max 10G --io-bandwidth 500M --io-iops 20000   # 1: read every step
@@ -421,8 +421,9 @@ sudo tools/ci-runner/host/prepare-host.sh --dns 1.1.1.1 --dns 9.9.9.9 --block 13
 tools/ci-runner/factory-ci verify                 # 3: before provisioning: the ruleset passes test-isolation; host checks
 # 4: only when step 3 passes:
 tools/ci-runner/factory-ci provision              # 5: network, filter, VM (refuses unless isolation is active)
-tools/ci-runner/factory-ci verify                 # 6: with the guest running: guest probes; then root's nft listing and
-                                                  #    a tcpdump on eno1 for ether src 52:54:00:fc:01:01 (must show no frame)
+tools/ci-runner/factory-ci verify                 # 6: with the guest running: libvirt's record and the guest's probes
+sudo tools/ci-runner/host/verify-root.sh          # 7: root's checks: live tables, a capture on eno1 (no other source MAC,
+                                                  #    no guest address), a listener control, the watch, NAT removed
 tools/ci-runner/factory-ci setup
 tools/ci-runner/factory-ci register brandonifco/hallertau   # one repository first; then the other three
 ```
