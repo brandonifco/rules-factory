@@ -49,6 +49,8 @@ factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
 import acceptance  # noqa: E402  (tools/factory is on sys.path now)
 import pins  # noqa: E402
+sys.path.insert(0, HERE)
+import local_map_feed  # noqa: E402  (beside this file: the one NuGet.config edit the engine builds share)
 
 HOYLE = os.path.join(REPO, "examples", "hoyle-backgammon")
 NAME = "HoyleBackgammon"
@@ -91,33 +93,6 @@ def produce(package, out, *extra, expect=factory.NOT_VERIFIED):
     if expect is not None and code != expect:
         raise AssertionError(f"produce exited {code}, not {expect}\n{buffer.getvalue()}")
     return code, buffer.getvalue()
-
-
-def restore_packed_map(engine, feed):
-    """Scratch engine only: restore the map package from `feed`, the folder `pack` wrote it to.
-
-    The engine's NuGet.config maps `RulesFactory.Maps.*` to nuget.org, so without this the build
-    restores whatever nuget.org holds at the version the map declares, which is not the package this
-    suite packed, and is nothing at all while a new version is not yet published (a map's version is
-    bumped, reviewed and merged before its tag publishes it). As in test_factory_gate.py's
-    `localize`, the map's id pattern moves to a local folder feed. Restores go to a scratch
-    NUGET_PACKAGES (`TestHarnessRunsInDotnet.dotnet`), so the unpublished package never enters the
-    user's cache, and the user's global packages folder is a read-only fallback.
-    """
-    path = os.path.join(engine, "NuGet.config")
-    with open(path, encoding="utf-8") as handle:
-        text = handle.read()
-    fallback = os.path.join(os.path.expanduser("~"), ".nuget", "packages")
-    localized = (text
-                 .replace("<clear />", f'<clear />\n    <add key="local-maps" value="{feed}" />', 1)
-                 .replace("  </packageSourceMapping>", '    <packageSource key="local-maps">\n'
-                          '      <package pattern="RulesFactory.Maps.*" />\n    </packageSource>\n'
-                          "  </packageSourceMapping>" + (f'\n  <fallbackPackageFolders>\n    <add key="user" value="{fallback}" />\n'
-                                                         "  </fallbackPackageFolders>" if os.path.isdir(fallback) else ""), 1))
-    if localized.count("local-maps") != 2:
-        raise AssertionError(f"NuGet.config did not take the local map feed:\n{localized}")
-    with open(path, "w", encoding="utf-8") as handle:
-        handle.write(localized)
 
 
 def write(path, text):
@@ -504,7 +479,9 @@ class TestHarnessRunsInDotnet(Case):
         produce(cls.nupkg, cls.base)
         write_declaration(cls.base)
         shutil.copyfile(FIXTURE, os.path.join(cls.base, *ADAPTER.split("/")))
-        restore_packed_map(cls.base, os.path.dirname(cls.nupkg))
+        # The map comes from the folder `pack` wrote, into a scratch NUGET_PACKAGES (`dotnet` below), so the
+        # build uses the package this suite packed whether or not nuget.org serves its version.
+        local_map_feed.localize(cls.base, os.path.dirname(cls.nupkg))
         # NuGet.config is managed (tools/factory/ownership.py), so the localised copy is a hand edit
         # that a re-produce would refuse; adopting it once, as test_factory_gate.py does, carries it
         # into every copy of this engine below.

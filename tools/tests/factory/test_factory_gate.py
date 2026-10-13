@@ -47,6 +47,8 @@ _spec = importlib.util.spec_from_file_location("factory_main_gate", os.path.join
 factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
 import pins  # noqa: E402  (the kernel pin; tools/factory is on sys.path now)
+sys.path.insert(0, HERE)
+import local_map_feed  # noqa: E402  (beside this file: the one NuGet.config edit the engine builds share)
 
 PART107 = os.path.join(REPO, "examples", "faa-part-107")
 HOYLE = os.path.join(REPO, "examples", "hoyle-backgammon")
@@ -1385,14 +1387,8 @@ class TestValidateShWithDotnet(GateCase):
             pin = json.load(handle)
         pin["sdk"]["version"] = SDK
         write_json(path, pin)
-        fallback = os.path.join(os.path.expanduser("~"), ".nuget", "packages")
         feed = os.path.dirname(cls.nupkg)
-        edit(os.path.join(engine, "NuGet.config"), lambda t: t
-             .replace("<clear />", f'<clear />\n    <add key="local-maps" value="{feed}" />', 1)
-             .replace("  </packageSourceMapping>", '    <packageSource key="local-maps">\n'
-                      '      <package pattern="RulesFactory.Maps.*" />\n    </packageSource>\n'
-                      "  </packageSourceMapping>" + (f'\n  <fallbackPackageFolders>\n    <add key="user" value="{fallback}" />\n'
-                                                     "  </fallbackPackageFolders>" if os.path.isdir(fallback) else ""), 1))
+        edit(os.path.join(engine, "NuGet.config"), lambda t: local_map_feed.localized(t, feed))
 
     @classmethod
     def validate(cls, engine, mode):
