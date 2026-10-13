@@ -1,5 +1,6 @@
 #!/bin/bash
 # test-isolation.sh [BLOCKED...] -- prove isolation.nft in network namespaces, without root.
+# FCI_RULES=/etc/factory-ci/isolation.nft tests the ruleset a host installed instead of the template.
 #
 # It runs itself in a new user, network and mount namespace (unshare -r), so it needs no
 # privilege and touches nothing on the host: no interface, rule or route outside it exists after
@@ -115,7 +116,7 @@ run() { # phase
 echo "without isolation.nft (each probe must get through):"; run bare
 [[ $fail == 0 ]] && echo "  ok  all $(grep -c '|' <<<"$checks") probes connect"
 : >"$work/w.log"
-sed "s#@BLOCKED@#$(for b in $blocked; do printf ', %s' "$b"; done)#" "$here/isolation.nft" | nft -f -
+sed "s#@BLOCKED@#$(for b in $blocked; do printf ', %s' "$b"; done)#" "${FCI_RULES:-$here/isolation.nft}" | nft -f -
 $W tcpdump -Z root -l -n -e -i up0 "ether src $MAC" >"$work/w.pcap.txt" 2>/dev/null &
 $L tcpdump -Z root -l -n -e -i lan0 "ether src $MAC" >"$work/l.pcap.txt" 2>/dev/null &
 sleep 1

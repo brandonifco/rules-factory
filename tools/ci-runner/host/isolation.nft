@@ -1,11 +1,12 @@
 #!/usr/sbin/nft -f
 # factory-ci host isolation (decision 0081): the host's own layer under the guest's nwfilter.
-# prepare-host.sh installs it as /etc/factory-ci/isolation.nft with @BLOCKED@ filled in, and the
-# unit factory-ci-isolation loads it before libvirtd, which requires it: no VM starts without it.
+# prepare-host.sh installs it as /etc/factory-ci/isolation.nft with its --block ranges added to the
+# set `blocked`, and the unit factory-ci-isolation loads it before libvirtd, which requires it: no
+# VM starts without it.
 #
-# It owns one table and touches nothing else: it never flushes the ruleset, ufw's tables or
-# libvirt's. Loading it replaces only this table, atomically. Every chain only drops; accepting here
-# lets a packet on to ufw's and libvirt's chains, which still decide.
+# It owns two tables, inet and bridge factory_ci, and touches nothing else: never the whole
+# ruleset, ufw's tables or libvirt's. Loading it replaces only these, atomically. Every chain only
+# drops; accepting here lets a packet on to ufw's and libvirt's chains, which still decide.
 #
 #   * the guest bridge, virbr-fci, forwards frames only to the guest's tap (vnet*): a physical port
 #     put into it by mistake never carries a guest frame, so no guest MAC reaches the physical link;

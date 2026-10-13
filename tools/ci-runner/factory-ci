@@ -22,11 +22,21 @@ VCPUS="${FACTORY_CI_VCPUS:-6}" MEMORY_MB="${FACTORY_CI_MEMORY_MB:-12288}" DISK="
 # Ranges the guest may not reach besides the private ones the filter names: this host's own
 # networks always, and these (CIDR, space-separated), e.g. an institution's public address space.
 BLOCK="${FACTORY_CI_BLOCK:-}"
+# A workstation host (decision 0081): `required` refuses to provision or start the VM unless the
+# host's own isolation (host/prepare-host.sh) is active. DNS: the resolvers the guest's DNS forwards
+# to, instead of the host's (a campus resolver answers for internal names).
+ISOLATION="${FACTORY_CI_ISOLATION:-}" DNS="${FACTORY_CI_DNS:-}"
 LABELS='["self-hosted","linux","x64","factory-ci"]'
 virsh() { command virsh -c qemu:///system "$@"; }
 guest() { ssh -i "$KEY" -o UserKnownHostsFile="$KNOWN" -o StrictHostKeyChecking=accept-new -o BatchMode=yes \
             -o ConnectTimeout=5 "ciadmin@$IP" "$@"; }
 die() { echo "factory-ci: $*" >&2; exit 1; }
+isolated() {
+  [[ $ISOLATION == required ]] || return 0
+  systemctl is-active --quiet factory-ci-isolation.service &&
+    [[ " $(systemctl show libvirtd.service -p Requires --value) " == *" factory-ci-isolation.service "* ]] ||
+    die "the host's isolation is not active, or libvirtd does not require it (sudo host/prepare-host.sh; decision 0081)"
+}
 name_of() { local r="${1#*/}"; r="${r,,}"; echo "${r//[^a-z0-9-]/-}"; }
 need_repo() { [[ ${1:-} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "give OWNER/REPO"; }
 is_private() { [[ "$("$GH" api "repos/$1" --jq .private)" == true ]]; }
@@ -34,9 +44,12 @@ dispatch_py() { python3 -I "$kit/dispatch.py" "$@"; }
 
 cmd_provision() { # create the network, filter and VM from the pinned cloud image
   virsh dominfo "$VM" >/dev/null 2>&1 && die "$VM already exists (rebuild: factory-ci destroy-vm first)"
+  isolated
   [[ -f $KEY ]] || ssh-keygen -q -t ed25519 -N '' -C "factory-ci admin (host only)" -f "$KEY"
   if ! virsh net-info factory-ci >/dev/null 2>&1; then
-    local net; net="$(mktemp)"; sed "s#factory-ci-1#$VM#g" "$kit/host/network.xml" >"$net"
+    local net fwd= d; net="$(mktemp)"
+    for d in $DNS; do [[ $d =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || die "not an IPv4 address: $d"; fwd+="<forwarder addr='$d'/>"; done
+    sed -e "s#factory-ci-1#$VM#g" -e "s#<dns enable='yes'/>#<dns enable='yes'>$fwd</dns>#" "$kit/host/network.xml" >"$net"
     virsh net-define "$net"; rm -f "$net"; virsh net-autostart factory-ci
   fi
   virsh net-start factory-ci 2>/dev/null || true
@@ -65,6 +78,7 @@ cmd_provision() { # create the network, filter and VM from the pinned cloud imag
     --disk "vol=default/$VM.qcow2,bus=virtio,cache=none,discard=unmap" \
     --disk "vol=default/$VM-seed.iso,device=cdrom,bus=sata,readonly=on" \
     --network network=factory-ci,model=virtio,mac=52:54:00:fc:01:01,filterref=factory-ci-egress \
+    --memballoon model=virtio,freePageReporting=on \
     --graphics none --console pty,target_type=serial --noautoconsole --import --autostart
   ssh-keygen -R "$IP" -f "$KNOWN" >/dev/null 2>&1 || true
   echo "waiting for cloud-init..."; for _ in $(seq 60); do guest 'cloud-init status --wait' 2>/dev/null && return 0; sleep 5; done
@@ -72,14 +86,56 @@ cmd_provision() { # create the network, filter and VM from the pinned cloud imag
 }
 cmd_filter() { # (re)define the guest's egress filter: this host's own networks and BLOCK dropped too
   local net drops=
-  for net in $(ip -4 -o addr show scope global | awk '{print $4}') $BLOCK; do
+  for net in $(ip -4 -o addr show scope global | awk '$2 !~ /^virbr/ {print $4}') $BLOCK; do
     [[ $net =~ ^([0-9]{1,3}(\.[0-9]{1,3}){3})/([0-9]{1,2})$ ]] || die "not an IPv4 CIDR: $net"
     drops+="  <rule action='drop' direction='out' priority='300'><all dstipaddr='${BASH_REMATCH[1]}' dstipmask='${BASH_REMATCH[3]}'/></rule>"$'\n'
   done
   local xml; xml="$(mktemp)"
   DROPS="$drops" awk '/<!-- @HOST_NETWORKS@ -->/ { printf "%s", ENVIRON["DROPS"]; next } { print }' "$kit/host/nwfilter.xml" >"$xml"
   virsh nwfilter-define "$xml" >/dev/null; rm -f "$xml"
-  echo "egress filter: also dropped $(ip -4 -o addr show scope global | awk '{print $4}' | tr '\n' ' ')$BLOCK"
+  echo "egress filter: also dropped $(ip -4 -o addr show scope global | awk '$2 !~ /^virbr/ {print $4}' | tr '\n' ' ')$BLOCK"
+}
+cmd_verify() { # prove this host's isolation (decision 0081): ruleset, host, libvirt, guest; exit 1 on a failure
+  local bad=0 port links net lan dev
+  ok() { echo "  ok  $*"; }; no() { echo "  X   $*"; bad=1; }
+  echo "== the installed ruleset, in network namespaces (test-isolation)"
+  if [[ -r /etc/factory-ci/isolation.nft ]]; then
+    if FCI_RULES=/etc/factory-ci/isolation.nft "$kit/host/test-isolation.sh" | tail -1 | grep -q PASS; then
+      ok "/etc/factory-ci/isolation.nft passes"; else no "/etc/factory-ci/isolation.nft fails: run host/test-isolation.sh"; fi
+  else no "no /etc/factory-ci/isolation.nft (sudo host/prepare-host.sh)"; fi
+  echo "== the host"
+  if [[ $ISOLATION == required ]]; then
+    if (isolated) 2>/dev/null; then ok "factory-ci-isolation is active and libvirtd requires it"; else no "factory-ci-isolation is not active, or libvirtd does not require it"; fi
+  fi
+  for port in /sys/class/net/*/brif/*; do
+    [[ -e $port && -e /sys/class/net/${port##*/}/device ]] && no "a bridge holds the physical port ${port##*/}"
+  done
+  links="$(ip -d -o link)"
+  if grep -qE ' (macvtap|macvlan|ipvlan) ' <<<"$links"; then no "a macvtap/macvlan/ipvlan link exists"; else ok "no physical port in any bridge; no macvtap, macvlan or ipvlan link"; fi
+  if [[ -d /sys/class/net/virbr-fci ]]; then
+    for port in /sys/class/net/virbr-fci/brif/*; do [[ -e $port && ${port##*/} != vnet* ]] && no "virbr-fci holds ${port##*/}"; done
+    if [[ $(cat /proc/sys/net/ipv6/conf/virbr-fci/disable_ipv6) == 1 ]]; then ok "virbr-fci has IPv6 off"; else no "virbr-fci has IPv6 on"; fi
+    local dns53; dns53="$(ss -H -lntu | awk '$5 ~ /:53$/ {print $5}' | grep -vE '^(127\.|\[::1\]|192\.168\.150\.1:)' || true)"
+    if [[ -z $dns53 ]]; then ok "DNS on the host listens on 192.168.150.1 and loopback only"; else no "DNS also listens on $(tr '\n' ' ' <<<"$dns53")"; fi
+  fi
+  echo "== libvirt"
+  virsh net-dumpxml factory-ci 2>/dev/null | python3 -I "$kit/host/verify.py" network $DNS || bad=1
+  virsh dumpxml "$VM" 2>/dev/null | python3 -I "$kit/host/verify.py" domain || bad=1
+  local drops; drops="$(virsh nwfilter-dumpxml factory-ci-egress 2>/dev/null || true)"
+  for net in $(ip -4 -o addr show scope global | awk '$2 !~ /^virbr/ {print $4}') $BLOCK; do
+    if grep -q "dstipaddr='${net%/*}' dstipmask='${net#*/}'" <<<"$drops"; then ok "the guest's nwfilter drops $net"; else no "the guest's nwfilter does not drop $net (factory-ci filter)"; fi
+  done
+  echo "  ..  ip_forward $(cat /proc/sys/net/ipv4/ip_forward); machine.slice $(systemctl show machine.slice -p CPUWeight -p CPUQuotaPerSecUSec -p MemoryMax -p IOWriteBandwidthMax | tr '\n' ' ')"
+  dev="$(ip -o route get 1.1.1.1 | sed -n 's/.* dev \([^ ]*\).*/\1/p')"
+  lan="$(ip -o route get 1.1.1.1 | sed -n 's/.* src \([0-9.]*\).*/\1/p')"
+  if [[ "$(virsh domstate "$VM" 2>/dev/null)" == running ]]; then
+    echo "== from the guest"
+    guest "python3 -I - guest '$lan' '$(resolvectl dns "$dev" 2>/dev/null | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -1)'" <"$kit/host/verify.py" || bad=1
+  else echo "  ..  $VM is not running: the guest's probes did not run"; fi
+  echo "== root's part, not run here: sudo nft list table inet factory_ci && sudo nft list table bridge factory_ci"
+  echo "   and, while this runs again: sudo timeout 120 tcpdump -n -e -i $dev ether src 52:54:00:fc:01:01   (must print no frame)"
+  if [[ $bad == 0 ]]; then echo "verify: PASS"; else echo "verify: FAIL"; fi
+  return "$bad"
 }
 cmd_setup() { # install or update the guest baseline (toolchain, hooks, units)
   tar -C "$kit/guest" -czf - . | guest 'rm -rf ~/kit && mkdir ~/kit && tar -xzf - -C ~/kit && sudo ~/kit/setup-guest.sh'
@@ -188,7 +244,7 @@ cmd_runner() { # start|stop|restart [OWNER/REPO]: the runner service(s) in the g
 cmd_ssh() { # [COMMAND]: the guest's admin shell
   guest "$@"; }
 cmd_start() { # start the VM (it also starts with the host: autostart)
-  virsh start "$VM"; }
+  isolated; virsh start "$VM"; }
 cmd_stop() { # shut the VM down gracefully: a running job may finish first (TimeoutStopSec)
   virsh shutdown "$VM"; }
 cmd_restart() { # reboot the VM; the runners come back by themselves

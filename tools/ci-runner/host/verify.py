@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""verify -- the checks `factory-ci verify` cannot say in shell (decision 0081). Standard library only.
+
+  verify.py network DNS...        the libvirt network's XML on stdin: NAT bound to no interface,
+                                  bridge virbr-fci, no IPv6, DNS forwarded to exactly DNS...
+  verify.py domain                the VM's XML on stdin: one NIC, on factory-ci, under the egress
+                                  filter; nothing passed through; freed memory returned
+  verify.py guest LAN CAMPUS_DNS  run in the guest: what it may reach and what it may not
+
+Each prints one line per check, `ok` or `X`, and exits 1 when any is X.
+"""
+import socket
+import sys
+import xml.etree.ElementTree as ET
+
+failed = False
+
+
+def say(good, what):
+    global failed
+    failed |= not good
+    print(("  ok  " if good else "  X   ") + what)
+
+
+def network(text, dns):
+    net = ET.fromstring(text)
+    forward = net.find("forward")
+    say(forward is not None and forward.get("mode") == "nat" and not forward.findall("interface") and not forward.get("dev"),
+        "network factory-ci forwards by NAT, bound to no interface")
+    bridge = net.find("bridge")
+    say(bridge is not None and bridge.get("name") == "virbr-fci", "its bridge is virbr-fci")
+    say(not [ip for ip in net.findall("ip") if ip.get("family") == "ipv6"], "it has no IPv6 address")
+    got = [f.get("addr") for f in net.iter("forwarder")]
+    say(got == dns, f"its DNS forwards to {', '.join(got) or 'the host resolver'}" + ("" if got == dns else f", want {', '.join(dns) or 'the host resolver'}"))
+
+
+def domain(text):
+    devices = ET.fromstring(text).find("devices")
+    nics = devices.findall("interface")
+    say(len(nics) == 1 and nics[0].get("type") == "network" and nics[0].find("source").get("network") == "factory-ci",
+        "the VM has one NIC, on network factory-ci (no bridge, direct/macvtap, hostdev or user NIC)")
+    say(all((n.find("filterref") is not None and n.find("filterref").get("filter") == "factory-ci-egress") for n in nics),
+        "every NIC is under the factory-ci-egress filter")
+    say(not devices.findall("hostdev"), "no device is passed through")
+    balloon = devices.find("memballoon")
+    say(balloon is not None and balloon.get("freePageReporting") == "on", "the balloon returns freed guest memory to the host")
+
+
+def tcp(host, port, family=socket.AF_INET):
+    try:
+        with socket.socket(family, socket.SOCK_STREAM) as s:
+            s.settimeout(3)
+            s.connect((host, port))
+        return "open"
+    except OSError:
+        return "closed"
+
+
+def udp53(server):
+    query = b"\x12\x34\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x06github\x03com\x00\x00\x01\x00\x01"
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.settimeout(3)
+        try:
+            s.sendto(query, (server, 53))
+            s.recv(512)
+            return "open"
+        except OSError:
+            return "closed"
+
+
+def guest(lan, campus_dns):
+    checks = [
+        ("github.com:443", lambda: tcp("github.com", 443), "open"),
+        ("api.nuget.org:443", lambda: tcp("api.nuget.org", 443), "open"),
+        ("DNS at the gateway", lambda: udp53("192.168.150.1"), "open"),
+        ("DNS at 1.1.1.1 over UDP", lambda: udp53("1.1.1.1"), "closed"),
+        ("DNS at 1.1.1.1 over TCP", lambda: tcp("1.1.1.1", 53), "closed"),
+        (f"the campus resolver {campus_dns}", lambda: udp53(campus_dns), "closed"),
+        ("github.com:22", lambda: tcp("github.com", 22), "closed"),
+        (f"the host's LAN address {lan}:22", lambda: tcp(lan, 22), "closed"),
+        (f"the host's LAN address {lan}:443", lambda: tcp(lan, 443), "closed"),
+        ("the host at the gateway, 192.168.150.1:22", lambda: tcp("192.168.150.1", 22), "closed"),
+        ("the campus, udayton.edu:443", lambda: tcp("udayton.edu", 443), "closed"),
+        ("IPv6, [2606:4700:4700::1111]:443", lambda: tcp("2606:4700:4700::1111", 443, socket.AF_INET6), "closed"),
+    ]
+    for what, probe, want in checks:
+        got = probe()
+        say(got == want, f"{what}: {got}" + ("" if got == want else f", want {want}"))
+
+
+if __name__ == "__main__":
+    kind, args = sys.argv[1], sys.argv[2:]
+    if kind == "network":
+        network(sys.stdin.read(), args)
+    elif kind == "domain":
+        domain(sys.stdin.read())
+    elif kind == "guest":
+        guest(args[0], args[1])
+    else:
+        print(__doc__, file=sys.stderr)
+        sys.exit(2)
+    sys.exit(1 if failed else 0)
