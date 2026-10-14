@@ -77,5 +77,57 @@ class TestTheTwoWalksAgree(unittest.TestCase):
             UslmXml(self.corpus).units({"unit": "page", "from": 1, "to": 2})
 
 
+STATUTE = os.path.join(REPO, "examples", "can-spam", "usc15-ch103.xml")
+
+
+class TestAStatuteChapterIsInventoried(unittest.TestCase):
+    """A chapter of the Code is the same grammar under another identifier prefix (0082, #654)."""
+
+    def setUp(self):
+        self.checker = _checker()
+        self.adapter = UslmXml(STATUTE)
+        self.sections = ["/us/usc/" + number for number in self.adapter._rules()]
+        self.extent = {"unit": "section-designation", "sections": self.sections}
+
+    def test_the_chapter_has_its_thirteen_sections_and_all_are_enumerated(self):
+        self.assertEqual(len(self.sections), 13)
+        units = self.adapter.units(self.extent)
+        self.assertEqual({u.key.split("/")[4].split(" ")[0] for u in units},
+                         {f"s{n}" for n in range(7701, 7714)})
+
+    def test_the_same_passages_in_the_same_order_with_the_same_text(self):
+        units = self.adapter.units(self.extent)
+        text, spans = self.checker.corpus_index(STATUTE)
+        self.assertEqual(len(units), len(spans))
+        for unit, (start, end, path) in zip(units, spans):
+            designation = self.checker.designation(path)
+            with self.subTest(unit=unit.key):
+                self.assertTrue(unit.key == designation
+                                or unit.key.startswith(designation + " "), unit.key)
+                self.assertEqual(unit.text, text[start:end])
+
+    def test_no_two_units_share_a_key(self):
+        """15 U.S.C. 7702(17)(A) prints a `<continuation>` after its clauses: two runs."""
+        keys = [u.key for u in self.adapter.units(self.extent)]
+        self.assertEqual(len(keys), len(set(keys)))
+        self.assertIn("/us/usc/t15/s7702/17/A continuation", keys)
+
+    def test_an_extent_may_name_one_section(self):
+        units = self.adapter.units({"unit": "section-designation",
+                                    "sections": ["/us/usc/t15/s7713"]})
+        self.assertEqual([u.key for u in units], ["/us/usc/t15/s7713"])
+
+    def test_an_extent_naming_a_section_the_chapter_does_not_hold_is_refused(self):
+        with self.assertRaises(Refused) as caught:
+            self.adapter.units({"unit": "section-designation",
+                                "sections": ["/us/usc/t15/s7701", "/us/usc/t15/s9999"]})
+        self.assertIn("/us/usc/t15/s9999", str(caught.exception))
+
+    def test_a_section_of_another_title_is_not_this_one(self):
+        with self.assertRaises(Refused):
+            self.adapter.units({"unit": "section-designation",
+                                "sections": ["/us/usc/t26/s7701"]})
+
+
 if __name__ == "__main__":
     unittest.main()

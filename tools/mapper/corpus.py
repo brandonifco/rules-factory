@@ -1242,6 +1242,13 @@ class UslmXml(Adapter):
     subsections and its `<sourceCredit>` after them, so it yields two units and they are keyed
     apart. That is the same shape `EcfrXml` gives a section: a `heading` unit, then paragraphs.
 
+    **A statute chapter is the same grammar under another prefix** (0082): `/us/usc/t15/s7704/a/1`
+    is the section `t15/s7704` and the path `a`, `1` below it, keyed by that identifier. A section
+    yields a `heading` run and, after its last subdivision, a `closing` run holding the source
+    credit and the OLRC's notes; one that prints no subdivision is one unit. An element that
+    prints text after its children -- a `<continuation>` -- is two runs, and the second is keyed
+    `continuation` so that no two units share a key.
+
     `tools/tests/mapper/test_mapper_uslm.py` holds this walk to the locator checker's index over
     the committed corpus: same units, same order, same text. The two files cannot import one
     another (0032), so nothing else would notice them drifting apart, and a unit the checker can
@@ -1253,6 +1260,12 @@ class UslmXml(Adapter):
     NAMESPACE = "{http://xml.house.gov/schemas/uslm/1.0}"
     PREFIX = "/us/usc/t28a/courtRules/Civil/rule"
     RULE = re.compile(r"^Rule\s+(\d+(?:\.\d+)?)$")
+    #: A statute is cited by its USLM identifier itself (0082): `/us/usc/t15/s7704/a/1` is the
+    #: section `t15/s7704` and the path `a`, `1` below it. The section keeps its title, because
+    #: `s7704` alone names a section of every title that has one. The checker's pattern, copied:
+    #: the two cannot import one another (0032).
+    STATUTE = re.compile(r"^/us/usc/(t[0-9]+[A-Za-z]*/s[0-9][A-Za-z0-9-]*)((?:/[A-Za-z0-9]+)*)$")
+    SECTION = re.compile(r"^/us/usc/(t[0-9]+[A-Za-z]*/s[0-9][A-Za-z0-9-]*)$")
 
     def __init__(self, path):
         Adapter.__init__(self, path)
@@ -1262,12 +1275,19 @@ class UslmXml(Adapter):
             raise Refused(f"cannot parse {os.path.basename(path)} as USLM XML: {error}")
 
     def _path_of(self, identifier):
-        if not isinstance(identifier, str) or not identifier.startswith(self.PREFIX):
+        if not isinstance(identifier, str):
             return None
-        return tuple(identifier[len(self.PREFIX):].split("/"))
+        if identifier.startswith(self.PREFIX):
+            return tuple(identifier[len(self.PREFIX):].split("/"))
+        statute = self.STATUTE.match(identifier)
+        if statute:
+            return (statute.group(1),) + tuple(t for t in statute.group(2).split("/") if t)
+        return None
 
     @staticmethod
     def _designation(path):
+        if "/" in path[0]:
+            return "/us/usc/" + "/".join(path)
         return "Rule " + path[0] + "".join(f"({token})" for token in path[1:])
 
     def _pieces(self):
@@ -1295,6 +1315,10 @@ class UslmXml(Adapter):
                 runs.append((owner, [text]))
         return [(owner, " ".join(parts)) for owner, parts in runs]
 
+    @staticmethod
+    def _named(number):
+        return "/us/usc/" + number if "/" in number else "Rule " + number
+
     def _rules(self):
         """The rule numbers this corpus holds, in the order it prints them."""
         seen = []
@@ -1311,7 +1335,9 @@ class UslmXml(Adapter):
             raise Refused("extent names no rule, so it selects nothing to enumerate")
         wanted = []
         for item in listed:
-            match = self.RULE.match(item.strip()) if isinstance(item, str) else None
+            match = None
+            if isinstance(item, str):
+                match = self.RULE.match(item.strip()) or self.SECTION.match(item.strip())
             if not match:
                 raise Refused(f"extent names {item!r}, which is not a rule designation this "
                               f"adapter can find in the designation tree")
@@ -1319,24 +1345,39 @@ class UslmXml(Adapter):
         here = self._rules()
         missing = [number for number in wanted if number not in here]
         if missing:
-            raise Refused(f"the extent names {', '.join('Rule ' + n for n in missing)}, which the "
+            raise Refused(f"the extent names "
+                          f"{', '.join(self._named(n) for n in missing)}, which the "
                           f"corpus does not contain; an extent over a rule that is not there "
                           f"claims coverage of nothing")
+        pieces = [(owner, text) for owner, text in self._pieces() if owner[0] in wanted]
+        runs = {}
+        for owner, _ in pieces:
+            runs[owner] = runs.get(owner, 0) + 1
         found, seen = [], {}
-        for owner, text in self._pieces():
-            if owner[0] not in wanted:
-                continue
+        for owner, text in pieces:
             designation = self._designation(owner)
-            if len(owner) == 1:
+            seen[owner] = seen.get(owner, 0) + 1
+            nth, statute = seen[owner], "/" in owner[0]
+            if len(owner) == 1 and not statute:
                 # The rule element prints its heading before its subsections and its source
                 # credit after them. Two runs, two units, keyed by which run they are: a key
                 # names one passage or it names none.
-                seen[designation] = seen.get(designation, 0) + 1
-                key = f"{designation} heading" if seen[designation] == 1 \
-                    else f"{designation} source credit"
-                found.append(Unit(key, "heading" if seen[designation] == 1 else "paragraph", text))
-                continue
-            found.append(Unit(designation, "paragraph", text))
+                key = f"{designation} heading" if nth == 1 else f"{designation} source credit"
+                found.append(Unit(key, "heading" if nth == 1 else "paragraph", text))
+            elif runs[owner] == 1:
+                # A section that prints no subdivision, or a paragraph with no text after its
+                # children: one run, and the designation alone names it.
+                found.append(Unit(designation, "paragraph", text))
+            elif len(owner) == 1:
+                # A statute's section prints its heading (and lead-in) first, and after its
+                # last subdivision the source credit and the notes the OLRC sets under it.
+                key = f"{designation} heading" if nth == 1 else f"{designation} closing"
+                found.append(Unit(key, "heading" if nth == 1 else "paragraph", text))
+            else:
+                # An element that prints text after its children -- a `<continuation>` -- is
+                # two runs. Both are kept, and keyed apart, for the reason the rule's two are.
+                found.append(Unit(designation if nth == 1 else f"{designation} continuation",
+                                  "paragraph", text))
         return found
 
 
