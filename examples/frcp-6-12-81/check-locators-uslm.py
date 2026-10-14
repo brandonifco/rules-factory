@@ -191,6 +191,10 @@ def cited_paths(citation):
                 return None
             prefixes.append((statute.group(1),)
                             + tuple(t for t in statute.group(2).split("/") if t))
+        # A citation names one section, as the extent validators read it: they place it by the
+        # first, so a second would be a section nothing placed inside the extent.
+        if len({prefix[0] for prefix in prefixes}) != 1:
+            return None
         return prefixes
     rule = CITE_RULE.search(citation)
     if not rule:
@@ -263,6 +267,28 @@ def at_unit_edge(position, spans, which):
     return False
 
 
+def outside(span, spans, corpus):
+    """The first non-space character of `span` that no identified element owns, or None.
+
+    Containment is of the whole quote: a quote that starts in text no element prints (a chapter's
+    heading) and runs into a section touches only the section's span, and checking the spans it
+    overlaps proves only that part of it.
+    """
+    start, end = span
+    cursor = start
+    for lo, hi, _ in sorted(spans):
+        if hi <= cursor:
+            continue
+        if lo >= end:
+            break
+        if corpus[cursor:min(lo, end)].strip():
+            return cursor
+        cursor = max(cursor, hi)
+    if cursor < end and corpus[cursor:end].strip():
+        return cursor
+    return None
+
+
 def touched(span, spans):
     start, end = span
     return [path for lo, hi, path in spans if lo < end and start < hi]
@@ -325,6 +351,11 @@ def check(entry, corpus, spans, reached=None, quoted=None):
         found.extend(hits)
         for hit in hits:
             paths = touched(hit, spans)
+            gap = outside(hit, spans, corpus)
+            if paths and gap is not None:
+                return "bad", (f"cited {citation}, and this occurrence of {fragment[:40]!r} runs "
+                               f"into text outside every identified element "
+                               f"({corpus[gap:gap + 30]!r}), which no citation names")
             if not paths:
                 return "bad", (f"cited {citation}, and this occurrence of {fragment[:40]!r} sits "
                                f"in no identified element of the corpus")
