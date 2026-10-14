@@ -34,7 +34,8 @@ the output is the release's own bytes: re-serialising would rewrite entity refer
 order and whitespace, and a quote checked against a re-serialisation is not checked against what
 the OLRC published. Locating by parsing, and not by searching the text, is what makes a chapter
 inside a comment or a CDATA section, a `data-identifier` attribute and an identifier in single
-quotes mean what they are. The member must be UTF-8 (a declaration of any other encoding, a
+quotes mean what they are; an element is its USLM namespace URI and local name, so a prefixed
+`u:chapter` is a chapter and another namespace's `chapter` is not. The member must be UTF-8 (a declaration of any other encoding, a
 byte-order mark or invalid bytes are refused, because the slice's declaration says UTF-8 and
 would otherwise re-label the bytes) and carry no DOCTYPE. The slice is parsed afterwards, only to
 refuse a result that holds a carriage return.
@@ -57,6 +58,9 @@ CHAPTER = re.compile(r"^/us/usc/t([0-9]+[A-Za-z]*)/ch([0-9]+[A-Za-z]*)$")
 #: is some 150 MB of XML; a member far past that is not a release point.
 MAX_MEMBER_BYTES = 256 * 1024 * 1024
 MAX_RATIO = 200
+#: An element is identified by namespace URI and local name, as the parser reports it with the
+#: separator below, never by the prefix a document happens to choose.
+USLM = "http://xml.house.gov/schemas/uslm/1.0 "
 DECLARATION = '<?xml version="1.0" encoding="UTF-8"?>\n'
 
 
@@ -102,7 +106,7 @@ def elements_of(data, chapter):
         data.decode("utf-8")
     except UnicodeDecodeError as error:
         raise Refused(f"the member is not valid UTF-8: {error}")
-    parser = xml.parsers.expat.ParserCreate()
+    parser = xml.parsers.expat.ParserCreate(namespace_separator=" ")
     parser.buffer_text = False
     state = {"stack": [], "root": None, "meta": [], "chapters": [], "open": None}
 
@@ -118,8 +122,8 @@ def elements_of(data, chapter):
         at = parser.CurrentByteIndex
         stack = state["stack"]
         if not stack:
-            if name != "uscDoc":
-                raise Refused(f"the member's root is <{name}>, not <uscDoc>")
+            if name != USLM + "uscDoc":
+                raise Refused(f"the member's root is <{name}>, not a USLM uscDoc")
             quote, end = None, at
             while True:
                 byte = data[end:end + 1]
@@ -131,9 +135,9 @@ def elements_of(data, chapter):
                     break
                 end += 1
             state["root"] = data[at:end + 1]
-        if name == "meta" and len(stack) == 1:
+        if name == USLM + "meta" and len(stack) == 1:
             state["meta"].append([at, None])
-        if name == "chapter":
+        if name == USLM + "chapter":
             if state["open"] is not None:
                 raise Refused("a chapter element contains another chapter element; its close "
                               "cannot be told from the inner one's")
@@ -147,15 +151,15 @@ def elements_of(data, chapter):
         stack = state["stack"]
         stack.pop()
         if data[at:at + 2] != b"</":
-            if name == "chapter" and state["open"] is not None:
+            if name == USLM + "chapter" and state["open"] is not None:
                 raise Refused(f"the chapter {chapter} is an empty element")
-            if name == "meta" and len(stack) == 1:
+            if name == USLM + "meta" and len(stack) == 1:
                 raise Refused("the member's meta is an empty element")
             return
         close = data.index(b">", at) + 1
-        if name == "meta" and len(stack) == 1:
+        if name == USLM + "meta" and len(stack) == 1:
             state["meta"][-1][1] = close
-        if name == "chapter" and state["open"] is not None:
+        if name == USLM + "chapter" and state["open"] is not None:
             state["open"][1] = close
             state["open"] = None
 
