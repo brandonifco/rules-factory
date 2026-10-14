@@ -103,10 +103,32 @@ class TestAnIdentifierCitationIsHeldToItsElement(RunChecker):
         self.assertIn("2 occurrence(s)", output)
 
     def test_a_citation_in_a_title_the_corpus_does_not_hold_is_not_resolved(self):
+        # Everything but the title is right: the paragraph, the quote, and a covered section 502.
+        # Only a checker that confuses t98 with t99 passes this (#655 review, finding 5).
         code, output = self.run_checker(document([
-            entry("e1", "/us/usc/t98/s501/a/1", "A gadget shall be blue."),
+            entry("e1", "/us/usc/t98/s501/a/2", "A gadget shall be blue."),
+            entry("e3", "/us/usc/t99/s502", "No gadget is a widget."),
         ]))
         self.assertEqual(1, code, output)
+        self.assertIn("evidence also sits in /us/usc/t99/s501/a/2", output)
+
+    def test_a_quote_that_runs_into_text_outside_every_section_is_refused(self):
+        # `Invented matters` is the chapter's heading; `§501.` opens section 501 (finding 2).
+        code, output = self.run_checker(document([
+            entry("e1", "/us/usc/t99/s501", "Invented matters \u00a7501."),
+            entry("e3", "/us/usc/t99/s502", "No gadget is a widget."),
+        ]))
+        self.assertEqual(1, code, output)
+        self.assertIn("outside every identified element", output)
+
+    def test_a_citation_naming_two_sections_is_not_read(self):
+        # Finding 3: the checker read both items, so a quote only in 502 sat "inside" the citation.
+        code, output = self.run_checker(document([
+            entry("e1", "/us/usc/t99/s501, /us/usc/t99/s502", "No gadget is a widget."),
+            entry("e2", "/us/usc/t99/s501/a/2", "A gadget shall be blue."),
+        ], sections=("/us/usc/t99/s501",)))
+        self.assertEqual(1, code, output)
+        self.assertIn("outside the grammar", output)
 
     def test_a_citation_this_spelling_cannot_read_is_unchecked_and_fails_the_run(self):
         for citation in ("/us/usc/t99/s501/a/1-2", "15 U.S.C. 501(a)", "/us/usc/t99/s501/a/1 and b",
@@ -168,6 +190,28 @@ class TestTheValidatorReadsTheSpellingAsTheCheckerDoes(unittest.TestCase):
         self.assertEqual(uslm.EXTENT_STATUTE.pattern.replace("(t", "(/us/usc/t", 1)
                          .replace("^/us/usc/(/us/usc/", "^(/us/usc/"),
                          locators.EXTENT_STATUTE.pattern)
+
+
+class TestAnExtentIsNotCrossedByASecondSection(unittest.TestCase):
+    """Finding 3: both extent validators inspected only the first identifier of a list."""
+
+    def placed(self, module):
+        document = {"extent": {"unit": "section-designation", "sections": ["/us/usc/t99/s501"]},
+                    "entries": [{"id": "e1", "scope": "in", "evidence": "No gadget is a widget.",
+                                 "locator": {"citation": "/us/usc/t99/s501, /us/usc/t99/s502"}}]}
+        return module.check_extent({"map": document})
+
+    def test_check_map_refuses_the_citation(self):
+        spec = importlib.util.spec_from_file_location("check_map_655", os.path.join(TOOLS, "check-map.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual("fail", self.placed(module).status)
+        self.assertIsNone(module.cited_section("/us/usc/t99/s501, /us/usc/t99/s502"))
+
+    def test_mapvalidator_refuses_the_citation(self):
+        from mapvalidator import extent
+        self.assertEqual("fail", self.placed(extent).status)
+        self.assertIsNone(locators.cited_section("/us/usc/t99/s501, /us/usc/t99/s502"))
 
 
 class TestTheTwoValidatorCopiesAreOne(unittest.TestCase):

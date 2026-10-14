@@ -686,6 +686,10 @@ def cited_section(citation):
         return ("section", f"Rule {rule.group(1)}")
     statute = CITE_STATUTE.search(text)
     if statute:
+        # One section: a list naming a second is placed by its first and would carry the second
+        # past the extent, so it is not placed at all.
+        if len(set(CITE_STATUTE.findall(text))) != 1:
+            return None
         return ("section", statute.group(1))
     subpart = CITE_SUBPART.search(text)
     if subpart:
