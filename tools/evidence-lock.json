@@ -577,8 +577,8 @@
     },
     {
       "path": "examples/frcp-6-12-81/check-locators-uslm.py",
-      "sha256": "ec1b4d47de90b52ae557e07e72761ce43090c025da691959e3d77a62e35b5fa8",
-      "bytes": 24873,
+      "sha256": "c5bf365152851b042748e6fab3a8f3630fb009d973aa6b9d51b25e6f46e4fdaf",
+      "bytes": 27258,
       "role": "active",
       "readBy": [
         "checks"
