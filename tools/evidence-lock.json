@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "2a598496cfd046df35df7c479112e38fad50e2a8",
+  "measuredAt": "ab99eb791c9d0ecdfe69831ed0cefbf880508841",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,8 +17,8 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 556,
-    "trackedBytes": 23174433
+    "trackedFiles": 561,
+    "trackedBytes": 23207788
   },
   "artifacts": [
     {
@@ -45,8 +45,10 @@
       "path": "examples/acceptance-4-5/check-provenance.sh",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e",
       "bytes": 2248,
-      "role": "archived",
-      "readBy": [],
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
       "archive": null
     },
     {
@@ -63,10 +65,8 @@
       "path": "examples/blind-mapping-trial/blind-map.json",
       "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1",
       "bytes": 37125,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -157,6 +157,50 @@
       "path": "examples/blind-mapping-trial/run2/results.json",
       "sha256": "8d6be5b8565b9e674ce100c819e83a823de33ca312e510c9fd39aa6dff308ce2",
       "bytes": 56012,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/README.md",
+      "sha256": "15b68b98ebf381abd5c280940003f00e989f86a00f46b41930f263ec612c1cfa",
+      "bytes": 2162,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/REFERENCE-CHECK.md",
+      "sha256": "4474dc246fe1bc9b0ede2a4a58e649c4e51c721f7eaac14ac150042f3d93368b",
+      "bytes": 16823,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/part316.corpus.build.json",
+      "sha256": "d85d62d04d369f8482fe11d5ac544e74f6a0ca290de38580ee74a3c8c2ded114",
+      "bytes": 731,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/part316.corpus.expect.json",
+      "sha256": "cb350f41601a38a1e82d0c54c5b6190ab0077e095ab98e68e43044afb3647230",
+      "bytes": 30,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/part316.xml",
+      "sha256": "45bf26b68a06dc81f55388a06eb4e376ceb061a490e3858fb6105143d1d583b0",
+      "bytes": 13487,
       "role": "archived",
       "readBy": [],
       "archive": null
