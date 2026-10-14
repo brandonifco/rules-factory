@@ -20,6 +20,17 @@ every character of a `<courtRule>` is inside that rule's element, so the coarses
 quote can need is the rule itself. `extent.unreachable` is therefore neither read nor needed
 here, and a run says so rather than leaving its absence to be read as an omission.
 
+**A second spelling, and no second grammar.** A statute is addressed by its USLM identifier
+itself, `/us/usc/t15/s7704/a/1`, so a citation of a corpus whose elements are identified under
+`/us/usc/t<title>/s<section>` is that identifier, or a list of them, each item stating its path
+from the section down (`/us/usc/t15/s7704/a/1, /us/usc/t15/s7704/b`). It names the same unit the
+`Rule 6(a)(1)` spelling does, a top-level designation and a path below it, so what is checked is
+unchanged: containment, every occurrence, exact. A range is not read in this spelling, and an
+item that is not one identifier is outside the grammar and fails the run as unchecked. What this
+spelling cannot address is the text a chapter prints outside its sections (its heading and its
+table of contents): that is not a passage of a rule, and a quote there is refused as sitting in
+no identified element.
+
 Three properties are the section checker's, deliberately, and each makes this stricter rather
 than looser:
 
@@ -51,6 +62,13 @@ NS = "{http://xml.house.gov/schemas/uslm/1.0}"
 #: identified under another prefix is not the one this grammar reads, and is refused rather than
 #: enumerated into an index that would verify nothing.
 PREFIX = "/us/usc/t28a/courtRules/Civil/rule"
+#: The statute spelling's prefix: `/us/usc/t15/s7704/a/1` is the unit `t15/s7704` and the path
+#: `a`, `1` below it. The unit keeps its title, because `s7704` alone names a section of every
+#: title that has one.
+STATUTE = re.compile(r"^/us/usc/(t[0-9]+[A-Za-z]*/s[0-9][A-Za-z0-9-]*)((?:/[A-Za-z0-9]+)*)$")
+STATUTE_ITEM = re.compile(r"^\s*(/us/usc/\S+?)\s*$")
+#: `/us/usc/t15/s7704`, as an item of `extent.sections` and nothing else.
+EXTENT_STATUTE = re.compile(r"^/us/usc/(t[0-9]+[A-Za-z]*/s[0-9][A-Za-z0-9-]*)$")
 ELLIPSIS = re.compile(r"\s*(?:\.\.\.|…)\s*")
 
 #: `Rule 6`, as an item of `extent.sections` and nothing else -- no subsection, no range.
@@ -75,9 +93,12 @@ def normalise(text):
 
 def path_of(identifier):
     """`Rule 6(a)(1)(A)` as the tuple `("6", "a", "1", "A")`, or None for another document."""
-    if not isinstance(identifier, str) or not identifier.startswith(PREFIX):
-        return None
-    return tuple(identifier[len(PREFIX):].split("/"))
+    if isinstance(identifier, str) and identifier.startswith(PREFIX):
+        return tuple(identifier[len(PREFIX):].split("/"))
+    statute = STATUTE.match(identifier) if isinstance(identifier, str) else None
+    if statute:
+        return (statute.group(1),) + tuple(t for t in statute.group(2).split("/") if t)
+    return None
 
 
 def corpus_index(path):
@@ -128,8 +149,8 @@ def corpus_index(path):
         else:
             spans.append((start, cursor, owner))
     if not spans:
-        raise Refused(f"{path} holds no element identified under {PREFIX}; it is not the "
-                      f"court-rule slice this grammar reads")
+        raise Refused(f"{path} holds no element identified under {PREFIX} or under "
+                      f"/us/usc/t<title>/s<section>; it is not a USLM slice this grammar reads")
     # Each piece carries the separating space that keeps two text nodes from running together,
     # so a span's last character is that space and a quote ending at the unit's last *word* ends
     # one character short of it. 0037's edge test compares offsets, so the bounds are trimmed to
@@ -162,6 +183,15 @@ def cited_paths(citation):
     inherits a stem from the item before it reads differently depending on what precedes it, and
     a citation has to mean one thing on its own.
     """
+    if "/us/usc/" in citation:
+        prefixes = []
+        for item in citation.split(","):
+            statute = STATUTE.match(item.strip())
+            if not statute:
+                return None
+            prefixes.append((statute.group(1),)
+                            + tuple(t for t in statute.group(2).split("/") if t))
+        return prefixes
     rule = CITE_RULE.search(citation)
     if not rule:
         return None
@@ -249,6 +279,8 @@ def longest_prefix(fragment, corpus):
 
 def designation(path):
     """`("6", "a", "1", "A")` written the way the corpus and the map write it."""
+    if "/" in path[0]:
+        return "/us/usc/" + "/".join(path)
     return "Rule " + path[0] + "".join(f"({token})" for token in path[1:])
 
 
@@ -351,7 +383,7 @@ def extent_rules(document):
     listed = extent.get("sections")
     if not isinstance(listed, list):
         return []
-    matched = [EXTENT_RULE.match(s) for s in listed if isinstance(s, str)]
+    matched = [EXTENT_RULE.match(s) or EXTENT_STATUTE.match(s) for s in listed if isinstance(s, str)]
     return [m.group(1) for m in matched if m]
 
 
@@ -376,12 +408,12 @@ def coverage(document, reached, measured=None):
         return [f"  X  extent.unit is {extent.get('unit')!r}; this checker reads a designation "
                 f"tree and can prove nothing about another unit"], None
     listed = extent.get("sections")
-    matched = [EXTENT_RULE.match(s) for s in listed if isinstance(s, str)] \
-        if isinstance(listed, list) else []
+    matched = [EXTENT_RULE.match(s) or EXTENT_STATUTE.match(s) for s in listed
+               if isinstance(s, str)] if isinstance(listed, list) else []
     numbers = [m.group(1) for m in matched if m]
     if not numbers:
         return ["  X  extent names no rule designation this checker can read"], None
-    problems = [f"  X  Rule {n}: inside the declared extent and reached by no entry's verified "
+    problems = [f"  X  {designation((n,))}: inside the declared extent and reached by no entry's verified "
                 f"evidence" for n in numbers if n not in reached]
     phrase = ""
     if measured is not None and measured[1]:
@@ -539,10 +571,13 @@ def main(argv):
         print(f"\nlocators ok (all {total} checked), but coverage fails: "
               f"{len(uncovered)} problem(s) with the declared extent")
         return 1
+    statute = any("/" in path[0] for _, spans in indexes.values() for _, _, path in spans)
     print(f"locators ok (all {total} checked against the designation tree"
           + (f", {absences} absence claim(s)" if absences else "")
-          + "); every passage of a <courtRule> is inside that rule's element, so this grammar "
-            "has no unaddressed passage to declare; "
+          + ("); a quote outside every section (a chapter's heading and table of contents) is "
+             "refused, so this grammar addresses sections and what is below them; " if statute else
+             "); every passage of a <courtRule> is inside that rule's element, so this grammar "
+             "has no unaddressed passage to declare; ")
           + f"coverage ok ({covered})")
     return 0
 

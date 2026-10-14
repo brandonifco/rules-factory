@@ -153,6 +153,16 @@ citations run 271–277, and the throw enumeration that #20 is about is on 278�
   to the corpus checker that resolves it: the eCFR checker for `§`, and
   `examples/frcp-6-12-81/check-locators-uslm.py` for `Rule`.
 
+  **A statute is cited by its USLM identifier, which is a third spelling of the same unit**
+  ([0082](decisions/0082-a-chapter-of-the-united-states-code-is-admitted-as-a-verbatim-slice-and-cited-by-its-uslm-identifier.md),
+  [#653](https://github.com/brandonifco/rules-factory/issues/653)). `/us/usc/t15/s7704/a/1` is the
+  top-level designation `/us/usc/t15/s7704` and a path below it; an extent item is the section and
+  nothing below it, and a citation is one identifier or a comma-separated list of them, each
+  stating its path from the section down. A range is not read in this spelling. Text a chapter
+  prints outside its sections (its heading, its table of contents) has no address, and a quote
+  there is refused. `check-locators-uslm.py` reads both prefixes and `check-map.py`'s
+  `CITE_STATUTE` and `EXTENT_STATUTE` are held equal to the checker's by `test_uslm_identifier_locators.py`.
+
 **A page extent describes the map's principal corpus, and a map may cite more than one page-marked
 corpus** ([0070](decisions/0070-a-page-marked-map-may-cite-several-corpora-each-entry-checked-against-its-own.md)).
 `check-locators-pdf-text.py <corpus-map.json> <sourceId>=<corpus.txt> ...` checks each entry against

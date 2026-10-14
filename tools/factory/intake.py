@@ -106,9 +106,22 @@ FLAT_CONTAINER = "https://api.nuget.org/v3-flatcontainer"
 #     date, not the rendered HTML or the printed volume (examples/faa-part-107/README.md);
 #   * gutenberg-plain-text-including-boilerplate -- the Project Gutenberg `.txt.utf-8`
 #     including its licence header and footer, not the work text alone
-#     (examples/hoyle-backgammon/README.md, finding 6).
+#     (examples/hoyle-backgammon/README.md, finding 6);
+#   * olrc-uslm-chapter-slice-verbatim -- one chapter of a United States Code title, cut from
+#     the `usc<NN>.xml` member of the Office of Law Revision Counsel's release-point zip, byte
+#     for byte, in a minimal `uscDoc` wrapper that carries the member's root tag and `<meta>`
+#     and nothing else of it (tools/derive-uslm-chapter.py, 0082).
 ADMITTED_HASH_DERIVATIONS = frozenset({
     "ecfr-versioner-xml",
+    # SHA-256 over the committed slice, byte for byte -- which is *not* what the OLRC serves: the
+    # release point is a zip holding one 30 MB title, and rules-corpus has no step that opens a
+    # zip or cuts an element, so tools/derive-uslm-chapter.py derives the slice and the corpus's
+    # build definition declares that step `external` (reported NOT VERIFIED by `verify
+    # --rebuild`, named in the expectation). What holds the slice to its release is the tool's
+    # `--check`, which cuts the chapter again from the zip and compares. The name claims the
+    # slice is the release's own bytes for the chapter, not a re-serialisation, and that nothing
+    # of the title outside the chapter's element, the root tag and `<meta>` is in it.
+    "olrc-uslm-chapter-slice-verbatim",
     "gutenberg-plain-text-including-boilerplate",
     # SHA-256 over the committed page-marked text, byte for byte -- which is *not* what was
     # retrieved: WotC publishes a PDF, and examples/srd-52-combat/extract.py derives the text

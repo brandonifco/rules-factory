@@ -629,11 +629,17 @@ EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
 # copies equal over every citation that map makes, as it already does for `CITE_SECTION`.
 CITE_RULE = re.compile(r"\bRule\s+(\d+(?:\.\d+)?)(?![A-Za-z0-9.])")
 EXTENT_RULE = re.compile(r"^Rule\s+(\d+(?:\.\d+)?)$")
+# And a third spelling: a statute's USLM identifier, `/us/usc/t15/s7704/a/1`, which is a top-level
+# designation (`/us/usc/t15/s7704`) and a path below it written with slashes. Read the way the
+# same checker reads it (`STATUTE`, `EXTENT_STATUTE`).
+CITE_STATUTE = re.compile(r"(?<![A-Za-z0-9/])(/us/usc/t[0-9]+[A-Za-z]*/s[0-9][A-Za-z0-9-]*)(?![A-Za-z0-9-])")
+EXTENT_STATUTE = re.compile(r"^(/us/usc/t[0-9]+[A-Za-z]*/s[0-9][A-Za-z0-9-]*)$")
 #: How a designation is printed once it has been read. The CFR's number carries its sign back;
 #: the court rule's already carries its word, so a reader that prefixed one would print
 #: "§ Rule 6". One function, because a designation is printed in three messages.
 def printed_designation(designation):
-    return designation if str(designation).startswith("Rule ") else f"§ {designation}"
+    text = str(designation)
+    return text if text.startswith(("Rule ", "/us/usc/")) else f"§ {designation}"
 
 
 def extent_designation(item):
@@ -648,7 +654,10 @@ def extent_designation(item):
     if section:
         return section.group(1)
     rule = EXTENT_RULE.match(item)
-    return f"Rule {rule.group(1)}" if rule else None
+    if rule:
+        return f"Rule {rule.group(1)}"
+    statute = EXTENT_STATUTE.match(item)
+    return statute.group(1) if statute else None
 
 
 def section_pointer_match_is_complete(text, match):
@@ -675,6 +684,9 @@ def cited_section(citation):
     rule = CITE_RULE.search(text)
     if rule:
         return ("section", f"Rule {rule.group(1)}")
+    statute = CITE_STATUTE.search(text)
+    if statute:
+        return ("section", statute.group(1))
     subpart = CITE_SUBPART.search(text)
     if subpart:
         return ("subpart", subpart.group(1).upper())

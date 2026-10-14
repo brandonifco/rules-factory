@@ -128,6 +128,9 @@ MULTI_CORPUS_ADAPTERS = {"ecfr-xml", "page-marked-text", "pdftotext-page-marked"
 LOCATOR_CHECKERS = {
     "plain-text": os.path.join(REPO, "tools", "check-locators.py"),
     "ecfr-xml": os.path.join(REPO, "examples", "faa-part-107", "check-locators-section.py"),
+    # The Office of Law Revision Counsel's USLM XML, read by its own identifiers: court rules
+    # (`Rule 6(a)(1)`) and statute sections (`/us/usc/t15/s7704/a/1`).
+    "uslm-xml": os.path.join(REPO, "examples", "frcp-6-12-81", "check-locators-uslm.py"),
     "pdftotext-page-marked": os.path.join(REPO, "examples", "srd-52-combat", "check-locators-pdf-text.py"),
     # The same grammar, the same checker, under a name that does not name a tool. Nothing in
     # check-locators-pdf-text.py is pdftotext's -- it reads `{N}` markers and
