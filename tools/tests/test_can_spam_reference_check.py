@@ -185,6 +185,29 @@ class TestAlignment(unittest.TestCase):
             [(2, "SCOPE OF THE RULE.", "    (a) Scope.--means-- x")], part="unit")
         self.assertEqual(recs, [])
 
+    CONT_ACT = ["    (a) Scope.--means--",
+                "            (1) to provide--",
+                "                    (A) first;",
+                "                    (B) second,",
+                "        a thing set {word};"]
+
+    def continuation_records(self, word):
+        inner = ('<paragraph identifier="/us/usc/t15/s7701/a/1"><num value="1">(1)</num><chapeau> to provide—</chapeau>'
+                 '<subparagraph identifier="/us/usc/t15/s7701/a/1/A"><num value="A">(A)</num><content> first;</content></subparagraph>'
+                 '<subparagraph identifier="/us/usc/t15/s7701/a/1/B"><num value="B">(B)</num><content> second,</content></subparagraph>'
+                 '<continuation> a thing set flush;</continuation></paragraph>')
+        code = section(7701, 2, subsection(7701, "a", "means—", "Scope", inner))
+        act = [(2, "SCOPE OF THE RULE.", "\n".join(self.CONT_ACT).format(word=word))]
+        return records([code], act)
+
+    def test_continuation_text_is_compared_and_a_change_is_found_at_the_continuation(self):
+        self.assertEqual([r for r in self.continuation_records("flush") if r["class"] == rc.SUBSTANTIVE], [])
+        recs = [r for r in self.continuation_records("loose") if r["class"] == rc.SUBSTANTIVE]
+        self.assertEqual(len(recs), 1, recs)
+        self.assertEqual((recs[0]["corpusText"], recs[0]["referenceText"]), ("flush", "loose"))
+        self.assertTrue(recs[0]["id"].startswith("7701~continuation1/"), recs[0]["id"])
+        self.assertEqual(recs[0]["actParagraph"], " continuation 1")
+
     def test_quoted_amendatory_text_is_not_read_for_markers(self):
         lines = ["    (a) Offense.--",
                  "            (1) In general.--Chapter 47 is amended by adding:",
@@ -303,6 +326,11 @@ class TestFormatting(unittest.TestCase):
     def test_a_word_broken_at_a_line_end_is_the_word(self):
         recs = para("The subsection applies.", "The sub-\nsection applies.")
         self.assertEqual(by_rule(recs), ["F-HYPHENATION"])
+
+    def test_a_hyphen_break_does_not_join_words_the_file_keeps_apart(self):
+        # "no-\nwhere" is "nowhere"; the file's "now here" is two words, and that is a difference
+        recs = para("The now here rule applies.", "The no-\nwhere rule applies.")
+        self.assertEqual(by_rule(recs), ["P-REMAINDER"])
 
     def test_a_hyphen_at_a_line_end_in_a_compound_stays_a_hyphen(self):
         self.assertEqual(para("The opt-out applies.", "The opt-\nout applies."), [])
@@ -426,6 +454,21 @@ class TestCodification(unittest.TestCase):
                (12, "RESTRICTIONS.", "    Section 227 of the Communications Act is amended.")]
         self.assertEqual(by_rule(records(code, act, actSection=12)), ["P-REMAINDER"])
 
+    def test_a_codified_section_whose_act_section_is_not_in_the_act_is_refused(self):
+        code = [section(7701, 2, subsection(7701, "a", "Rule.", "Scope")),
+                section(7702, 3, subsection(7702, "a", "Other.", "Other"))]
+        act = [(2, "SCOPE OF THE RULE.", "    (a) Scope.--Rule.")]
+        with self.assertRaises(rc.InputError) as cm:
+            compare(code, act)
+        self.assertIn("7702", str(cm.exception))
+
+    def test_two_codified_sections_naming_one_act_section_are_refused(self):
+        code = [section(7701, 2, subsection(7701, "a", "Rule.", "Scope")),
+                section(7702, 2, subsection(7702, "a", "Other.", "Other"))]
+        act = [(2, "SCOPE OF THE RULE.", "    (a) Scope.--Rule.")]
+        with self.assertRaises(rc.InputError):
+            compare(code, act)
+
     def test_sections_outside_two_to_fifteen_are_listed_and_not_compared(self):
         code = [section(7701, 2, subsection(7701, "a", "Rule.", "Scope"))]
         act = [(2, "SCOPE OF THE RULE.", "    (a) Scope.--Rule."), (16, "EFFECTIVE DATE.", "    Takes effect.")]
@@ -462,6 +505,19 @@ class TestTextual(unittest.TestCase):
         kinds = [e["kind"] for e in recs[0]["evidence"]]
         self.assertEqual(kinds, ["reference-text", "ref"])
         self.assertEqual(recs[0]["evidence"][1]["href"], "/us/usc/t15/s45")
+
+    def test_words_in_the_acts_parenthetical_beyond_the_code_place_are_not_absorbed(self):
+        content = "consistent with " + self.ref("/us/usc/t15/s45", "section 45 of this title") + "."
+        recs = para(content, "consistent with section 5 of the Federal Trade Commission Act (15 U.S.C. 45, except for banks).")
+        self.assertNotIn("T-CITATION-FORM", by_rule(recs))
+        self.assertIn("P-REMAINDER", by_rule(recs))
+        self.assertTrue(any("except for banks" in r["referenceText"] for r in recs if r["rule"] == "P-REMAINDER"))
+
+    def test_words_in_the_acts_naming_of_the_act_beyond_its_name_are_not_absorbed(self):
+        content = "consistent with " + self.ref("/us/usc/t15/s45", "section 45 of this title") + "."
+        recs = para(content, "consistent with section 5 of the Federal Trade Commission Act, as it applies to banks (15 U.S.C. 45).")
+        self.assertNotIn("T-CITATION-FORM", by_rule(recs))
+        self.assertIn("P-REMAINDER", by_rule(recs))
 
     def test_a_citation_without_a_reference_is_read_from_its_words(self):
         recs = para("under section 227 of title 47.", "under section 227 of the Communications Act of 1934 (47 U.S.C. 227).")

@@ -184,8 +184,8 @@ class Builder:
 
     def add(self, text, role, href=None):
         text = collapse(text)
-        if self.s.endswith(" ") and text.startswith(" "):
-            text = text[1:]
+        if not self.s or self.s.endswith(" "):
+            text = text.lstrip(" ")
         if not text:
             return
         a = len(self.s)
@@ -385,6 +385,9 @@ class Statute:
             if not m:
                 raise InputError(f"section {n} has no source credit naming a section of Pub. L. 108-187")
             self.credit[n] = credit
+            if int(m.group(1)) in self.act_to_code:
+                raise InputError(f"sections {self.act_to_code[int(m.group(1))]} and {n} both name Act section "
+                                 f"{m.group(1)} in their source credits")
             self.act_to_code[int(m.group(1))] = n
             self.notes[n] = build_notes(sec)
             self.scopes[n] = []
@@ -739,10 +742,15 @@ def loose_key(toks, i, ctx):
     return x
 
 
+_SEC = r"\d+[A-Za-z]*(?:\([A-Za-z0-9]+\))*"
+_WORD = r"(?:[A-Z][\w'’-]*|of|and|for|the|\d{4})"
+#: Everything in the Act's citation must be recognized: the section numbers, an Act's name (capitalized
+#: words, ending in "Act" or "Act of <year>") and the Code place (numbers joined by "or", then
+#: "respectively"). A word beyond these is left to be compared, not absorbed.
 ACT_CITE = re.compile(
-    r"(?<=\bsection )(?P<num>\d+[A-Za-z]*(?:\([A-Za-z0-9]+\))*(?: or \d+[A-Za-z]*(?:\([A-Za-z0-9]+\))*)?)"
-    r" of (?:the )?(?P<name>[A-Z][^()]*?) \((?P<title>\d+) U\.S\.C\. "
-    r"(?P<usc>[^()]*(?:\([^()]*\)[^()]*)*)\)")
+    rf"(?<=\bsection )(?P<num>{_SEC}(?: or {_SEC})?)"
+    rf" of (?:the )?(?P<name>{_WORD}(?: {_WORD})* Act(?: of \d{{4}})?) \((?P<title>\d+) U\.S\.C\. "
+    rf"(?P<usc>{_SEC}(?: or {_SEC})*(?:, respectively)?)\)")
 CODE_CITE = re.compile(
     r"(?<=\bsection )(?P<num>\d+[A-Za-z]*(?:\([A-Za-z0-9]+\))*(?: or \d+[A-Za-z]*(?:\([A-Za-z0-9]+\))*)?)"
     r" of (?P<where>this title|title (?P<title>\d+))")
@@ -1084,7 +1092,7 @@ def compare_group(res, ctx, label, group, where, ru, cu, rt, ct):
                 rr = [rt[k] for k in sp[1]]
                 cc = [ct[k] for k in sp[2]]
                 if rr and cc and any(t.brk and t.text == "-" for t in rr) \
-                        and "".join(t.text for t in rr if not (t.brk and t.text == "-")) == "".join(t.text for t in cc):
+                        and join_broken_words(rr) == [t.text for t in cc]:
                     emit(FORMATTING, "F-HYPHENATION", sp[1], sp[2], [ev_rule("F-HYPHENATION")])
                 else:
                     emit(SUBSTANTIVE, "P-REMAINDER", sp[1], sp[2], [])
@@ -1093,6 +1101,21 @@ def compare_group(res, ctx, label, group, where, ru, cu, rt, ct):
     right = [ct[k].text for k in range(len(ct)) if k not in covered_c]
     if left != right:
         raise InputError(f"internal error: {label} {group}: the words no difference covers are not the same")
+
+
+def join_broken_words(toks):
+    """The texts of toks with each word the Act breaks with a hyphen at a line end made one word; every
+    other boundary between tokens is kept."""
+    out, i = [], 0
+    while i < len(toks):
+        if i + 2 < len(toks) and toks[i + 1].brk and toks[i + 1].text == "-" \
+                and re.match(r"\w", toks[i].text) and re.match(r"\w", toks[i + 2].text):
+            out.append(toks[i].text + toks[i + 2].text)
+            i += 3
+        else:
+            out.append(toks[i].text)
+            i += 1
+    return out
 
 
 def loose_key_side(toks, i, ctx, side):
@@ -1158,6 +1181,10 @@ def compare_statute(chapter, act_raw):
     st = Statute(chapter)
     ctx = Ctx(st)
     secs = act_sections(act_text(act_raw))
+    absent = sorted(n for a, n in st.act_to_code.items() if a not in secs)
+    if absent:
+        raise InputError("the Act text has no section for the codified section(s) "
+                         + ", ".join(str(n) for n in absent) + ", whose source credits name Act sections the Act lacks")
     res = Result("statute")
     alignment, unaligned = [], []
     for act_n in sorted(secs):

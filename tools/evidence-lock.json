@@ -18,7 +18,7 @@
   },
   "repository": {
     "trackedFiles": 571,
-    "trackedBytes": 24163093
+    "trackedBytes": 24168163
   },
   "artifacts": [
     {
@@ -208,8 +208,8 @@
     },
     {
       "path": "examples/can-spam/reference-check.py",
-      "sha256": "f74725fcf4c8479b77af3b46f2cc172916a06294ccee2c535999617cc7049b69",
-      "bytes": 73824,
+      "sha256": "6df77bd3549dbbde53a10293a640364251e57a3d754c980aa69ea232a3af4f0e",
+      "bytes": 75224,
       "role": "active",
       "readBy": [
         "checks"
