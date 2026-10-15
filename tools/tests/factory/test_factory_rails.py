@@ -6828,6 +6828,12 @@ if "--results-directory" in sys.argv:
         defined, ran = [], []
         for name, outcomes in project.items():
             name = "Ns." + wanted if name == "*" else name
+            display = None
+            if " => " in name:
+                # "Probe.One => Other.Ns.RealTests::Declared": xUnit's `[Fact(DisplayName = "Probe.One")]`. The
+                # real TRX (xunit 2.9.2 with runner 2.8.2, and 2.9.3 with 3.1.5) names the result and the
+                # definition by the display name and keeps the declaring class and method in TestMethod.
+                display, _, name = name.partition(" => ")
             if "::" in name:
                 # "Ns.Probe<System.Int32>::One": a class name with dots of its own (a closed generic).
                 klass, _, method = name.partition("::")
@@ -6836,11 +6842,11 @@ if "--results-directory" in sys.argv:
                 klass, _, method = name.rpartition(".")
             test_id = str(uuid.uuid4())
             storage = step.get("assemblies", [])[number:number + 1] or [f"/src/bin/debug/net10.0/project{number}.dll"]
-            defined.append(f'<UnitTest name={quoteattr(name)} storage={quoteattr(storage[0])} '
+            defined.append(f'<UnitTest name={quoteattr(display or name)} storage={quoteattr(storage[0])} '
                            f'id="{test_id}"><Execution id="{uuid.uuid4()}" />'
                            f'<TestMethod className={quoteattr(klass)} name={quoteattr(method)} /></UnitTest>')
             for outcome in ([outcomes] if isinstance(outcomes, str) else outcomes):
-                ran.append(f'<UnitTestResult executionId="{uuid.uuid4()}" testId="{test_id}" testName={quoteattr(name)} '
+                ran.append(f'<UnitTestResult executionId="{uuid.uuid4()}" testId="{test_id}" testName={quoteattr(display or name)} '
                            f'outcome="{outcome}" />')
         return ('<?xml version="1.0" encoding="UTF-8"?>\\n'
                 '<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">'
@@ -7248,6 +7254,80 @@ class TestTheMutationRunner(RailsInAGitEngine):
         results = argv[argv.index("--results-directory") + 1]
         self.assertFalse(os.path.exists(results), f"the results directory {results} was left behind")
         self.assertEqual(self.on_disk(), ORIGINAL)
+
+    # -- third review of #665: DisplayName, which directories are the framework's, cleanup ----------
+
+    def test_a_display_name_is_not_taken_for_a_namespace_or_a_class(self):
+        """`[Fact(DisplayName = "Probe.One")]` on `Other.Ns.RealTests.Declared`, as the pinned xUnit reports it.
+
+        The TRX names the result by its display name and keeps the declaring class and method in
+        `TestMethod` (checked against dotnet 10.0.112, xunit 2.9.2 with runner 2.8.2, and 2.9.3 with
+        3.1.5), so a spec is read against those and the display name names nothing.
+        """
+        self.engine_with_a_probe()
+        shown = {"Probe.One => Other.Ns.RealTests::Declared": "Failed"}
+        for spec_test in ("Ns.Probe.One", "Probe.One"):
+            with self.subTest(spec=spec_test):
+                self.plan({"say": "Failed!  - Failed:     1, Passed:     0", "code": 1, "results": shown})
+                done = self.mutate(self.spec(test=spec_test), "--no-baseline")
+                self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+                self.assertIn("NO TEST MATCHED", done.stdout)
+                self.assertNotIn("RED", done.stdout)
+
+    def test_a_test_with_a_display_name_is_named_by_its_class_and_method(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1",
+                   "results": {"Probe.One => Other.Ns.RealTests::Declared": "Passed"}},
+                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1,
+                   "results": {"Probe.One => Other.Ns.RealTests::Declared": "Failed"}})
+        done = self.mutate(self.spec(test="RealTests.Declared"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("RED: Other.Ns.RealTests.Declared", done.stdout)
+
+    def test_projects_that_differ_above_the_output_directory_are_two_tests(self):
+        """Only the framework directory under `bin/<Configuration>/` is the project's own output; an ancestor named like one is not."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": [{"Ns.ProbeTests.One": "Passed"}, {"Ns.ProbeTests.One": "Failed"}],
+                   "assemblies": ["/engine/tests/net8.0/bin/Debug/net10.0/linux-x64/Tests.dll",
+                                  "/engine/tests/net10.0/bin/Debug/net10.0/linux-x64/Tests.dll"]})
+        done = self.mutate(self.spec(test="ProbeTests.One"), "--no-baseline")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("MORE THAN ONE TEST MATCHED", done.stdout)
+        self.assertNotIn("RED", done.stdout)
+
+    def test_one_project_built_for_two_frameworks_with_a_runtime_directory_is_one_test(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": [{"Ns.ProbeTests.One": "Passed"}, {"Ns.ProbeTests.One": "Failed"}],
+                   "assemblies": ["/engine/tests/bin/Debug/net8.0/linux-x64/Tests.dll",
+                                  "/engine/tests/bin/Debug/net10.0/linux-x64/Tests.dll"]})
+        done = self.mutate(self.spec(test="ProbeTests.One"), "--no-baseline")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("(engine/tests/bin/debug/linux-x64/tests.dll)", done.stdout)
+
+    def test_a_termination_while_the_results_directory_is_being_removed_still_removes_it(self):
+        """The window the `with` left open: an interrupt inside `rmtree` ended the removal half way."""
+        self.engine_with_a_probe()
+        self.plan(GREEN)
+        module = self.runner()
+        names = {"PATH": self.bin + os.pathsep + os.environ["PATH"], "DOTNET_PLAN": self.plan_path,
+                 "DOTNET_CALLS": self.calls_path, "DOTNET_WATCH": os.path.join(self.out, PROBE)}
+        real, seen = os.unlink, []
+
+        def interrupted_once(path, *args, **kwargs):
+            seen.append(path)
+            if len(seen) == 1:
+                raise KeyboardInterrupt("terminated by signal 15")    # the signal, inside the removal
+            return real(path, *args, **kwargs)
+
+        with unittest.mock.patch.dict(os.environ, names), unittest.mock.patch("os.unlink", interrupted_once):
+            with self.assertRaises(KeyboardInterrupt):
+                module.run_test(pathlib.Path(self.out) / "Probe.slnx", "ProbeTests.Beta_is_beta", "Debug")
+        self.assertTrue(seen, "nothing was removed, so the interrupt never fell inside the removal")
+        argv = self.calls()[0]["argv"]
+        results = argv[argv.index("--results-directory") + 1]
+        self.assertFalse(os.path.exists(results), f"the results directory {results} was left behind")
 
     def test_the_rows_of_one_theory_are_one_test_and_any_failed_row_is_red(self):
         self.engine_with_a_probe()
