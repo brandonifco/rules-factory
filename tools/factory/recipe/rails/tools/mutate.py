@@ -99,6 +99,13 @@ output, loudly. A temporary results directory the run could not remove is said w
 at the end, and fails the run too: a run that leaves its own litter did not finish. Exit 2 stays
 argparse's, for a command called wrongly.
 
+**The temporary results directory** of a test run is made and removed with SIGTERM, SIGHUP and
+SIGINT held (`signal.pthread_sigmask`), except while `dotnet test` itself runs: a signal that
+falls in between waits, and fires once the directory is owned by the `try` that removes it, or once
+it is gone. So the run never removes a directory it did not make, and never leaves its own. Where
+the platform cannot hold signals (Windows) nothing is held, and a signal in those two short gaps
+can still orphan the directory; one that is left is said, and fails the run.
+
 Writes nothing into the checkout (`AGENTS.md` §4), and standard library only -- it does not import
 the vendored factory, so it leaves no bytecode behind either.
 """
@@ -420,25 +427,30 @@ def run_test(solution, test, configuration, expected=None):
     if built.returncode != 0:
         return NO_BUILD, _diagnostic(f"{built.stdout}\n{built.stderr}", f"dotnet build exited {built.returncode}"), None
 
-    # The name is chosen before the directory exists, and the `try` that removes it is entered
-    # before it is made: an interrupt as `mkdir` returns, or at any later point, finds an owner.
-    # (`mkdtemp` makes it and then returns it, and an interrupt between the two orphans it.)
-    results = os.path.join(tempfile.gettempdir(), "mutate-" + os.urandom(8).hex())
+    # A signal is deferred (see `_defer`) from before the directory is made until it is removed,
+    # except while `dotnet test` itself runs: one that falls anywhere else waits, and fires once
+    # the directory is owned by this `try`, or once it is gone. The run therefore never removes a
+    # directory it did not make (`mkdtemp` chooses the name and makes it), and never leaves its own.
+    held = _defer()
     try:
+        results = None
         try:
-            os.mkdir(results, 0o700)
-        except FileExistsError:
-            results = None      # not ours to remove
-            raise
-        ran = subprocess.run(
-            ["dotnet", "test", str(solution.name), "-c", configuration, "--nologo", "--no-build",
-             "--filter", f"FullyQualifiedName~{_escaped(test)}",
-             "--logger", "trx", "--results-directory", results],
-            cwd=ROOT, capture_output=True, text=True)
-        outcomes, problems = _results_of(test, results)
+            results = tempfile.mkdtemp(prefix="mutate-")
+            try:
+                _undefer(held)
+                ran = subprocess.run(
+                    ["dotnet", "test", str(solution.name), "-c", configuration, "--nologo", "--no-build",
+                     "--filter", f"FullyQualifiedName~{_escaped(test)}",
+                     "--logger", "trx", "--results-directory", results],
+                    cwd=ROOT, capture_output=True, text=True)
+            finally:
+                _defer()
+            outcomes, problems = _results_of(test, results)
+        finally:
+            if results is not None:
+                _remove(results)
     finally:
-        if results is not None:
-            _remove(results)
+        _undefer(held)
     if problems:
         return NO_TEST, problems[0], None
     if len(outcomes) > 1:
@@ -538,6 +550,29 @@ def _class_and_method(full):
             start = index + 1
     names.append(full[start:])
     return ".".join(names[-2:])
+
+
+def _defer():
+    """Hold SIGTERM, SIGHUP and SIGINT until `_undefer`, and return the mask to give back (None if unavailable).
+
+    A held signal is not lost: it is delivered when the mask is restored, so the interrupt it
+    becomes (see `_terminated`) is raised where the caller can act on it. Where the platform cannot
+    hold signals (`signal.pthread_sigmask` is missing, as on Windows) nothing is held, and a signal
+    can fall in the narrow gaps this exists to close: between a directory being made and its
+    removal being armed, and between the removal being entered and finishing.
+    """
+    block = getattr(signal, "pthread_sigmask", None)
+    if block is None:
+        return None
+    held = {signal.SIGTERM, signal.SIGINT, getattr(signal, "SIGHUP", signal.SIGTERM)}
+    return block(signal.SIG_BLOCK, held)
+
+
+def _undefer(previous):
+    """Give back the mask `_defer` returned, which delivers any signal held since."""
+    block = getattr(signal, "pthread_sigmask", None)
+    if block is not None and previous is not None:
+        block(signal.SIG_SETMASK, previous)
 
 
 def _remove(directory):

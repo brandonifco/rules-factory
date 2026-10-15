@@ -463,7 +463,7 @@ RECIPE_SHA256 = {
     "tools/mutate.py": {
         1: "d33f7ddedc923388af4582ffb6c04a1434c09f695738ca34f191839f21847901",
         2: "eb722639671ba46c0703f699dc85177fe88f52e00ced99ccf4e90f54a30c49eb",
-        3: "b5806dad3ca90eaa86fb0eb17b7838487ca7700b997757ef4b3636c490db029d",
+        3: "c4aaae40c6dcbca44c35ac817ddd410dc6d2a478a35da86f10631376be08fc7f",
     },
     "tools/re-produce.sh": {
         1: "2a281f94f81ce141733494a94744caa96c88af3cd9fa848cec21c13e73739499",
