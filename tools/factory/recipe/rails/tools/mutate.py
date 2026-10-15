@@ -71,11 +71,14 @@ The solution is built first, and a build that exits non-zero is the end of it. T
 with a TRX logger writing to a temporary directory that is removed afterwards, and the verdict is
 read from the results of the named test in the TRX files of every test project: RED when one of
 that test's own results is `Failed`, GREEN when it ran and every one of its results is `Passed`.
-`test` is a fully qualified test name, with or without its namespace (`Ns.Class.Method` or
-`Class.Method`). The `--filter` only narrows what runs, and its operators are escaped. Other tests the filter happens to select (`Probe.OneMore`
+`test` is a fully qualified test name (`Ns.Class.Method`) or the name without its namespace
+(`Class.Method`); a name that spells a namespace is that namespace's, and is not found in a longer
+one. The result line names the test it resolved to and its assembly. The `--filter` only narrows
+what runs, and its operators are escaped. Other tests the filter happens to select (`Probe.OneMore`
 for `Probe.One`) run, and nothing they do decides anything. A test project the filter matches
 nothing in is silent, not a verdict. A `test` that names more than one test (the same
-`Class.Method` in two namespaces) is reported as such and is not red. The rows of one theory are
+`Class.Method` in two namespaces, or the same name in two assemblies) is reported as such and is
+not red. The rows of one theory are
 one test: any `Failed` row is red.
 
 **A mutation that does not compile is not a red test.** It is reported as its own outcome and
@@ -438,30 +441,37 @@ def _diagnostic(output, fallback):
 
 
 def _results_of(test, results):
-    """({the test that matched: {outcome: results}}, problems), from every TRX under `results`.
+    """({the test that matched: {outcome: results}}, problems), from the TRX files of this run.
 
-    A result belongs to the test when `test` is the test's fully qualified name (the TRX's class and
-    method) or the tail of it after a dot, so `Class.Method` names `Ns.Class.Method`. The rows of
-    one theory share a method and are one test. A project the filter matched nothing in writes a TRX
-    with no results, which is no evidence either way; a TRX that cannot be read is reported, because
-    it may have held the answer.
+    Only the files the logger wrote into `results` itself are read: VSTest copies a test's own
+    attachments beneath it, and one of those may be any TRX at all. A result belongs to the test
+    when `test` is the test's fully qualified name (the TRX's class and method), or `Class.Method`,
+    the same without the namespace. A name that spells a namespace is therefore that namespace's:
+    `Ns.Class.Method` is not `Other.Ns.Class.Method`. A test is told apart by its assembly as well,
+    because the same name in two assemblies is two tests; the rows of one theory share both and are
+    one test. A project the filter matched nothing in writes a TRX with no results, which is no
+    evidence either way; a TRX that cannot be read is reported, because it may have held the answer.
     """
     outcomes, problems = {}, []
-    for path in sorted(pathlib.Path(results).rglob("*.trx")):
+    for path in sorted(found for found in pathlib.Path(results).glob("*.trx") if found.is_file()):
         try:
             root = ET.parse(path).getroot()
         except (ET.ParseError, OSError) as error:
             problems.append(f"{path.name} cannot be read ({error}), so it shows no test running")
             continue
-        methods = {unit.get("id"): f"{method.get('className')}.{method.get('name')}"
-                   for unit in root.iterfind(".//t:UnitTest", TRX_NS)
-                   for method in unit.iterfind("t:TestMethod", TRX_NS)}
+        units = list(root.iterfind(".//t:UnitTest", TRX_NS))
+        assemblies = {unit.get("id"): re.sub(r"\.dll$", "", re.split(r"[\\/]", unit.get("storage") or "")[-1])
+                      for unit in units}
+        methods = {unit.get("id"): (method.get("className") or "", method.get("name") or "")
+                   for unit in units for method in unit.iterfind("t:TestMethod", TRX_NS)}
         for result in root.iterfind(".//t:UnitTestResult", TRX_NS):
             if result.find("t:InnerResults", TRX_NS) is not None:
                 continue    # a parent the writer made over the rows beneath it
-            name = methods.get(result.get("testId"))
-            if name and (name == test or name.endswith("." + test)):
-                seen = outcomes.setdefault(name, {})
+            klass, method = methods.get(result.get("testId"), ("", ""))
+            if method and test in (f"{klass}.{method}", f"{klass.rpartition('.')[2]}.{method}"):
+                assembly = assemblies.get(result.get("testId"))
+                label = f"{klass}.{method}" + (f" ({assembly})" if assembly else "")
+                seen = outcomes.setdefault(label, {})
                 seen[result.get("outcome")] = seen.get(result.get("outcome"), 0) + 1
     return outcomes, problems
 
