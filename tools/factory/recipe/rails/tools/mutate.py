@@ -95,7 +95,9 @@ whatever its class (`CS`, `MSB`, `NETSDK`, ...). Test output is never searched f
 **Exit code.** 0 when every mutation turned its test red, and 1 otherwise -- green, did not
 compile, no test matched, more than one did, or refused. One non-zero for "the evidence AGENTS.md asks for was not
 produced", because that is the only distinction a caller acts on; which of them it was is in the
-output, loudly. Exit 2 stays argparse's, for a command called wrongly.
+output, loudly. A temporary results directory the run could not remove is said when it happens and
+at the end, and fails the run too: a run that leaves its own litter did not finish. Exit 2 stays
+argparse's, for a command called wrongly.
 
 Writes nothing into the checkout (`AGENTS.md` §4), and standard library only -- it does not import
 the vendored factory, so it leaves no bytecode behind either.
@@ -126,6 +128,8 @@ MANY_TESTS = "MORE THAN ONE TEST MATCHED"
 OTHER_TEST = "A DIFFERENT TEST MATCHED"
 
 TRX_NS = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+
+NOT_REMOVED = []    # results directories a run could not remove, said at the end and in the exit status
 
 
 class Refused(Exception):
@@ -429,7 +433,7 @@ def run_test(solution, test, configuration, expected=None):
     if problems:
         return NO_TEST, problems[0], None
     if len(outcomes) > 1:
-        return MANY_TESTS, f"{_excerpt(test)} names {len(outcomes)} tests: {', '.join(sorted(outcomes))}", None
+        return MANY_TESTS, f"{_excerpt(test)} names {len(outcomes)} tests: {', '.join(sorted(_shown(label) for label in outcomes))}", None
     if not outcomes:
         lines = [line.strip() for line in f"{ran.stdout}\n{ran.stderr}".splitlines()
                  if line.strip() and not line.startswith("Results File:")]
@@ -437,8 +441,8 @@ def run_test(solution, test, configuration, expected=None):
                          + (f"; dotnet test exited {ran.returncode}: {lines[-1]}" if ran.returncode and lines else "")), None
     (name, seen), = outcomes.items()
     if expected is not None and name != expected:
-        return OTHER_TEST, f"the unmutated run found {expected}, and this one found {name}", name
-    said = f"{name}: " + ", ".join(f"{outcome} {count}" for outcome, count in sorted(seen.items()))
+        return OTHER_TEST, f"the unmutated run found {_shown(expected)}, and this one found {_shown(name)}", name
+    said = f"{_shown(name)}: " + ", ".join(f"{outcome} {count}" for outcome, count in sorted(seen.items()))
     if "Failed" in seen:
         return RED, said, name
     if set(seen) == {"Passed"}:
@@ -531,7 +535,8 @@ def _remove(directory):
     """Remove `directory`, finishing the removal even if a signal turned into an interrupt inside it.
 
     The interrupt is raised again once the directory is gone: it is the caller's to act on, and
-    leaving the directory behind is not.
+    leaving the directory behind is not. A directory that is still there afterwards (a file another
+    process holds) is said now and again at the end, and the run exits non-zero for it.
     """
     interrupt = None
     while True:
@@ -540,8 +545,20 @@ def _remove(directory):
             break
         except BaseException as error:
             interrupt = interrupt or error
+    if os.path.exists(directory):
+        NOT_REMOVED.append(directory)
+        print(f"NOT REMOVED: {directory} could not be removed; delete it by hand.", file=sys.stderr, flush=True)
     if interrupt is not None:
         raise interrupt
+
+
+def _shown(label):
+    """`label` with the assembly path shortened to the engine's root when it is under it, else whole."""
+    name, separator, assembly = label.partition(" (")
+    root = ROOT.as_posix().lower().rstrip("/") + "/"
+    if separator and assembly.startswith(root):
+        assembly = assembly[len(root):]
+    return name + separator + assembly
 
 
 def _assembly(storage):
@@ -549,7 +566,9 @@ def _assembly(storage):
 
     That is the one directly under `bin/<Configuration>/`, and no other: a directory above the
     project that looks like a framework (`tests/net8.0/`) is part of which project it is, and a
-    runtime directory beneath the framework's (`linux-x64`) stays as it is.
+    runtime directory beneath the framework's (`linux-x64`) stays as it is. The path is absolute, so
+    a project outside the engine is not the one inside it with the same tail; `_shown` shortens it
+    for the eye and nothing else.
     """
     parts = [part for part in re.split(r"[\\/]", storage.lower()) if part]
     target = re.compile(r"net(coreapp|standard)?\d+(\.\d+)*(-[a-z0-9.]+)?")
@@ -558,9 +577,7 @@ def _assembly(storage):
                       if directories[index] == "bin" and index + 2 < len(directories)
                       and target.fullmatch(directories[index + 2])), None)
     kept = [part for index, part in enumerate(directories) if index != framework] + parts[-1:]
-    path = "/".join(kept)
-    root = ROOT.as_posix().lower().strip("/") + "/"
-    return path[len(root):] if path.startswith(root) else path
+    return ("/" if storage[:1] and storage[:1] in "/\\" else "") + "/".join(kept)
 
 
 def _bytes_of(path):
@@ -703,7 +720,9 @@ def main(argv=None):
     if red != len(results):
         print("\nA mutation that does not turn its test red is a test nobody has watched fail "
               "(AGENTS.md §7). Fix the test, or record a mutation that does.")
-    return 0 if red == len(results) else 1
+    if NOT_REMOVED:
+        print("\nNOT REMOVED, and the run fails for it:\n  " + "\n  ".join(NOT_REMOVED))
+    return 0 if red == len(results) and not NOT_REMOVED else 1
 
 
 if __name__ == "__main__":
