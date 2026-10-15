@@ -1,0 +1,67 @@
+{
+  "baselines": [
+    {
+      "artifact": "usc-15-ch103-slice",
+      "asOf": "2026-10-07",
+      "hashDerivation": "olrc-uslm-chapter-slice-verbatim",
+      "sourceId": "usc-15-ch103"
+    }
+  ],
+  "corpusId": "usc-15-ch103",
+  "derivations": [
+    {
+      "adapter": "xml",
+      "id": "usc-15-ch103-subsections",
+      "input": "usc-15-ch103-slice",
+      "output": {
+        "id": "usc-15-ch103-canonical",
+        "path": "canonical/usc15-ch103.xml"
+      },
+      "parameters": {
+        "idAttribute": "id",
+        "segmentElement": "subsection"
+      }
+    }
+  ],
+  "external": [
+    {
+      "fidelity": "lossy-traceable",
+      "id": "usc-15-ch103-extraction",
+      "inputs": [
+        "usc-15-release-zip"
+      ],
+      "losses": [
+        "every element of Title 15 outside chapter 103: the title's front matter and every other chapter",
+        "the member's XML declaration and stylesheet processing instruction, which end in a carriage return and name a CSS file the zip does not hold"
+      ],
+      "output": "usc-15-ch103-slice",
+      "parameters": {
+        "carried": "the member's root start tag and <meta> element verbatim, then <main> and the one <chapter> element byte for byte, LF-ended",
+        "chapter": "/us/usc/t15/ch103",
+        "command": "derive-uslm-chapter.py --from xml_usc15@119-120.zip --chapter /us/usc/t15/ch103 --into usc15-ch103.xml"
+      },
+      "tool": {
+        "id": "derive-uslm-chapter.py",
+        "version": "1"
+      }
+    }
+  ],
+  "schema": "rules-corpus/build/1",
+  "sources": [
+    {
+      "bytes": 5028058,
+      "digest": "sha256:e053dcada37ec19ab55ec063abd415642b09a3e8ef9a37cc70ca88030d59e699",
+      "id": "usc-15-release-zip",
+      "mediaType": "application/zip",
+      "notes": "The Office of Law Revision Counsel's release point 119-120 (current through Public Law 119-120, 10/07/2026) of Title 15, one member usc15.xml (30777201 bytes, SHA-256 f645b7bd6febb9c734299d637e5478de0f5091e1cec2bcd7f44e8c1a0b9bc93b). Not stored in this corpus: only its length and digest are declared and rules-corpus reports it not verified; the slice is held to it by derive-uslm-chapter.py --check. Title 15 is not positive law (the file's own is-positive-law property). A work of the United States Government, 17 U.S.C. 105.",
+      "origin": "https://uscode.house.gov/download/releasepoints/us/pl/119/120/xml_usc15@119-120.zip",
+      "retrieved": "2026-10-12",
+      "stored": false
+    },
+    {
+      "id": "usc-15-ch103-slice",
+      "mediaType": "application/xml",
+      "path": "usc15-ch103.xml"
+    }
+  ]
+}
