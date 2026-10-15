@@ -470,23 +470,54 @@ def git_show(commit, path):
     return done.stdout if done.returncode == 0 else None
 
 
-def base_patterns(module, base_sha):
-    """The `review.semanticPaths` the base commit's policy lists, `module.ABSENT` for a policy being added, or Refused.
+def base_blobs(base_sha):
+    """Every file of the base commit as `(mode, repository-relative path)`, or None where it cannot be listed.
 
-    Git can tell the three apart where the API cannot be asked to: `ls-tree` succeeds and lists nothing
-    for a path that is not in the commit, and fails for a commit that is not here, so only the first is a
-    policy being added (the head's stands alone). A base that could not be read is not that (#612): a pull
-    request that empties its own `semanticPaths` would be judged by no surface, and this packet would
-    say its handler change owes no semantic review.
+    `--full-tree` lists from the repository root whatever directory git runs in. An engine embedded under a
+    repository root runs git in its own directory, where a path relative to the repository names a directory
+    that is not there: `ls-tree engine/.github/...` from `engine/` searches `engine/engine/` and succeeds with
+    nothing, which is a policy the base never had (#612).
+    """
+    try:
+        done = subprocess.run(["git", "ls-tree", "-r", "-z", "--full-tree", base_sha], cwd=ROOT,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except OSError:
+        return None
+    if done.returncode != 0:
+        return None
+    blobs = []
+    for item in done.stdout.decode("utf-8", "surrogateescape").split("\0"):
+        if not item:
+            continue
+        meta, _, path = item.partition("\t")
+        parts = meta.split()
+        if len(parts) != 3 or not path:
+            return None
+        if parts[1] == "blob":
+            blobs.append((parts[0], path))
+    return blobs
+
+
+def base_patterns(module, base_sha):
+    """The `review.semanticPaths` the base commit's policy lists, `module.ABSENT` for an engine with none, or Refused.
+
+    The policy is looked for where the base kept it, which is not always where the head has it (a pull request
+    may move the engine), and `ABSENT` is only a listing that was whole and held no policy. A base that cannot
+    be listed or read, or whose policy is a link, is not a policy being added (#612): a pull request that
+    empties its own `semanticPaths` would be judged by no surface, and this packet would say its handler change
+    owes no semantic review.
     """
     where = (engine_path() + "/" if engine_path() else "") + POLICY
-    listed = subprocess.run(["git", "ls-tree", "--name-only", base_sha, "--", where], cwd=ROOT,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    raw = None
-    if listed.returncode == 0:
-        raw = git_show(base_sha, POLICY) if listed.stdout.strip() else module.ABSENT
     try:
-        return module.base_surface(raw)
+        raws = []
+        for path in module.base_policy_paths(base_blobs(base_sha), where):
+            try:
+                shown = subprocess.run(["git", "show", f"{base_sha}:{path}"], cwd=ROOT,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            except OSError:
+                shown = None
+            raws.append(shown.stdout if shown is not None and shown.returncode == 0 else None)
+        return module.base_surfaces(raws)
     except module.BasePolicyUnreadable as error:
         raise Refused(f"the base commit's {where} could not be read ({error}), so the semantic surface this pull "
                       f"request began on is unknown and what it owes cannot be decided from the head's policy alone. "

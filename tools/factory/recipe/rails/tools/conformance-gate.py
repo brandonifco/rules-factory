@@ -196,31 +196,38 @@ def base_bytes(base_oid, path):
 
 
 def base_patterns(reviewclass, base_oid, prefix):
-    """The `review.semanticPaths` the base commit's policy lists, `reviewclass.ABSENT` for a policy being added, or Undecidable.
+    """The `review.semanticPaths` the base commit's policy lists, `reviewclass.ABSENT` for an engine with none, or Undecidable.
 
-    Three answers, and the difference between the last two is the whole of it (#612). GitHub saying the
-    path is not at that commit (`Not Found (HTTP 404)`) is a policy being added: the head's stands alone.
-    Anything else -- a failed call, a base nobody gave, bytes that are not a policy -- is a base that
-    could not be read, and a pull request that empties its own `semanticPaths` while that is so would be
-    judged by no surface at all, and pass. An undecidable gate fails.
+    The base's files are listed first and the policy is looked for where the base kept it, which is not always
+    where the head has it: a pull request that moves the engine would otherwise find nothing at the new path
+    and read as the engine's first policy (#612). `ABSENT` is only ever a listing that was whole and held no
+    policy. A listing that failed or is truncated, a base nobody gave or GitHub has never heard of, a policy
+    that is a link or cannot be read: none of those is a policy being added, and a pull request that empties its
+    own `semanticPaths` while one of them is so would be judged by no surface at all. An undecidable gate fails.
     """
-    path = f"{prefix}/{POLICY}" if prefix else POLICY
-    raw = None
-    if base_oid:
-        try:
-            raw = base64.b64decode(gh("api", f"repos/{{owner}}/{{repo}}/contents/{urllib.parse.quote(path)}"
-                                      f"?ref={base_oid}", "--jq", ".content"))
-        except Undecidable as error:
-            raw = reviewclass.ABSENT if "Not Found (HTTP 404)" in str(error) else None
-        except (ValueError, binascii.Error):
-            raw = None
+    where = f"{prefix}/{POLICY}" if prefix else POLICY
     try:
-        return reviewclass.base_surface(raw)
+        blobs = None
+        if base_oid:
+            try:
+                listing = gh("api", f"repos/{{owner}}/{{repo}}/git/trees/{base_oid}?recursive=1", "--jq",
+                             '.truncated, (.tree[] | select(.type == "blob") | [.mode, .path] | @tsv)').splitlines()
+            except Undecidable:
+                listing = []
+            rows = [line.split("\t", 1) for line in listing[1:]]
+            if listing and listing[0] == "false" and all(len(row) == 2 for row in rows):
+                blobs = rows
+        raws = []
+        for path in reviewclass.base_policy_paths(blobs, where):
+            try:
+                raws.append(base64.b64decode(gh("api", f"repos/{{owner}}/{{repo}}/contents/{urllib.parse.quote(path)}"
+                                                f"?ref={base_oid}", "--jq", ".content")))
+            except (Undecidable, ValueError, binascii.Error):
+                raws.append(None)
+        return reviewclass.base_surfaces(raws)
     except reviewclass.BasePolicyUnreadable as error:
-        raise Undecidable(f"the base commit's {path} could not be read ({error}), so the semantic surface this "
-                          f"pull request began on is unknown, and a diff that empties its own policy would be judged "
-                          f"by none. Run the gate again; if the read keeps failing, the pull request's base is the "
-                          f"thing to look at")
+        raise Undecidable(f"the base commit's {where} could not be read ({error}), so the semantic surface this pull "
+                  f"request began on is unknown. A diff that empties its own policy would be judged by none. Run the gate again; if the read keeps failing, the pull request's base is the thing to look at")
 
 
 def review_class(files, patterns, prefix, body, base_oid):

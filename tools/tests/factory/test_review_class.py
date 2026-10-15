@@ -220,6 +220,53 @@ class TestEachClass(unittest.TestCase):
                 with self.assertRaises(rc.BasePolicyUnreadable):
                     rc.base_surface(unreadable)
 
+    def test_every_entry_of_a_base_policy_s_surface_is_a_pattern(self):
+        # #612 (review): the container was checked and its entries were not, so `[42, {"src": "**"}]` was a
+        # readable surface that listed nothing. mutation: drop the check on the entries
+        def policy(listed):
+            return json.dumps({"review": {"semanticPaths": listed}}).encode()
+
+        self.assertEqual(rc.base_surface(policy(["src/**", "tests/**"])), ["src/**", "tests/**"])
+        for bad in ([42, {"src": "**"}], ["src/**", 7], ["src/**", None], ["src/**", ""], ["src/**", ["src/**"]]):
+            with self.subTest(bad=bad):
+                with self.assertRaises(rc.BasePolicyUnreadable):
+                    rc.base_surface(policy(bad))
+
+    def test_the_base_policy_is_looked_for_where_the_base_kept_it(self):
+        # #612 (review): the rails asked the base commit for the policy at the HEAD's engine path, so an engine
+        # moved to another directory by the pull request found nothing there and was "new".
+        # mutation: look only at the head's path
+        policy = ".github/agent-policy.json"
+        moved = [("100644", f"old/{policy}"), ("100644", "old/src/H.cs")]
+        self.assertEqual(rc.base_policy_paths(moved, f"new/{policy}"), [f"old/{policy}"])
+        self.assertEqual(rc.base_policy_paths(moved + [("100644", f"new/{policy}")], f"new/{policy}"),
+                         [f"new/{policy}"], "where the head's engine already was, that is its policy")
+        self.assertEqual(rc.base_policy_paths([("100644", f"{policy}")], policy), [policy])
+        self.assertEqual(rc.base_policy_paths([("100644", "README.md")], policy), [], "no policy anywhere: a new one")
+        self.assertEqual(rc.base_policy_paths([("100644", f"a/{policy}"), ("100644", f"b/{policy}")], f"c/{policy}"),
+                         [f"a/{policy}", f"b/{policy}"], "a base with several engines: each one's surface stands")
+        self.assertEqual(rc.base_policy_paths([("100644", "x/not-the-agent-policy.json")], policy), [])
+
+    def test_a_base_policy_that_is_a_link_or_a_listing_that_is_not_whole_is_unreadable(self):
+        # #612 (review): `git show` returns a symlink's target text and the API returns no content for one, so the
+        # surface it points at is not what was read. mutation: read the link as a file
+        policy = ".github/agent-policy.json"
+        with self.assertRaises(rc.BasePolicyUnreadable):
+            rc.base_policy_paths([("120000", policy)], policy)
+        with self.assertRaises(rc.BasePolicyUnreadable):
+            rc.base_policy_paths([("120000", f"old/{policy}")], f"new/{policy}")
+        with self.assertRaises(rc.BasePolicyUnreadable):
+            rc.base_policy_paths(None, policy)
+
+    def test_the_base_surface_is_every_policy_the_base_held(self):
+        # mutation: read the first policy only, or take one that could not be read for none
+        one = json.dumps({"review": {"semanticPaths": ["src/**"]}}).encode()
+        two = json.dumps({"review": {"semanticPaths": ["src/**", "tests/**"]}}).encode()
+        self.assertIs(rc.base_surfaces([]), rc.ABSENT)
+        self.assertEqual(rc.base_surfaces([one, two]), ["src/**", "tests/**"])
+        with self.assertRaises(rc.BasePolicyUnreadable):
+            rc.base_surfaces([one, None])
+
     def test_a_deleted_record_is_a_semantic_ruling(self):
         # mutation: let a deletion pass as an edit with no text to compare
         repo = Repo({RECORD: doc("1. The furthest player wins.\n")}, {})

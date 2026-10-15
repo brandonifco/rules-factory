@@ -338,7 +338,8 @@ class TestSemanticImplementation(ClassRails):
         self.write(".github/agent-policy.json", json.dumps(policy))
         self.write(HANDLER, "int Limit() => 401;\n")
         contents = {HANDLER: "int Limit() => 400;\n"}
-        if not (unreadable or absent):
+        if not absent:
+            # Listed in the base's files, and for `unreadable` the read of it then fails.
             contents[".github/agent-policy.json"] = before
         self.pull_request(self.body("- review class: documentation\n- entry id(s): none", evidence=self.NO_TEST),
                           {HANDLER: "MODIFIED", ".github/agent-policy.json": "MODIFIED"}, contents=contents)
@@ -360,6 +361,62 @@ class TestSemanticImplementation(ClassRails):
         done = self.policy()
         self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
         self.assertIn("base commit's .github/agent-policy.json could not be read", done.stderr)
+
+    def moved_policy_request(self, base_files=None, **fixture):
+        """The handler changed, the head's policy emptied, and the base's policy kept at `old/`, not where the head has it."""
+        self.engine()
+        policy = json.loads(self.read(".github/agent-policy.json"))
+        before = json.dumps(policy)
+        policy["review"]["semanticPaths"] = []
+        self.write(".github/agent-policy.json", json.dumps(policy))
+        self.write(HANDLER, "int Limit() => 401;\n")
+        contents = {HANDLER: "int Limit() => 400;\n", "old/.github/agent-policy.json": before}
+        contents.update(base_files or {})
+        self.pull_request(self.body("- review class: documentation\n- entry id(s): none", evidence=self.NO_TEST),
+                          {HANDLER: "MODIFIED", ".github/agent-policy.json": "MODIFIED"}, contents=contents)
+        if fixture:
+            document = json.load(open(self.fixture_path, encoding="utf-8"))
+            document.update(fixture)
+            self.fixture(document)
+
+    def test_a_policy_the_base_kept_elsewhere_still_contributes_its_surface(self):
+        # #612 (review): the base policy was read at the head's engine path, so an engine moved by the pull request
+        # found no policy at the base, which read as a new one. mutation: look for the base policy at the head's path only
+        self.moved_policy_request()
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 1, gate.stdout + gate.stderr)
+        self.assertIn("`semantic-implementation`, which owes a semantic verdict", gate.stdout)
+        done = self.policy()
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("claims `documentation`, and this diff is `semantic-implementation`", done.stdout)
+
+    def test_a_base_policy_that_cannot_be_listed_or_read_whole_is_undecidable(self):
+        # #612 (review): the base's files are listed before any is read, and a listing that failed, is not whole,
+        # or names a policy that cannot be read is no listing. mutation: take a failed listing for an empty one
+        self.moved_policy_request()
+        whole = json.load(open(self.fixture_path, encoding="utf-8"))
+        for label, fixture in (("the listing fails", {"contentsUnreadable": ["tree"]}),
+                               ("the listing is truncated", {"treeTruncated": True}),
+                               ("the policy it names is a link", {"contentsSymlinks": ["old/.github/agent-policy.json"]}),
+                               ("the policy it names cannot be read", {"contentsUnreadable": ["old/.github/agent-policy.json"]})):
+            with self.subTest(label):
+                self.fixture({**whole, **fixture})
+                gate = self.gate()
+                self.assertEqual(gate.returncode, 2, gate.stdout + gate.stderr)
+                self.assertIn("cannot decide", gate.stderr)
+                done = self.policy()
+                self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+
+    def test_a_base_commit_github_does_not_know_is_undecidable_through_both_callers(self):
+        # #612 (review): `gh: No commit found for the ref <sha> (HTTP 404)` says something other than a missing
+        # path's `Not Found (HTTP 404)`, and neither is a policy being added. mutation: take any 404 for "not there"
+        self.moved_policy_request(base_files={".github/agent-policy.json": "{}"}, unknownRefs=[BASE])
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 2, gate.stdout + gate.stderr)
+        self.assertIn("could not be read", gate.stderr)
+        done = self.policy()
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("could not be read", done.stderr)
 
     def test_a_packet_is_refused_when_the_base_policy_cannot_be_read(self):
         # #612, through git rather than the API. mutation: take a base policy git could not read for a new one

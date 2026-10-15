@@ -1517,6 +1517,14 @@ elif argv[:1] == ["api"] and len(argv) > 1:
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(state, handle, indent=2)
         print("{}")
+    elif route.startswith(("repos/{owner}/{repo}/git/trees/", prefix + "git/trees/")):
+        # The base commit's files, as `--jq '.truncated, (.tree[] | ... | @tsv)'` prints them: the truncation
+        # flag, then `mode<TAB>path`. This base holds no policy (#612), and a provenance.json only where a
+        # check put one there.
+        ref = route.split("/trees/", 1)[1].split("?", 1)[0]
+        print("false")
+        if state.get("contents", {}).get(ref) is not None:
+            print("100644\tprovenance.json")
     elif route.startswith(("repos/{owner}/{repo}/contents/", prefix + "contents/")) and "?ref=" in route:
         # A file at the base commit. The rails ask for `repos/{owner}/{repo}/...`, which `gh` expands to the
         # current repository. pr-policy.py reads the base's provenance.json for a retired deletion (#243), and

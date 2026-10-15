@@ -364,22 +364,32 @@ def owed_review(pull, patterns):
         inside = {engine_relative(path, prefix): change
                   for path, change in reviewclass.changes_of(pull.get("files") or []).items()
                   if engine_relative(path, prefix) is not None}
-        # Git can tell a policy the base never had (`ls-tree` succeeds and lists nothing) from a base it
-        # cannot read (it fails, or `show` does), and only the first lets the head's surface stand alone (#612).
-        base_oid = pull.get("baseRefOid")
-        raw = None
-        if base_oid:
-            listed = subprocess.run(["git", "ls-tree", "--name-only", base_oid, "--", where_policy], cwd=ROOT,
-                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if listed.returncode == 0:
-                shown = subprocess.run(["git", "show", f"{base_oid}:{where_policy}"], cwd=ROOT,
-                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE) if listed.stdout.strip() else None
-                raw = reviewclass.ABSENT if shown is None else shown.stdout if shown.returncode == 0 else None
+        # The policy is looked for where the base kept it, and only a whole listing that holds none lets the head's
+        # surface stand alone (#612). Any failure to read the base at all -- git that will not start included --
+        # leaves a verdict owed: the brief is advice, and one that overstates what is owed is the safe direction
+        # to be wrong in, where a head that emptied its own surface must not read as owing nothing.
         try:
-            patterns = reviewclass.surface_patterns(patterns, reviewclass.base_surface(raw))
-        except reviewclass.BasePolicyUnreadable:
-            # The brief is advice, and one that overstates what is owed is the safe direction to be wrong in:
-            # with the base unreadable, a head that emptied its own surface must not read as owing nothing.
+            base_oid = pull.get("baseRefOid")
+            blobs = None
+            if base_oid:
+                done = subprocess.run(["git", "ls-tree", "-r", "-z", "--full-tree", base_oid], cwd=ROOT,
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if done.returncode == 0:
+                    blobs = []
+                    for item in done.stdout.decode("utf-8", "surrogateescape").split("\0"):
+                        meta, _, path = item.partition("\t")
+                        if item and (len(meta.split()) != 3 or not path):
+                            blobs = None
+                            break
+                        if item and meta.split()[1] == "blob":
+                            blobs.append((meta.split()[0], path))
+            raws = []
+            for path in reviewclass.base_policy_paths(blobs, where_policy):
+                shown = subprocess.run(["git", "show", f"{base_oid}:{path}"], cwd=ROOT,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                raws.append(shown.stdout if shown.returncode == 0 else None)
+            patterns = reviewclass.surface_patterns(patterns, reviewclass.base_surfaces(raws))
+        except Exception:  # noqa: BLE001  (a base that cannot be read is not a base that lists nothing)
             return True, "semantic-implementation"
 
         def read(path, side):

@@ -999,6 +999,21 @@ if kind == "api" and "/pulls/" in argv[1] and argv[1].split("?")[0].endswith("/f
     for row in rows:
         print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified") + "\t" + (row.get("previous") or ""))
     sys.exit(0)
+if kind == "api" and "/git/trees/" in argv[1]:
+    # `gh api repos/{owner}/{repo}/git/trees/<sha>?recursive=1 --jq '.truncated, (.tree[] | ... | @tsv)'`: the
+    # base commit's files, as the truncation flag and then `mode<TAB>path` for each. A ref the fixture names in
+    # `unknownRefs` is one GitHub has never heard of; one that names no files is a commit with none (#612).
+    ref = argv[1].split("/git/trees/", 1)[1].split("?")[0]
+    if ref in (fixture.get("unknownRefs") or []):
+        sys.stderr.write("gh: Not Found (HTTP 404)\\n")
+        sys.exit(1)
+    if "tree" in (fixture.get("contentsUnreadable") or []):
+        sys.stderr.write("gh: HTTP 502: Bad Gateway\\n")
+        sys.exit(1)
+    print("true" if fixture.get("treeTruncated") else "false")
+    for path in sorted((fixture.get("contents") or {}).get(ref) or {}):
+        print(("120000" if path in (fixture.get("contentsSymlinks") or []) else "100644") + "\t" + path)
+    sys.exit(0)
 if kind == "api":
     # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base
     # commit, base64 as GitHub returns it. pr-policy.py reads the record this way and then hashes
@@ -1007,6 +1022,9 @@ if kind == "api":
     ref = query.split("ref=")[-1]
     wanted = route.split("/contents/", 1)[1] if "/contents/" in route else ""
     body = ((fixture.get("contents") or {}).get(ref) or {}).get(wanted)
+    if ref in (fixture.get("unknownRefs") or []):
+        sys.stderr.write(f"gh: No commit found for the ref {ref} (HTTP 404)\\n")
+        sys.exit(1)
     if wanted in (fixture.get("contentsUnreadable") or []):
         # GitHub is there and the answer is not: not a file that does not exist.
         sys.stderr.write("gh: HTTP 502: Bad Gateway\\n")
@@ -2539,6 +2557,26 @@ class TestTheRepairPacket(RailsInAGitEngine):
         self.assertIn("a semantic verdict at the new head", self.rendered(),
                       "a base that cannot be read is not a policy the pull request is adding")
 
+    def test_any_failure_to_read_the_base_leaves_a_verdict_owed(self):
+        """#612 (review): only `BasePolicyUnreadable` left the verdict owed. `git` that cannot start raised an
+        `OSError`, which fell through to the head's surface, and a head that emptied its own read as owing nothing.
+
+        mutation: catch only `BasePolicyUnreadable` around the read of the base
+        """
+        import importlib.util
+        from unittest import mock
+        self.commit_engine()
+        self.pull_request(self.change())
+        spec = importlib.util.spec_from_file_location("repair_packet_under_test",
+                                                      os.path.join(self.out, "tools", "repair-packet.py"))
+        tool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(tool)
+        pull = {"files": [{"path": "README.md", "changeType": "MODIFIED"}],
+                "baseRefOid": git(self.out, "rev-parse", "main"), "headRefOid": "a" * 40, "body": ""}
+        self.assertEqual(tool.owed_review(pull, [])[0], False, "a readable base, and a document: nothing is owed")
+        with mock.patch.object(tool.subprocess, "run", side_effect=OSError("no git")):
+            self.assertEqual(tool.owed_review(pull, []), (True, "semantic-implementation"))
+
     def test_the_semantic_verdict_is_judged_in_the_engine_s_terms_when_it_is_embedded(self):
         """GitHub reports `engine/overlay/x.json`; the policy's surface says `overlay/**` (0069, #535).
 
@@ -3666,6 +3704,59 @@ class TestAnEmbeddedEnginesPacketCarriesItsDiff(RailsInAGitEngine):
         text = self.cut("semantic")
         self.assertIn("entry-altitude-limit.md", text)
         self.assertIn("entry-speed-limit.md", text)
+
+
+    # --- #612 (review): the base policy of an embedded engine is read where git keeps it ------------------
+    #
+    # `git` runs in `engine/`, and `ls-tree` takes a path relative to where it runs, so asking for
+    # `engine/.github/agent-policy.json` there searched `engine/engine/` and succeeded with nothing: a
+    # policy the base never had, and a head that emptied its own surface was judged by none.
+
+    def emptied(self):
+        """The change, plus the head's policy emptied; the base (`main`) keeps the full one."""
+        head = self.change()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["review"]["semanticPaths"] = []
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "empty the surface")
+        head = subprocess.run(["git", "-C", self.repo, "rev-parse", "HEAD"], capture_output=True, text=True,
+                              check=True).stdout.strip()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"].append({"path": "engine/.github/agent-policy.json"})
+        self.fixture(document)
+        return head
+
+    def packet(self, role):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "review-packet.py"), "5",
+                               "--base", "main", "--package-map", os.path.join(PART107, "corpus-map.json"),
+                               "--role", role, "--stdout"],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment())
+
+    def test_the_base_policy_of_an_embedded_engine_is_found(self):
+        # mutation: ask `ls-tree` for the repository-relative path from the engine's directory
+        self.commit_engine()
+        self.emptied()
+        done = self.packet("semantic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("`semantic-implementation`", done.stdout)
+        self.assertIn(f"engine/src/{NAME}/Rules/AltitudeLimit.cs", done.stdout)
+
+    def test_a_base_policy_that_is_a_symlink_is_refused(self):
+        # `git show` returns the target's text and not the policy. mutation: read the link as the file
+        self.commit_engine()
+        github = os.path.join(self.out, ".github")
+        git(self.repo, "mv", "engine/.github/agent-policy.json", "engine/.github/agent-policy.real.json")
+        os.symlink("agent-policy.real.json", os.path.join(github, "agent-policy.json"))
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "a policy that is a link")
+        self.emptied()
+        done = self.packet("semantic")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("is a symbolic link", done.stderr)
 
 
 class TestPrPolicy(RailsInAGitEngine):
@@ -5148,6 +5239,19 @@ if argv[0] == "api":
         for row in rows:
             print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified") + "\t" + (row.get("previous") or ""))
         raise SystemExit(0)
+    if "/git/trees/" in endpoint:
+        # The base commit's files (see the other stand-in for `gh`): the truncation flag, then `mode<TAB>path`.
+        ref = endpoint.split("/git/trees/", 1)[1].split("?")[0]
+        if ref in (fixture.get("unknownRefs") or []):
+            sys.stderr.write("gh: Not Found (HTTP 404)\\n")
+            sys.exit(1)
+        if "tree" in (fixture.get("contentsUnreadable") or []):
+            sys.stderr.write("gh: HTTP 502: Bad Gateway\\n")
+            sys.exit(1)
+        print("true" if fixture.get("treeTruncated") else "false")
+        for path in sorted((fixture.get("contents") or {}).get(ref) or {}):
+            print(("120000" if path in (fixture.get("contentsSymlinks") or []) else "100644") + "\t" + path)
+        raise SystemExit(0)
     if "/contents/" in endpoint:
         # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base commit,
         # base64 as GitHub returns it, which the review class reads for the files it compares (0076).
@@ -5156,6 +5260,9 @@ if argv[0] == "api":
         route, _, query = endpoint.split("#", 1)[0].partition("?")
         wanted, ref = urllib.parse.unquote(route.split("/contents/", 1)[1]), query.split("ref=")[-1]
         body = ((fixture.get("contents") or {}).get(ref) or {}).get(wanted)
+        if ref in (fixture.get("unknownRefs") or []):
+            sys.stderr.write(f"gh: No commit found for the ref {ref} (HTTP 404)\\n")
+            sys.exit(1)
         if wanted in (fixture.get("contentsUnreadable") or []):
             # GitHub is there and the answer is not: not a file that does not exist.
             sys.stderr.write("gh: HTTP 502: Bad Gateway\\n")

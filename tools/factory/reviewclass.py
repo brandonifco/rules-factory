@@ -103,8 +103,8 @@ class _Absent:
         return "ABSENT"
 
 
-#: What a rail passes for `base` when it asked for the base commit's policy and was told, in so many words, that
-#: the path is not in that commit. Anything else a rail could not read is `None`, which is not this (#612).
+#: What a rail passes for `base` when it listed the base commit's files and found no policy in any of them.
+#: Anything else a rail could not read is `None`, which is not this (#612).
 ABSENT = _Absent()
 
 
@@ -121,11 +121,12 @@ class BasePolicyUnreadable(Exception):
 def base_surface(raw):
     """The `review.semanticPaths` the base commit's policy lists, `ABSENT` where it has none, or it raises.
 
-    `raw` is the policy's bytes at the base commit, `ABSENT` where the rail learned that the path is not
-    in that commit, or `None` where it could not find out (the API failed, the commit is not here, the
-    path could not be listed). A policy that is there but is not JSON, is not an object, has a `review`
-    that is not one, or a `semanticPaths` that is not a list says nothing about its surface that can be
-    trusted, and is unreadable too. A policy with no `semanticPaths` listed an empty surface.
+    `raw` is the policy's bytes at the base commit, `ABSENT` where the rail learned that the commit holds
+    no policy, or `None` where it could not find out (the API failed, the commit is not here, the file
+    could not be read). A policy that is there but is not JSON, is not an object, has a `review` that is
+    not one, a `semanticPaths` that is not a list, or an entry of it that is not a non-empty string says
+    nothing about its surface that can be trusted, and is unreadable too: an entry that is dropped is a
+    path that was on the surface and is not. A policy with no `semanticPaths` listed an empty surface.
     """
     if raw is ABSENT:
         return ABSENT
@@ -140,7 +141,57 @@ def base_surface(raw):
     if not isinstance(document, dict) or (review is not None and not isinstance(review, dict)) \
             or (listed is not None and not isinstance(listed, list)):
         raise BasePolicyUnreadable("the base commit's policy does not list its semantic surface as a list")
+    if any(not isinstance(entry, str) or not entry for entry in listed or []):
+        raise BasePolicyUnreadable("the base commit's policy lists a semantic path that is not a pattern")
     return list(listed or [])
+
+
+#: Where a policy lives in an engine, relative to the engine.
+POLICY_PATH = ".github/agent-policy.json"
+SYMLINK_MODE = "120000"
+
+
+def base_policy_paths(blobs, head_path):
+    """The paths of the base commit's policy for the engine the head holds at `head_path`, or it raises.
+
+    `blobs` is every file of the base commit as `(mode, repository-relative path)`; a listing that could
+    not be had, or was not whole, is `None`. The rails used to ask for the policy at the head's engine path
+    alone, so a pull request that moved the engine found nothing there and read as the engine's first
+    policy; the base's own location is the base's to say (#612). Where the base had a policy at the head's
+    path that is it. Where it did not, every policy the base held stands, each in its own directory: more
+    patterns than the engine had can only ask for more review, and a surface the move would have dropped
+    is the one thing this must not allow. Empty means the base commit holds no policy: a new engine.
+
+    A policy that is a symbolic link is refused. The head's policy is read through the link, but at the base
+    the bytes git or the API gives for one are the link's target and not the policy, and which file the
+    link led to is a fact about a tree no rail has checked out.
+    """
+    if blobs is None:
+        raise BasePolicyUnreadable("the base commit's files could not be listed")
+    found = [(mode, path) for mode, path in blobs
+             if path == POLICY_PATH or path.endswith("/" + POLICY_PATH)]
+    chosen = [item for item in found if item[1] == head_path] or found
+    for mode, path in chosen:
+        if mode == SYMLINK_MODE:
+            raise BasePolicyUnreadable(f"the base commit's {path} is a symbolic link")
+    return [path for _, path in chosen]
+
+
+def base_surfaces(raws):
+    """The union of the surfaces of every base policy read, `ABSENT` where there were none, or it raises.
+
+    `raws` is the bytes of each file `base_policy_paths` named, in order, with `None` for one that could
+    not be read. One unreadable policy makes the whole base unreadable: the surface it would have added
+    is unknown.
+    """
+    if not raws:
+        return ABSENT
+    out = []
+    for raw in raws:
+        for pattern in base_surface(raw):
+            if pattern not in out:
+                out.append(pattern)
+    return out
 
 
 def surface_patterns(head, base):
