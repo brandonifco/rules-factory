@@ -81,8 +81,10 @@ def report(problems, success):
 
 def target_frameworks():
     props = (ROOT / "Directory.Build.props").read_text(encoding="utf-8")
-    match = re.search(r"<TargetFrameworks?>([^<]+)</TargetFrameworks?>", props)
-    return [f for f in match.group(1).split(";") if f] if match else []
+    # XML allows whitespace before the `>` of either tag, and around each value; validate.sh's own
+    # reading of the same line already accepts them.
+    match = re.search(r"<TargetFrameworks?\s*>([^<]+)</TargetFrameworks?\s*>", props)
+    return [f.strip() for f in match.group(1).split(";") if f.strip()] if match else []
 
 
 # --- restore ---------------------------------------------------------------------------
@@ -764,11 +766,16 @@ def _placed(storage, frameworks):
     `.../bin/<configuration>/<framework>/<assembly>.dll`. It is the only thing in a result file
     that associates an execution with the framework it ran under, so the matrix (`_counted`) and
     the named tests (`named_tests`) both read it here, and cannot come to read it differently.
+
+    The framework is the directory that holds the assembly, matched exactly against the declared
+    set. An ancestor called `net10.0` (a checkout under it) is not the framework the tests ran
+    under, and neither is `net10.0-windows` the declared `net10.0`: either places the execution in
+    no framework, and so in none of them.
     """
     parts = [part.lower() for part in re.split(r"[\\/]", storage) if part]
     assembly = re.sub(r"\.dll$", "", parts[-1]) if parts else ""
-    under = [part for part in parts[:-1] if part in frameworks]
-    return assembly, (under[-1] if under else "")
+    holder = parts[-2] if len(parts) > 1 else ""
+    return assembly, (holder if holder in frameworks else "")
 
 
 def _counted(path, frameworks):
@@ -878,7 +885,8 @@ def named_tests(args):
 
     A class is one (fully qualified name, assembly) pair: the same class built into two test
     projects is two classes, and a short name that reaches both is ambiguous even when the fully
-    qualified names are identical, which collapsing on the name alone hid.
+    qualified names are identical, which collapsing on the name alone hid. A definition that names
+    no assembly adds no second one.
     """
     import xml.etree.ElementTree as ET
     declared = [f.lower() for f in target_frameworks()]
@@ -893,9 +901,16 @@ def named_tests(args):
             full = method.get("className")
             short = full.rsplit(".", 1)[-1]
             assembly, _ = _placed(storage.get(unit.get("id"), ""), frameworks)
-            classes.setdefault(short, set()).add((full, assembly))
+            # An assembly the file does not name is not a second assembly: it adds the class and
+            # no identity, so a definition with no `storage` cannot make a class ambiguous.
+            classes.setdefault(short, {}).setdefault(full, set())
+            if assembly:
+                classes[short][full].add(assembly)
             names[unit.get("id")] = f"{short}.{method.get('name')}"
-        for result in root.iterfind(".//t:UnitTestResult", TRX_NS):
+        # Leaves only, as the matrix counts them (`_counted`): a result with `InnerResults` is a
+        # parent the writer synthesised over the rows beneath it, and its outcome is not an execution.
+        leaves = [r for r in root.iterfind(".//t:UnitTestResult", TRX_NS) if r.find("t:InnerResults", TRX_NS) is None]
+        for result in leaves:
             if result.get("outcome") not in EXECUTED or result.get("testId") not in names:
                 continue
             name = names[result.get("testId")]
@@ -920,9 +935,10 @@ def named_tests(args):
             named += 1
             test = item.get("test", "") if isinstance(item, dict) else ""
             short = test.rsplit(".", 1)[0] if "." in test else ""
-            if len(classes.get(short, ())) > 1:
-                fulls = collections.Counter(full for full, _ in classes[short])
-                shown = sorted(f"{full} ({assembly})" if fulls[full] > 1 else full for full, assembly in classes[short])
+            known = classes.get(short, {})
+            if len(known) > 1 or any(len(assemblies) > 1 for assemblies in known.values()):
+                shown = sorted(name for full, assemblies in known.items()
+                               for name in ([f"{full} ({a})" for a in sorted(assemblies)] if len(assemblies) > 1 else [full]))
                 problems.append(f"{entry.get('id')}: {test!r} is ambiguous; class {short} is {shown}")
             elif not declared:
                 problems.append(f"{entry.get('id')}: names {test!r}, and Directory.Build.props declares no target "

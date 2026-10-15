@@ -703,6 +703,37 @@ def write_trx(path, tests, assembly=f"{NAME}.Tests", framework="net8.0", counter
                      "  </ResultSummary>\n</TestRun>\n")
 
 
+def write_raw_trx(path, definitions, results, total, executed):
+    """A TRX written result by result, for the shapes `write_trx` cannot say: a definition with no
+    `storage`, a storage path of any shape, a result with `InnerResults`.
+
+    `definitions` is [(test id, class name, method, storage or None)]; `results` is a list of
+    (test id, outcome, inner outcomes) -- the inner outcomes, when given, are rows the writer
+    synthesised beneath a parent result of that test id.
+    """
+    units, rows = [], []
+    for test_id, class_name, method, storage in definitions:
+        place = f' storage="{storage}"' if storage is not None else ""
+        units.append(f'    <UnitTest name="{class_name}.{method}"{place} id="{test_id}">\n'
+                     f'      <TestMethod className="{class_name}" name="{method}" />\n    </UnitTest>')
+    for test_id, outcome, inner in results:
+        opened = f'    <UnitTestResult testId="{test_id}" testName="t" outcome="{outcome}"'
+        if inner:
+            rows.append(opened + ">\n      <InnerResults>\n" + "\n".join(
+                f'        <UnitTestResult testId="{test_id}" testName="t" outcome="{row}" />' for row in inner)
+                + "\n      </InnerResults>\n    </UnitTestResult>")
+        else:
+            rows.append(opened + " />")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write('<?xml version="1.0" encoding="utf-8"?>\n'
+                     '<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">\n'
+                     "  <Results>\n" + "\n".join(rows) + "\n  </Results>\n"
+                     "  <TestDefinitions>\n" + "\n".join(units) + "\n  </TestDefinitions>\n"
+                     f'  <ResultSummary outcome="Completed">\n    <Counters total="{total}" executed="{executed}" />\n'
+                     "  </ResultSummary>\n</TestRun>\n")
+
+
 class TestTestsRanCountsTestsThatRan(GateCase):
     """#337: `tests-ran` summed `Counters.total`, which counts tests *discovered*. Two result
     files declaring `total=12 executed=0 notExecuted=12` passed the check, which printed "24
@@ -1081,6 +1112,88 @@ class TestImplementedNamesItsTests(GateCase):
                       framework=framework, class_name="Shared.Proof")
         code, output = self.named(engine, self.implement(engine, "Proof.first_bullet"), results)
         self.assertEqual(code, 0, output)
+
+    def test_a_framework_is_the_directory_that_holds_the_assembly_and_no_ancestor(self):
+        """The Codex review of #664: `_placed` looked for a framework anywhere in the path, so a
+        checkout under a directory called `net10.0` placed an execution in net10.0 that ran in
+        `net10.0-windows`. The framework is the component that holds the dll, matched exactly."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "ancestor")
+        for run, framework in (("one", "net8.0"), ("two", "net10.0-windows")):
+            write_raw_trx(os.path.join(results, f"{run}.trx"),
+                          [("named", "Shared.Proof", "Named", f"/repo/net10.0/tests/bin/debug/{framework}/a.tests.dll")],
+                          [("named", "Passed", None)], total=1, executed=1)
+        code, output = self.named(engine, self.implement(engine, "Proof.Named"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("'Proof.Named' executed under net8.0 and did not execute under net10.0", output)
+
+    def test_tests_ran_places_an_execution_by_the_assembly_s_own_directory_too(self):
+        engine = self.engine()
+        results = os.path.join(self.tmp, "ancestor-matrix")
+        for run, framework in (("one", "net8.0"), ("two", "net10.0-windows")):
+            write_raw_trx(os.path.join(results, f"{run}.trx"),
+                          [("t", "C", "m", f"/repo/net10.0/tests/bin/debug/{framework}/{NAME.lower()}.tests.dll")],
+                          [("t", "Passed", None)], total=1, executed=1)
+        code, output = self.script(engine, "engine-gate.py", "tests-ran", results, "2")
+        self.assertEqual(code, 1, output)
+        self.assertIn("no test executed for tests/FaaPart107.Tests/FaaPart107.Tests.csproj under net10.0", output)
+
+    def test_a_parent_result_over_a_not_executed_row_is_not_an_execution(self):
+        """The Codex review of #664: the matrix counts leaves, and `named_tests` counted a parent
+        result the writer synthesised over the rows beneath it. Here net10.0 shows `Passed` on the
+        parent and `NotExecuted` on its only row: no execution happened."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "parent-only")
+        storage = "/repo/tests/bin/debug/{}/a.tests.dll"
+        for framework, named in (("net8.0", ("named", "Passed", None)),
+                                 ("net10.0", ("named", "Passed", ["NotExecuted"]))):
+            write_raw_trx(os.path.join(results, f"{framework}.trx"),
+                          [("named", "Shared.Proof", "Named", storage.format(framework)),
+                           ("other", "Shared.Proof", "Other", storage.format(framework))],
+                          [named, ("other", "Passed", None)], total=2, executed=1 if framework == "net10.0" else 2)
+        code, output = self.named(engine, self.implement(engine, "Proof.Named"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("'Proof.Named' executed under net8.0 and did not execute under net10.0", output)
+
+    def test_a_definition_that_names_no_assembly_does_not_make_a_class_ambiguous(self):
+        """The Codex review of #664: a skipped `Shared.Proof.Skipped` whose definition carries no
+        `storage` was counted as a second assembly, and `Proof.Named` was refused as ambiguous
+        between `Shared.Proof ()` and `Shared.Proof (a.tests)`. An assembly nobody named is not a
+        second one."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "no-storage")
+        for framework in ("net8.0", "net10.0"):
+            write_raw_trx(os.path.join(results, f"{framework}.trx"),
+                          [("named", "Shared.Proof", "Named", f"/repo/tests/bin/debug/{framework}/a.tests.dll"),
+                           ("skipped", "Shared.Proof", "Skipped", None)],
+                          [("named", "Passed", None), ("skipped", "NotExecuted", None)], total=2, executed=1)
+        code, output = self.named(engine, self.implement(engine, "Proof.Named"), results)
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("ambiguous", output)
+
+    def test_a_test_with_no_storage_executed_nowhere(self):
+        engine = self.engine()
+        results = os.path.join(self.tmp, "executed-without-storage")
+        for framework in ("net8.0", "net10.0"):
+            write_raw_trx(os.path.join(results, f"{framework}.trx"),
+                          [("named", "Shared.Proof", "Named", None)], [("named", "Passed", None)], total=1, executed=1)
+        code, output = self.named(engine, self.implement(engine, "Proof.Named"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("does not say which target framework it ran under", output)
+
+    def test_target_frameworks_are_read_whatever_whitespace_the_xml_allows(self):
+        """`<TargetFrameworks>net8.0</TargetFrameworks >` is valid XML, and validate.sh's own parser
+        reads it. The gate missed it, found no framework, and expected one result file."""
+        engine = self.engine()
+        path = os.path.join(engine, "Directory.Build.props")
+        with open(path, encoding="utf-8") as handle:
+            props = handle.read()
+        self.assertIn("<TargetFrameworks>net8.0;net10.0</TargetFrameworks>", props)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(props.replace("<TargetFrameworks>net8.0;net10.0</TargetFrameworks>",
+                                       "<TargetFrameworks >net8.0; net10.0</TargetFrameworks >"))
+        code, output = self.script(engine, "engine-gate.py", "expected-results")
+        self.assertEqual((code, output.strip()), (0, "2"), output)
 
     def test_tests_ran_fails_on_no_result_files(self):
         engine = self.engine()
