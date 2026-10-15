@@ -1512,6 +1512,12 @@ def render(doc):
     w(f"{len(ps)} in all ({len([d for d in ps if d['scope'] == 'statute'])} in the statute, "
       f"{len([d for d in ps if d['scope'] == 'regulation'])} in the regulation), each with both texts and the paragraph that holds it.")
     w("")
+    dates = [d for d in ps if d["referenceText"].startswith("the date of")]
+    if dates:
+        w(f"{len(dates)} of the statute's potentially-substantive differences are the codifier's \"December 16, 2003\" for \"the date of (the) enactment of this Act\". "
+          "The source credit of each section gives that date, but no note of the file states the substitution at these locations; "
+          "it is usual and undocumented there, so it is not `codification`.")
+        w("")
     w("| Id | Where | Corpus text | Reference text | Corpus paragraph | Reference paragraph |")
     w("|---|---|---|---|---|---|")
     for d in ps:

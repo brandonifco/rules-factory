@@ -172,6 +172,8 @@ Its 43 "explained by the source" are the three rows below marked so; the rest of
 
 12 in all (11 in the statute, 1 in the regulation), each with both texts and the paragraph that holds it.
 
+7 of the statute's potentially-substantive differences are the codifier's "December 16, 2003" for "the date of (the) enactment of this Act". The source credit of each section gives that date, but no note of the file states the substitution at these locations; it is usual and undocumented there, so it is not `codification`.
+
 | Id | Where | Corpus text | Reference text | Corpus paragraph | Reference paragraph |
 |---|---|---|---|---|---|
 | `316.6/P1/body/1` | 16 CFR 316.6 P1 (eCFR, point in time 2026-10-01); 16 CFR 316.6 P1 (annual edition, revised as of 2026-01-01) | “part” | “Part” | “The provisions of this part are separate and severable from one another. If any provision is stayed or determined to be invalid, it is the Commission's intention that the remaining provisions shall continue in effect.” | “The provisions of this Part are separate and severable from one another. If any provision is stayed or determined to be invalid, it is the Commission's intention that the remaining provisions shall continue in effect.” |

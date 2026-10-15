@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "ab99eb791c9d0ecdfe69831ed0cefbf880508841",
+  "measuredAt": "f02a6bf4495ab5a9460b3cc6d6fbdba6c723495d",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,8 +17,8 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 561,
-    "trackedBytes": 23207788
+    "trackedFiles": 568,
+    "trackedBytes": 24013950
   },
   "artifacts": [
     {
@@ -163,8 +163,8 @@
     },
     {
       "path": "examples/can-spam/README.md",
-      "sha256": "15b68b98ebf381abd5c280940003f00e989f86a00f46b41930f263ec612c1cfa",
-      "bytes": 2162,
+      "sha256": "f89f356d12930f8b12116775ea3aa881e4a2ea91958c6c24a3306e7ab1304eaf",
+      "bytes": 4670,
       "role": "active",
       "readBy": [
         "links"
@@ -173,10 +173,11 @@
     },
     {
       "path": "examples/can-spam/REFERENCE-CHECK.md",
-      "sha256": "4474dc246fe1bc9b0ede2a4a58e649c4e51c721f7eaac14ac150042f3d93368b",
-      "bytes": 16823,
+      "sha256": "a40c10a7d1cdb2dc6350ab683304f5cc62d4e32d11d9e642f882ad61fb47387a",
+      "bytes": 21699,
       "role": "active",
       "readBy": [
+        "checks",
         "links"
       ],
       "archive": null
@@ -203,6 +204,26 @@
       "bytes": 13487,
       "role": "archived",
       "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/reference-check.py",
+      "sha256": "f74725fcf4c8479b77af3b46f2cc172916a06294ccee2c535999617cc7049b69",
+      "bytes": 73824,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/reference-differences.json",
+      "sha256": "20e4b6d1bf07f2602fd735f75272bac92e39c6f8c793137ee9fc9156e43884f6",
+      "bytes": 641591,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
       "archive": null
     },
     {
