@@ -324,7 +324,9 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
         self.assertDenied(self.send("reviewer"), "completed")
 
     SPELLINGS = ("worker", "WORKER", "Worker", " worker ", "\tworker\n", "ｗｏｒｋｅｒ", "ＷＯＲＫＥＲ",
-                 "\u3000worker\u3000")
+                 "\u3000worker\u3000",
+                 # Review of #677 at 4ed9085: the runtime also removes control and format characters.
+                 "worker\u200b", "wor\u00adker", "work\u0007er", "\ufeffworker", "w\u200dorker\u2060")
 
     def test_equivalent_spellings_of_a_completed_agents_name_are_refused(self):
         # Review of #677 at 5ad72d4: the runtime resolves a name case-insensitively, under NFKC and with
@@ -345,6 +347,35 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
         shouted = self.main_transcript(launch_lines("toolu_L1", "  WORKER ", WORKER)
                                        + [notification(WORKER, "completed")])
         self.assertDenied(self.send("worker", transcript=shouted), "completed its assignment")
+
+    HYPHENATED = ("review-agent", "review agent", "Review  Agent", "review\tagent", "review\nagent",
+                  "REVIEW\u3000AGENT", " review agent ", "review\u200b agent", "ｒｅｖｉｅｗ ａｇｅｎｔ")
+
+    def test_whitespace_in_a_target_is_the_hyphen_of_the_launched_name(self):
+        # Review of #677 at 4ed9085: the runtime turns every run of whitespace into `-`, so a completed
+        # `review-agent` is reached by `review agent`; the normaliser compares names in that one form.
+        self.launched(OTHER, name="review-agent")
+        self.stopped(OTHER)
+        for spelling in self.HYPHENATED:
+            with self.subTest(ledger=spelling):
+                self.assertDenied(self.send(spelling), "completed its assignment")
+        done = self.main_transcript(launch_lines("toolu_L1", "review-agent", OTHER) + [notification(OTHER, "completed")])
+        for spelling in self.HYPHENATED:
+            with self.subTest(transcript=spelling):
+                self.assertDenied(self.send(spelling, transcript=done), "completed its assignment")
+
+    def test_a_running_agent_stays_reachable_under_the_hyphen_spellings(self):
+        self.launched(OTHER, name="review-agent")
+        for spelling in self.HYPHENATED:
+            with self.subTest(spelling):
+                self.assertAllowed(self.send(spelling))
+
+    def test_the_hyphen_is_not_a_spelling_of_no_space_or_of_another_separator(self):
+        self.launched(OTHER, name="review-agent")
+        self.stopped(OTHER)
+        for other in ("reviewagent", "review_agent", "review--agent", "review.agent"):
+            with self.subTest(other):
+                self.assertAllowed(self.send(other))
 
     def test_a_ledger_name_in_another_spelling_is_matched_to_the_target(self):
         self.launched(OTHER, name="Review  Agent")
@@ -667,6 +698,36 @@ class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
                                                                           'while running: error'}), "worker")
         (violation,) = [r for r in self.ledger_records() if r["event"] == "violation"]
         self.assertEqual((violation["reason"], violation["agent_id"]), ("completed-agent-resumed", "worker"))
+
+    def test_a_delivery_message_naming_resume_wording_in_the_recipient_is_silent(self):
+        # Review of #677 at 4ed9085: the display name of a running agent may hold any text, so a delivery
+        # to `worker was resumed but still running` is not a resume. The forms are anchored at their start.
+        names = ("worker was resumed but still running", 'x "y" was resumed but z', "worker is already waking; message queued",
+                 'Teammate "w" was not running; resumed it as an in-process teammate', "Resumed agent", "Resuming agent a1")
+        for name in names:
+            text = f"Message queued for delivery to {name} at its next tool round."
+            for shape, response in (("dict", {"success": True, "message": text}), ("text", text),
+                                    ("blocks", [{"type": "text", "text": json.dumps({"success": True, "message": text})}])):
+                with self.subTest(name=name, shape=shape):
+                    self.assertAllowed(self.resumed(response))
+        for text in ("Message queued for the main session; it was resumed but still running.",
+                     "Message queued for the main session at its next tool round."):
+            with self.subTest(text=text):
+                self.assertAllowed(self.resumed({"success": True, "message": text}))
+        self.assertFalse(os.path.exists(self.ledger), "a queued message must leave no violation behind")
+
+    def test_a_delivery_message_that_carries_the_resume_evidence_is_still_a_violation(self):
+        text = "Message queued for delivery to worker at its next tool round."
+        self.assertBlockedNaming(self.resumed({"success": True, "message": text, "resumedAgentId": WORKER}), WORKER)
+        self.assertBlockedNaming(self.resumed({"success": True, "message": text, "inlineHandback": {}}), "implementer")
+
+    def test_resume_wording_that_is_not_at_the_start_of_the_message_is_silent(self):
+        for text in ('Delivered. Agent "worker" was resumed but failed while running: error',
+                     'Delivered. Teammate "worker" was not running; resumed it as an in-process teammate',
+                     "Delivered. worker is already waking; message queued for its next tool round.",
+                     "Delivered. Resuming agent a0123456789abcdef", "Delivered. Resumed agent worker."):
+            with self.subTest(text=text):
+                self.assertAllowed(self.resumed({"success": True, "message": text}))
 
     def test_a_queued_message_is_silent(self):
         for response in ({"success": True, "message": "Message queued for delivery to implementer at its next tool round."},
@@ -1265,24 +1326,19 @@ class TestCheckSettings(GuardCase):
                 self.assertEqual(done.returncode, 1, done.stdout)
                 self.assertIn("matcher", done.stdout)
 
-    def test_a_malformed_neighbouring_hook_leaves_the_guard_not_wired_and_is_named(self):
-        # Review of #677 at 5ad72d4: Claude Code rejects `"timeout": "bad"` on ANY hook of the event as an
-        # unloadable registration, and the checker said the guard was wired. Every group and entry under
-        # every event is held to the runtime's schema, the path of each invalid item named.
+    def test_a_malformed_structure_hosting_a_hook_leaves_the_guard_not_wired_and_is_named(self):
+        # Review of #677 at 5ad72d4: a registration the runtime cannot load takes its event with it. After
+        # the review at 4ed9085 the checker holds the structure that hosts every hook, not the vendor's
+        # schema for what is inside a neighbour: the event a list, each group an object, `matcher` a string
+        # if present, `hooks` a non-empty list of objects, each with a string `type`.
         bad_entries = {
-            "timeout": ({"type": "command", "command": "true", "timeout": "bad"}, "'timeout'", "positive number"),
-            "timeout bool": ({"type": "command", "command": "true", "timeout": True}, "'timeout'", "positive number"),
-            "timeout zero": ({"type": "command", "command": "true", "timeout": 0}, "'timeout'", "positive number"),
-            "type": ({"type": "prompt", "command": "true"}, "'type'", "'command'"),
-            "no type": ({"command": "true"}, "'type'", "'command'"),
-            "command": ({"type": "command", "command": ["true"]}, "'command'", "not a string"),
-            "no command": ({"type": "command"}, "'command'", "not a string"),
-            "async": ({"type": "command", "command": "true", "async": "yes"}, "'async'", "boolean"),
-            "once": ({"type": "command", "command": "true", "once": 1}, "'once'", "boolean"),
-            "if": ({"type": "command", "command": "true", "if": 5}, "'if'", "string"),
+            "no type": {"command": "true"},
+            "type null": {"type": None, "command": "true"},
+            "type number": {"type": 5, "command": "true"},
+            "type list": {"type": ["command"], "command": "true"},
         }
         for event in ("PreToolUse", "PostToolUse", "SessionStart", "Stop"):
-            for label, (entry, *needles) in bad_entries.items():
+            for label, entry in bad_entries.items():
                 with self.subTest(event=event, entry=label):
                     settings = self.load(RAILS_SETTINGS)
                     settings["hooks"].setdefault(event, []).append({"matcher": "Bash", "hooks": [entry]})
@@ -1290,34 +1346,53 @@ class TestCheckSettings(GuardCase):
                     done = self.check(settings)
                     self.assertEqual(done.returncode, 1, done.stdout)
                     self.assertIn(f"hooks.{event}[{index}].hooks[0]", done.stdout)
-                    for needle in needles:
-                        self.assertIn(needle, done.stdout)
+                    self.assertIn("'type'", done.stdout)
                     self.assertNotIn("wires", done.stdout)
-        # A bad entry beside a good one in the same group is named by its position.
+            for label, group in (("matcher number", {"matcher": 3, "hooks": [{"type": "command", "command": "true"}]}),
+                                 ("matcher null", {"matcher": None, "hooks": [{"type": "command", "command": "true"}]}),
+                                 ("empty hooks", {"hooks": []}), ("hooks missing", {"matcher": "Bash"}),
+                                 ("hooks entry not an object", {"hooks": ["true"]})):
+                with self.subTest(event=event, group=label):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"].setdefault(event, []).append(group)
+                    index = len(settings["hooks"][event]) - 1
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(f"hooks.{event}[{index}]", done.stdout)
+                    self.assertNotIn("wires", done.stdout)
+        # A bad entry beside a good one in the same group is named by its position, and every invalid item is named.
         settings = self.load(RAILS_SETTINGS)
-        settings["hooks"]["Stop"] = [{"hooks": [{"type": "command", "command": "true"},
-                                                {"type": "command", "command": "true", "timeout": "bad"}]}]
+        settings["hooks"]["Stop"] = [{"hooks": [{"type": "command", "command": "true"}, {"command": "true"}]},
+                                     {"matcher": 3, "hooks": []}]
         done = self.check(settings)
         self.assertEqual(done.returncode, 1, done.stdout)
-        self.assertIn("hooks.Stop[0].hooks[1]", done.stdout)
-        self.assertNotIn("hooks.Stop[0].hooks[0]", done.stdout)
-        # Every invalid item is named, not the first only.
-        settings["hooks"]["Stop"].append({"matcher": 3, "hooks": []})
-        done = self.check(settings)
         for path in ("hooks.Stop[0].hooks[1]", "hooks.Stop[1].matcher", "hooks.Stop[1].hooks"):
             self.assertIn(path, done.stdout)
+        self.assertNotIn("hooks.Stop[0].hooks[0]", done.stdout)
 
-    def test_a_group_with_a_key_the_runtime_does_not_read_is_named_wherever_it_is(self):
+    def test_a_neighbouring_hook_of_any_type_leaves_the_guard_wired(self):
+        # Review of #677 at 4ed9085: `prompt` and `agent` hooks are valid in Claude Code 2.1.287.
+        neighbours = ({"type": "prompt", "prompt": "Check whether the task is complete."},
+                      {"type": "agent", "prompt": "Verify the tests ran.", "timeout": 60},
+                      {"type": "http", "url": "http://localhost:9/hook"},
+                      {"type": "command", "command": "true"})
+        for event in ("PreToolUse", "PostToolUse", "SessionStart", "Stop", "UserPromptSubmit"):
+            for entry in neighbours:
+                with self.subTest(event=event, type=entry["type"]):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"].setdefault(event, []).append({"hooks": [entry]})
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 0, done.stdout)
+                    self.assertIn("wires", done.stdout)
         settings = self.load(RAILS_SETTINGS)
-        settings["hooks"]["Stop"] = [{"hooks": [{"type": "command", "command": "true"}], "description": "x"}]
-        done = self.check(settings)
-        self.assertEqual(done.returncode, 1, done.stdout)
-        self.assertIn("hooks.Stop[0]", done.stdout)
-        self.assertIn("'description' on the hook group", done.stdout)
+        settings["hooks"]["Stop"] = [{"hooks": [{"type": "prompt", "prompt": "Check whether the task is complete."}]}]
+        self.assertEqual(self.check(settings).returncode, 0)
+        # Beside the guard, in the guard's own group.
+        for _, entry, _ in self.lifecycle_hooks(settings):
+            entry["hooks"].append({"type": "prompt", "prompt": "x"})
+        self.assertEqual(self.check(settings).returncode, 0)
 
     def test_valid_neighbouring_hooks_leave_the_guard_wired_whatever_runtime_keys_they_use(self):
-        # The shipped primary-checkout guard sits beside the lifecycle guard; other hooks may use `if`,
-        # `once`, `async` and keys this file does not know. Their types are checked, their keys are not refused.
         settings = self.load(RAILS_SETTINGS)
         self.assertEqual(self.check(settings).returncode, 0)
         settings["hooks"]["PreToolUse"].append({"matcher": "Bash", "hooks": [
@@ -1327,6 +1402,38 @@ class TestCheckSettings(GuardCase):
         done = self.check(settings)
         self.assertEqual(done.returncode, 0, done.stdout)
         self.assertIn("wires", done.stdout)
+
+    def test_a_neighbours_other_fields_are_not_validated_a_documented_limit(self):
+        # The runtime's settings schema is the vendor's and changes per release (0083): a neighbour whose
+        # `args` is 42, whose timeout is a string or whose group carries a key nobody reads is NOT detected.
+        for label, change in (
+                ("args 42", lambda s: s["hooks"]["PreToolUse"][0]["hooks"][0].update(args=42)),
+                ("timeout string", lambda s: s["hooks"]["PreToolUse"][0]["hooks"][0].update(timeout="bad")),
+                ("command list", lambda s: s["hooks"]["PreToolUse"][0]["hooks"][0].update(command=["true"])),
+                ("async string", lambda s: s["hooks"]["PreToolUse"][0]["hooks"][0].update({"async": "yes"})),
+                ("if number", lambda s: s["hooks"]["PreToolUse"][0]["hooks"][0].update({"if": 5})),
+                ("group key", lambda s: s["hooks"]["PreToolUse"][0].update(description="x")),
+                ("stop group key", lambda s: s["hooks"].update(Stop=[{"description": "x", "hooks": [
+                    {"type": "command", "command": "true", "args": 42, "timeout": 0}]}]))):
+            with self.subTest(label):
+                settings = self.load(RAILS_SETTINGS)
+                change(settings)
+                done = self.check(settings)
+                self.assertEqual(done.returncode, 0, done.stdout)
+                self.assertIn("wires", done.stdout)
+
+    def test_the_guards_own_registration_is_still_held_to_its_keys_and_types(self):
+        for label, change in (("args", {"args": 42}), ("timeout string", {"timeout": "bad"}),
+                              ("timeout zero", {"timeout": 0}), ("type prompt", {"type": "prompt"}),
+                              ("async", {"async": True}), ("if", {"if": "Bash(git *)"})):
+            with self.subTest(label):
+                settings = self.load(RAILS_SETTINGS)
+                for _, _, hook_ in self.lifecycle_hooks(settings):
+                    hook_.update(change)
+                done = self.check(settings)
+                self.assertEqual(done.returncode, 1, done.stdout)
+                self.assertIn(next(iter(change)).join("''"), done.stdout)
+                self.assertNotIn("wires", done.stdout)
 
     def test_a_sendmessage_only_pretooluse_does_not_satisfy_the_every_tool_bound(self):
         settings = self.load(RAILS_SETTINGS)

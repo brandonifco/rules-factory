@@ -54,7 +54,7 @@ WHAT IT ENFORCES
     id and status from that leading block alone), with any status but `running`. A notification
     quoted anywhere else (a tool_result that read a file or a log, an `<agent-message>`, any other
     record, any string past the leading block) is not evidence. A name is resolved to an id from the ledger first, else from the main
-    transcript, and two names are equal under `normal_name` (NFKC, casefold, whitespace collapsed and trimmed,
+    transcript, and two names are equal under `normal_name` (NFKC, control and format characters dropped, casefold, whitespace runs to `-`, trimmed,
     applied to both sides: a superset of the runtime's equivalence, so a false match denies, which fails safe). To an id-shaped target ("a" + 16 hex) neither the ledger nor the transcript saw
     launched: denied, because this cannot show it is running (fail closed). To a launched agent with
     no completion evidence (running): allowed. To "main": allowed.
@@ -62,9 +62,11 @@ WHAT IT ENFORCES
     violation, and the model is told to stop that agent and dispatch a fresh one. Detection after
     the fact, for the case the PreToolUse check could not see. Claude Code 2.1.287 reports a resume
     five ways (a result that is a dict, JSON text, or a list of text blocks): the key `resumedAgentId`
-    or `inlineHandback`, or a message that starts `Resuming agent ` or `Resumed agent`, or contains
-    `was resumed but`, `resumed it as an in-process teammate`, or ` is already waking; message queued`.
-    `Message queued for delivery to X at its next tool round.` (X running, or main) is none of them.
+    or `inlineHandback`, or a message that STARTS `Resuming agent `, `Resumed agent`, `Agent "X" was
+    resumed but`, `Teammate "X" was not running; resumed it as an in-process teammate` or `X is already
+    waking; message queued`. A message starting `Message queued for delivery to ` or `Message queued for
+    the main` (X running, or main) is none of them, whatever its recipient's name says, unless the result
+    carries `resumedAgentId` or `inlineHandback`.
   * Context budget, in subagents only (see POLICY 2).
 
 WHAT IT CANNOT SEE
@@ -293,18 +295,33 @@ def ledger_append(session_id: object, record: dict) -> bool:
         return False
 
 
+# What the runtime's `\s` matches (JavaScript), the only whitespace its resolver turns into `-`.
+_RUNTIME_SPACE = "\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+_RUNTIME_SPACES = re.compile(f"[{_RUNTIME_SPACE}]+")
+_RUNTIME_SPACE_CHAR = re.compile(f"[{_RUNTIME_SPACE}]")
+
+
+def _without_invisible(text: str) -> str:
+    """`text` without its control (Cc) and format (Cf) characters, except those the runtime reads as whitespace."""
+    return "".join(char for char in text
+                   if unicodedata.category(char) not in ("Cc", "Cf") or _RUNTIME_SPACE_CHAR.match(char))
+
+
 def normal_name(name: str) -> str:
     """The one form in which two agent names are compared, on both sides, wherever a name is matched.
 
-    NFKC, casefold, every run of whitespace collapsed to one space, trimmed. The runtime resolves a
-    SendMessage target to an agent under its own normalisation (verified in Claude Code 2.1.287: NFKC,
-    lower case, whitespace), so `WORKER`, ` worker ` and a full-width `ｗｏｒｋｅｒ` reach the agent
-    launched as `worker`. This is deliberately a SUPERSET of that equivalence (casefold folds more than
-    lower case does): a false match here denies a message to an agent that is not the one meant, which
-    fails safe, and a missing match would let a resume through.
+    NFKC, control and format characters dropped (Unicode categories Cc and Cf, except the few the runtime
+    reads as whitespace), casefold, every run of whitespace turned into one `-`, trimmed. The runtime resolves
+    a SendMessage target to an agent under its own normalisation (read in Claude Code 2.1.287: NFKC; remove
+    Cc and Cf characters unless `\\s` matches them; trim; lower case; whitespace runs to `-`), so `WORKER`,
+    ` worker `, a full-width `ｗｏｒｋｅｒ`, `worker` followed by a zero-width space, and `review agent` for
+    `review-agent` all reach the agent launched under the plain name. This is deliberately a SUPERSET of
+    that equivalence (casefold folds more than lower case does): a false match here denies a message to an
+    agent that is not the one meant, which fails safe, and a missing match would let a resume through.
     """
-    text = unicodedata.normalize("NFKC", name).casefold()
-    return " ".join(unicodedata.normalize("NFKC", text).split())
+    text = _without_invisible(unicodedata.normalize("NFKC", name))
+    text = _without_invisible(unicodedata.normalize("NFKC", text.casefold()))
+    return "-".join(part for part in _RUNTIME_SPACES.split(text) if part)
 
 
 UNDECODABLE = object()
@@ -421,35 +438,44 @@ def find_key(value: object, key: str, depth: int = 0) -> str | None:
 
 RESUMING = re.compile(r"^\s*Resuming agent\s+(\S+)")
 RESUMED = re.compile(r"^\s*Resumed agent(?:\s+(\S+))?")
-QUOTED_BEFORE_RESUMED = re.compile(r'"([^"]+)"\s+was resumed but')
-QUOTED_TEAMMATE = re.compile(r'"([^"]+)"')
-WAKING = re.compile(r"(\S+) is already waking; message queued")
+QUOTED_BEFORE_RESUMED = re.compile(r'^\s*Agent "([^"]+)"\s+was resumed but')
+QUOTED_TEAMMATE = re.compile(r'^\s*Teammate "([^"]+)"\s+was not running; resumed it as an in-process teammate')
+WAKING = re.compile(r"^\s*(\S+) is already waking; message queued")
+DELIVERY = re.compile(r"^\s*Message queued for (?:delivery to |the main)")
+QUEUED = re.compile(r"^\s*Message queued")
 NAME_EDGES = ".,;:\"'"
 
 
 def resume_in_text(text: str) -> str | None:
     """The agent a runtime message says it resumed ("" when the message does not name it), else None.
 
-    Claude Code 2.1.287 words a resume five ways, and a message starting `Message queued for delivery`
-    (a running agent, or main) is none of them: `Resuming agent X`; `Resumed agent` (alone, or
-    `Resumed agent X. Result: ...`); `... was resumed but ...` (it failed while running); `... resumed it
-    as an in-process teammate`; `X is already waking; message queued` (another caller resumed it).
+    Claude Code 2.1.287 words a resume five ways, each at the START of its message: `Resuming agent X`;
+    `Resumed agent` (alone, or `Resumed agent X. Result: ...`); `Agent "X" was resumed but ...` (it failed
+    while running); `Teammate "X" was not running; resumed it as an in-process teammate ...`;
+    `X is already waking; message queued` (another caller resumed it). A message starting
+    `Message queued for delivery to ` or `Message queued for the main` reports a delivery to a running agent
+    or to main, and the recipient's display name, which is the caller's text, may hold any of those words
+    (a running agent named `worker was resumed but still running`): it is none of the five. Nor is any text
+    that merely contains one of them further in.
     """
+    if DELIVERY.match(text):
+        return None
     match = RESUMING.match(text)
     if match:
         return match.group(1).strip(NAME_EDGES)
     match = RESUMED.match(text)
     if match:
         return (match.group(1) or "").strip(NAME_EDGES)
-    if "was resumed but" in text:
-        match = QUOTED_BEFORE_RESUMED.search(text)
-        return match.group(1) if match else ""
-    if "resumed it as an in-process teammate" in text:
-        match = QUOTED_TEAMMATE.search(text)
-        return match.group(1) if match else ""
-    if " is already waking; message queued" in text:
-        match = WAKING.search(text)
-        return match.group(1).strip(NAME_EDGES) if match else ""
+    match = QUOTED_BEFORE_RESUMED.match(text)
+    if match:
+        return match.group(1)
+    match = QUOTED_TEAMMATE.match(text)
+    if match:
+        return match.group(1)
+    if not QUEUED.match(text):
+        match = WAKING.match(text)
+        if match:
+            return match.group(1).strip(NAME_EDGES)
     return None
 
 
@@ -947,9 +973,6 @@ def describe(event: str, scope: str | None) -> str:
 
 GROUP_KEYS = ("matcher", "hooks")
 HOOK_KEYS = ("type", "command", "timeout")
-# Keys of a hook that the runtime reads and whose type is checked on every hook; only this guard's own
-# entries are refused for carrying them (`unsupported_keys`), because another hook may use them.
-BOOLEAN_HOOK_KEYS = ("async", "asyncRewake", "once")
 
 
 def unsupported_keys(group: dict, hook_: dict) -> list[str]:
@@ -960,48 +983,39 @@ def unsupported_keys(group: dict, hook_: dict) -> list[str]:
     name, with no shell expansion, so the guard never runs; `if` skips the hook for other tools; `once`
     removes it after one run; `async` and `asyncRewake` run it in the background; `shell` changes what
     interprets it. None of them can be told apart from a working registration by the command alone.
-    The types of `type`, `command` and `timeout` are `registration_defects`', for every hook.
     """
     found = [f"{key!r} on the hook group" for key in group if key not in GROUP_KEYS]
     found += [f"{key!r} on the hook" for key in hook_ if key not in HOOK_KEYS]
     return found
 
 
-def entry_defects(path: str, entry: dict) -> list[str]:
-    """What is wrong with the types of one hook entry, whichever hook it is. Keys it does not know are not
-    refused here (another hook may use any key the runtime reads); the keys this file knows are typed."""
+def own_defects(path: str, hook_: dict) -> list[str]:
+    """What is wrong with the types of THIS GUARD'S hook entry: it is a command hook, its timeout (if any)
+    a positive number. Its other keys are `unsupported_keys`'."""
     defects = []
-    if entry.get("type") != "command":
-        defects.append(f"{path}: 'type' is {entry.get('type')!r}, not 'command'")
-    if not isinstance(entry.get("command"), str):
-        defects.append(f"{path}: 'command' is {entry.get('command')!r}, not a string")
-    if "timeout" in entry:
-        timeout = entry["timeout"]
+    if hook_.get("type") != "command":
+        defects.append(f"{path}: 'type' is {hook_.get('type')!r}, not 'command'")
+    if "timeout" in hook_:
+        timeout = hook_["timeout"]
         # The runtime's settings schema takes a positive number; a bool is not one, nan and inf are not usable.
         if (isinstance(timeout, bool) or not isinstance(timeout, (int, float))
                 or not math.isfinite(timeout) or timeout <= 0):
             defects.append(f"{path}: 'timeout' is {timeout!r}, not a positive number")
-    for key in BOOLEAN_HOOK_KEYS:
-        if key in entry and not isinstance(entry[key], bool):
-            defects.append(f"{path}: {key!r} is {entry[key]!r}, not a boolean")
-    if "if" in entry and not isinstance(entry["if"], str):
-        defects.append(f"{path}: 'if' is {entry['if']!r}, not a string")
     return defects
 
 
 def registration_defects(event: str, value: object) -> list[str]:
-    """What is wrong with everything registered under `hooks.<event>`, one line each, with its path.
+    """What is wrong with the structure that hosts everything registered under `hooks.<event>`, one line each.
 
     Verified in Claude Code 2.1.287: the settings schema reads the event's value as a list of groups, a
     group as an object with an optional string `matcher` and a `hooks` list, and `hooks` as a non-empty
-    list of objects, each a command hook with a string `command` and an optional positive `timeout`. A
-    value of another type (an explicit `matcher: null` is one; absent is not) fails validation, and the
-    loader drops or rejects the registration, and one unloadable entry can take its event's other
-    registrations with it, so a command that looks right beside it never runs. Every group and entry under
-    every event is judged here, this guard's or not (`settings_problems` calls this for each event in
-    the file): the runtime's verdict on a registration is not this file's to second-guess. A group has only
-    `matcher` and `hooks`; a hook's other keys are not refused, only the ones whose types are known are
-    typed (`entry_defects`).
+    list of objects, each with a string `type`. A value of another type (an explicit `matcher: null` is
+    one; absent is not) fails validation, and the loader drops or rejects the registration, and one
+    unloadable entry can take its event's other registrations with it, so a command that looks right beside
+    it never runs. That hosting structure is judged here for every group and entry under every event, this
+    guard's or not. Nothing else about a neighbour is: its type may be any (`command`, `prompt`, `agent`,
+    ...), and its other fields are the runtime's settings schema, the vendor's and different in each release,
+    which this file does not re-implement. A neighbour that schema rejects is NOT detected (decision 0083).
     """
     where = f"hooks.{event}"
     if not isinstance(value, list):
@@ -1012,7 +1026,6 @@ def registration_defects(event: str, value: object) -> list[str]:
         if not isinstance(group, dict):
             defects.append(f"{path} is {type(group).__name__}, not an object")
             continue
-        defects.extend(f"{path}: {key!r} on the hook group" for key in group if key not in GROUP_KEYS)
         if "matcher" in group and not isinstance(group["matcher"], str):
             defects.append(f"{path}.matcher is {group['matcher']!r}, not a string (leave it out to match every tool)")
         entries = group.get("hooks")
@@ -1021,25 +1034,26 @@ def registration_defects(event: str, value: object) -> list[str]:
             continue
         for position, entry in enumerate(entries):
             entry_path = f"{path}.hooks[{position}]"
-            if isinstance(entry, dict):
-                defects.extend(entry_defects(entry_path, entry))
-            else:
+            if not isinstance(entry, dict):
                 defects.append(f"{entry_path} is {type(entry).__name__}, not an object")
+            elif not isinstance(entry.get("type"), str):
+                defects.append(f"{entry_path}: 'type' is {entry.get('type')!r}, not a string")
     return defects
 
 
 def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) -> list[str]:
     """One line per registration `REQUIRED_HOOKS` asks for that `settings` does not carry.
 
-    First every group and entry under every event is typed (`registration_defects`), this guard's or not,
-    and every invalid item is named with its path. An event with a defect is not wired: Claude Code may
-    drop or reject its registrations. Then a registration counts when its matcher covers the scope, its
-    command is exactly `expected_command(guard_path)` (compared as the string it is: parsing it would
-    discard the quotes that decide whether the variable expands), and nothing else about THIS GUARD'S
-    entry changes how Claude Code runs it: the hook group has only `matcher` and `hooks`, the hook only
-    `type` (`command`), `command` and `timeout`. Any other key on it (`args`, `if`, `once`, `async`,
-    `shell`, ...) leaves it not wired and is named. A background hook is among them: Claude Code does not
-    wait for its decisions. Another hook may carry those keys.
+    First the structure that hosts every hook under every event is checked (`registration_defects`), this
+    guard's or not, and every invalid item is named with its path. An event with a defect is not wired:
+    Claude Code may drop or reject its registrations. Then a registration counts when its matcher covers
+    the scope, its command is exactly `expected_command(guard_path)` (compared as the string it is: parsing
+    it would discard the quotes that decide whether the variable expands), it is a `command` hook with a
+    positive timeout if it has one, and nothing else about THIS GUARD'S entry changes how Claude Code runs
+    it: the hook group has only `matcher` and `hooks`, the hook only `type`, `command` and `timeout`. Any
+    other key on it (`args`, `if`, `once`, `async`, `shell`, ...) leaves it not wired and is named. A
+    background hook is among them: Claude Code does not wait for its decisions. A neighbouring hook is not
+    judged beyond its hosting structure: it may be of any type and carry any key.
     """
     if not isinstance(settings, dict):
         return ["the settings are not a JSON object"]
@@ -1057,20 +1071,20 @@ def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) ->
             effect = f", so {GUARD_NAME} may not run" if event in required_events else ""
             problems.append(f"not wired: {event} has registrations Claude Code may drop or reject{effect}: "
                             f"{'; '.join(defects)} (a group has an optional string matcher and a non-empty "
-                            f"list of hook objects, each a 'command' hook)")
+                            f"list of hook objects, each with a string type)")
     for event, scope, why in REQUIRED_HOOKS:
         if event in unloadable:
             continue
         found = False
         refused: list[str] = []
         entries = hooks.get(event) if isinstance(hooks.get(event), list) else []
-        for entry in entries:
+        for index, entry in enumerate(entries):
             if not isinstance(entry, dict) or not covers(entry.get("matcher"), scope):
                 continue
-            for hook_ in entry.get("hooks") if isinstance(entry.get("hooks"), list) else []:
+            for position, hook_ in enumerate(entry.get("hooks") if isinstance(entry.get("hooks"), list) else []):
                 if not isinstance(hook_, dict) or hook_.get("command") != command:
                     continue
-                extra = unsupported_keys(entry, hook_)
+                extra = unsupported_keys(entry, hook_) + own_defects(f"hooks.{event}[{index}].hooks[{position}]", hook_)
                 if extra:
                     refused.extend(extra)
                 else:
@@ -1081,7 +1095,7 @@ def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) ->
             background = [key for key in BACKGROUND_KEYS if any(f"'{key}'" in item for item in refused)]
             tail = ("it runs in the background, so its decisions are not enforced; it must run in the "
                     "foreground" if background else
-                    "a key Claude Code reads changes how it runs, so it may not enforce")
+                    "a key or type Claude Code reads changes how it runs, so it may not enforce")
             problems.append(f"not wired: {describe(event, scope)} runs {GUARD_NAME} with {'; '.join(refused)}: "
                             f"{tail} (a group has only {', '.join(GROUP_KEYS)}; a hook only "
                             f"{', '.join(HOOK_KEYS)} with type 'command'), needed to {why}")

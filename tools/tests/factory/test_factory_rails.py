@@ -7102,21 +7102,32 @@ class TestTheDoctor(TestAProducedEngine):
         self.assertIn("WRONG", row)
         self.assertIn(label, row)
 
-    def test_a_malformed_neighbouring_hook_makes_the_lifecycle_guard_not_wired(self):
-        # Review of #677 at 5ad72d4: Claude Code rejects a hook with `"timeout": "bad"` as an unloadable
-        # registration of its event, so the guard beside it is not running either.
+    def neighbour_row(self, entry):
         self.produced()
         path = os.path.join(self.out, ".claude", "settings.json")
         with open(path, encoding="utf-8") as handle:
             settings = json.load(handle)
-        settings["hooks"]["PreToolUse"].append(
-            {"matcher": "Bash", "hooks": [{"type": "command", "command": "true", "timeout": "bad"}]})
+        settings["hooks"]["PreToolUse"].append({"matcher": "Bash", "hooks": [entry]})
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(settings, handle)
         done = self.doctor("--local")
-        row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+        return next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+
+    def test_a_neighbouring_hook_without_a_string_type_makes_the_lifecycle_guard_not_wired(self):
+        # Review of #677 at 5ad72d4: Claude Code rejects a registration it cannot load, so the guard beside it
+        # is not running either. After the review at 4ed9085 the doctor holds the structure that hosts a hook
+        # (here: a `type` that is a string), not the runtime's schema for the rest of a neighbour.
+        row = self.neighbour_row({"command": "true"})
         self.assertIn("WRONG", row)
         self.assertIn("hooks.PreToolUse[2].hooks[0]", row)
+
+    def test_a_neighbouring_prompt_hook_leaves_the_lifecycle_guard_ok(self):
+        # Review of #677 at 4ed9085: a `prompt` hook is valid, so it is not a missing registration.
+        self.assertIn("OK", self.neighbour_row({"type": "prompt", "prompt": "Check whether the task is complete."}))
+
+    def test_a_neighbours_wrong_typed_field_is_not_detected_a_documented_limit(self):
+        # The runtime's settings schema is the vendor's and changes per release (decision 0083).
+        self.assertIn("OK", self.neighbour_row({"type": "command", "command": "true", "timeout": "bad"}))
 
     def test_a_lifecycle_guard_registered_async_is_reported(self):
         # An asynchronous hook cannot enforce a decision (#676, review of #677).
