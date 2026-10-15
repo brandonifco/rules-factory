@@ -167,7 +167,7 @@ TABLE = (
         "reviewed commit's own ownership class, and the identity names the role (#467); the semantic cut names the files it withheld rather than counting them, the policy among them (#475); "
         "a cut section keeps what is nested under it (#484); a truncated file list is refused, because a cut "
         "made from one drops a change and says it did not (#478); a packet with entry evidence writes the scope a verdict attests, --review final and --prior make the acceptance review and the reasoned full one, and it is refused until the self-review is current (0071); the semantic diff is asked for by paths anchored at the repository root, and a listed path the diff shows no change to is a refusal and not an empty fence (#522, #526); the entries are the ones pr-policy.py reads from the conformance bullet as well as the marker (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); the review class is computed from the reviewed snapshot and stated first; a semantic packet is refused for a change that owes none; the self-review gate is an implementation's, and a ruling owes its decision-scoped review record instead (0076)"),
-    Row("tools/review-scope.py", MANAGED, 2,
+    Row("tools/review-scope.py", MANAGED, 3,
         "what a semantic review covered and what a repair invalidates of it, computed from the map's "
         "dependencies, a lexical reference graph and recorded fingerprints; the delta packet a bounded "
         "review reads, or the reasons a full one is owed; the self-review skeleton and check; an "
@@ -187,7 +187,7 @@ TABLE = (
         "embedded engine is listed under its path relative to the engine, `../README.md`, by the check and "
         "the skeleton alike, and a rename is its new path (#523, #511); the entry ids the conformance "
         "bullet names are read by one function that review-packet.py loads, so the two cannot disagree (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); a deletion is a deletion whether GitHub spells it DELETED or REMOVED, and an entry the overlay split moves out of the retired shared overlay keeps that row as its base, so the split implements nothing (#566); an `entry id(s):` line that is exactly `none` names no entry, so a factory update's semantic packet is not asked for an entry called `none` (#572); the review class of the diff is computed by `scripts/factory/reviewclass.py` and the pull request's `review class:` line is checked against it: it can claim an exemption the diff shows and raise a class, never lower one; a ruling names its scope or entries; only an implementation names a mutation; `generated-or-provenance` needs the produce claim admitted (0076)"),
-    Row("tools/record-verdict.py", MANAGED, 7,
+    Row("tools/record-verdict.py", MANAGED, 8,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
         "whose role could carry it, because a structural cut holds no entry evidence at all (#467); every verdict leaves a validated attestation whose digest is in the status, a delta PASS posts a context no gate requires, and a carry posts a comprehensive PASS again only when nothing moved (0071); refuses a semantic verdict on a packet whose review class owes none (0076)"),
@@ -344,6 +344,7 @@ RECIPE_SHA256 = {
     "tools/review-scope.py": {
         1: "84a69642db7a30efe6729d9557725794567462354072655ff4c223c7f6cbccf4",
         2: "e96aeaf830d5bc23c4dcaa25e29fd91ac8c4be6b3ddba6a6618f4ab184a3e155",
+        3: "54cb91892f154d60bc9389e4ce9cb0b6beeb61ee336188efaa26f71c16962b7b",
     },
     ".claude/agents/engine-dev.md": {
         1: "22dbac892b04903992d13516e5a08ac04d92d02b0d8d4ce5e4bfa9ef53543287",
@@ -526,6 +527,7 @@ RECIPE_SHA256 = {
         5: "fd493c0e21a738f5e6bdc47c406a907e0a121e124fadfe3b9358d70580ac26e4",
         6: "9dc1d7aafa536a37278bf526693893e106a43c43183bdcccddceac4e8fe45231",
         7: "8e7ba67c30672e69e714ccd801a9b5a59ba18d1aa63c08b9b50b385264672e75",
+        8: "6b0f2023b588e3b0eb0e494c0d7f8bcdab4aa499e1f052e8b0cb2edf5e8dbbb2",
     },
     "tools/conformance-gate.py": {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",

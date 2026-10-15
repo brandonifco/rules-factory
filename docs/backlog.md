@@ -270,6 +270,8 @@ kind of defect as round nine's. #612, #613, #615 and #617 carry `post-1.0`: none
 verified when its build or tests failed or did not run, and each needs a constructed input (a failing
 API read together with a policy-emptying diff, source with a bare CR in an interpolation hole, a
 packet identity the factory does not write). The reviewer could not run `pytest`, as in round nine.
+#615 was fixed afterwards: `record-verdict.py` asks `reviewclass.OWES`, as the gate does, and refuses an
+identity that names no class.
 
 ### `post-1.0`, `known-limitation` — the ship-first triage, 2026-09-21
 

@@ -724,20 +724,38 @@ class TestWhatAPullRequestSays(unittest.TestCase):
         self.assertIsNone(rc.declared_scope(self.body("- decision scope:")))
 
 
-class TestTheRecordersNamesAreTheModulesClasses(unittest.TestCase):
-    """`record-verdict.py` names the classes that owe no semantic review and cannot import the module that does."""
+class TestOwesIsTheOneSourceOfWhatAVerdictIsOwed(unittest.TestCase):
+    """`OWES` says what a class obliges, and the gate and the recorder both ask it (#615).
 
-    def test_the_names_it_refuses_a_semantic_verdict_for_are_the_classes_that_owe_none(self):
-        # mutation: add a class to reviewclass.py and not to the recorder, or the reverse
+    The gate asks `effective in SEMANTIC` and the recorder asks `owes(effective)["verdict"]`. Both
+    answers come out of the one table, and the recorder keeps no list of class names of its own to
+    drift from it.
+    """
+
+    def test_the_set_the_gate_tests_is_the_table_s_verdict_column(self):
+        # mutation: write SEMANTIC out by hand again, with a class the table does not oblige
+        self.assertEqual(rc.SEMANTIC, frozenset(c for c in rc.CLASSES if rc.OWES[c]["verdict"]))
+        self.assertEqual(set(rc.OWES), set(rc.CLASSES), "every class has a row, and no row is for a class that is not one")
+        for effective in rc.CLASSES:
+            self.assertEqual(effective in rc.SEMANTIC, rc.owes(effective)["verdict"], effective)
+
+    def test_the_recorder_names_no_class_of_its_own(self):
+        # mutation: add a set of class names to the recorder, as `NO_SEMANTIC_REVIEW` was
         import ast
         path = os.path.join(os.path.dirname(os.path.dirname(HERE)), "factory", "recipe", "rails", "tools",
                             "record-verdict.py")
         with open(path, encoding="utf-8") as handle:
             tree = ast.parse(handle.read())
-        named = next(ast.literal_eval(node.value.args[0]) for node in ast.walk(tree)
-                     if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "NO_SEMANTIC_REVIEW")
-        self.assertEqual(set(named), set(rc.CLASSES) - rc.SEMANTIC)
-        self.assertEqual({c for c in rc.CLASSES if not rc.owes(c)["verdict"]}, set(named))
+        spelled = {node.value for node in ast.walk(tree)
+                   if isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value in rc.CLASSES}
+        self.assertEqual(spelled, set(), "a class the recorder spells is a second statement of what it owes")
+
+    def test_a_class_that_is_not_one_owes_nothing_it_can_name(self):
+        # mutation: let `owes` answer for a name it has no row for
+        for unknown in ("semantic-novelty", "", None, 7):
+            with self.subTest(unknown=unknown):
+                with self.assertRaises(KeyError):
+                    rc.owes(unknown)
 
 
 if __name__ == "__main__":
