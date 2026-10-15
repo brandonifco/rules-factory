@@ -342,7 +342,9 @@ decline that names why and cites where — that is the engine working, not the e
   test, `Class.Method` or `Namespace.Class.Method`, and the verdict is that test's own result, read
   from the TRX of every test project in the solution: a sibling whose name contains it, a line of
   test output, or a project the filter matches nothing in decides nothing, and a name that fits two
-  tests is reported, not run. A build that fails is "did not compile", whatever class of error it
+  tests is reported, not run, and the same name in two assemblies is two tests. The unmutated run
+  fixes which test is watched; a mutated run that finds another is not red. Results are read as
+  the xUnit the factory pins reports them. A build that fails is "did not compile", whatever class of error it
   prints. It runs each test unmutated first, because a test that was already red
   proves nothing either. And it names the one failure the prose cannot — **a mutation that leaves
   its test green**, which is precisely the test nobody has watched fail — by reporting it and

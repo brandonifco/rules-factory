@@ -7063,7 +7063,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
                    "results": {**both, "Ns.ProbeTests.One": "Failed"}})
         done = self.mutate(self.spec(test="ProbeTests.One"))
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("RED: Ns.ProbeTests.One (/src/bin/debug/project0.dll): Failed 1", done.stdout,
+        self.assertIn("RED: Ns.ProbeTests.One (src/bin/debug/project0.dll): Failed 1", done.stdout,
                       "the record names the test it resolved to, and the assembly it ran in")
 
     def test_a_failed_line_that_a_passing_test_printed_decides_nothing(self):

@@ -73,7 +73,13 @@ read from the results of the named test in the TRX files of every test project: 
 that test's own results is `Failed`, GREEN when it ran and every one of its results is `Passed`.
 `test` is a fully qualified test name (`Ns.Class.Method`) or the name without its namespace
 (`Class.Method`); a name that spells a namespace is that namespace's, and is not found in a longer
-one. The result line names the test it resolved to and its assembly. The `--filter` only narrows
+one. A closed generic class (`Probe<System.Int32>.One`) and a nested one (`Outer+Inner.One`) are
+named whole. The result line names the test it resolved to and its assembly. Test results are
+read as the xUnit the factory pins reports them, a theory under its method name; a framework that
+names a row `Rows(1)` is not read, and finds nothing. Two projects are two assemblies even when
+their files share a name; one project built for several target frameworks is one. The unmutated
+run fixes which test is being watched, and a mutated run that finds a different one (or none) is
+not judged: it is reported as a different test, or as no test, and is not red. The `--filter` only narrows
 what runs, and its operators are escaped. Other tests the filter happens to select (`Probe.OneMore`
 for `Probe.One`) run, and nothing they do decides anything. A test project the filter matches
 nothing in is silent, not a verdict. A `test` that names more than one test (the same
@@ -116,6 +122,7 @@ GREEN = "GREEN"
 NO_BUILD = "DID NOT COMPILE"
 NO_TEST = "NO TEST MATCHED"
 MANY_TESTS = "MORE THAN ONE TEST MATCHED"
+OTHER_TEST = "A DIFFERENT TEST MATCHED"
 
 TRX_NS = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
 
@@ -396,12 +403,17 @@ def _put_back(path, original):
         return False
 
 
-def run_test(solution, test, configuration):
-    """Build, run the filter, and judge the one test. Returns (outcome, the line that says so)."""
+def run_test(solution, test, configuration, expected=None):
+    """Build, run the filter, and judge the one test. Returns (outcome, the line that says so, the test).
+
+    The third item is the one test (its name and its assembly) the results held, or None. `expected`
+    is the one an earlier run found: a run that finds a different one is not judged, because an edit
+    can remove the test that was watched and add another of the same name.
+    """
     built = subprocess.run(["dotnet", "build", str(solution.name), "-c", configuration, "--nologo"],
                            cwd=ROOT, capture_output=True, text=True)
     if built.returncode != 0:
-        return NO_BUILD, _diagnostic(f"{built.stdout}\n{built.stderr}", f"dotnet build exited {built.returncode}")
+        return NO_BUILD, _diagnostic(f"{built.stdout}\n{built.stderr}", f"dotnet build exited {built.returncode}"), None
 
     with tempfile.TemporaryDirectory(prefix="mutate-") as results:
         ran = subprocess.run(
@@ -411,21 +423,23 @@ def run_test(solution, test, configuration):
             cwd=ROOT, capture_output=True, text=True)
         outcomes, problems = _results_of(test, results)
     if problems:
-        return NO_TEST, problems[0]
+        return NO_TEST, problems[0], None
     if len(outcomes) > 1:
-        return MANY_TESTS, f"{_excerpt(test)} names {len(outcomes)} tests: {', '.join(sorted(outcomes))}"
+        return MANY_TESTS, f"{_excerpt(test)} names {len(outcomes)} tests: {', '.join(sorted(outcomes))}", None
     if not outcomes:
         lines = [line.strip() for line in f"{ran.stdout}\n{ran.stderr}".splitlines()
                  if line.strip() and not line.startswith("Results File:")]
         return NO_TEST, (f"no test named {_excerpt(test)} produced a result"
-                         + (f"; dotnet test exited {ran.returncode}: {lines[-1]}" if ran.returncode and lines else ""))
+                         + (f"; dotnet test exited {ran.returncode}: {lines[-1]}" if ran.returncode and lines else "")), None
     (name, seen), = outcomes.items()
+    if expected is not None and name != expected:
+        return OTHER_TEST, f"the unmutated run found {expected}, and this one found {name}", name
     said = f"{name}: " + ", ".join(f"{outcome} {count}" for outcome, count in sorted(seen.items()))
     if "Failed" in seen:
-        return RED, said
+        return RED, said, name
     if set(seen) == {"Passed"}:
-        return GREEN, said
-    return NO_TEST, f"{said}; it did not run to a result of its own"
+        return GREEN, said, name
+    return NO_TEST, f"{said}; it did not run to a result of its own", name
 
 
 def _escaped(test):
@@ -447,10 +461,18 @@ def _results_of(test, results):
     attachments beneath it, and one of those may be any TRX at all. A result belongs to the test
     when `test` is the test's fully qualified name (the TRX's class and method), or `Class.Method`,
     the same without the namespace. A name that spells a namespace is therefore that namespace's:
-    `Ns.Class.Method` is not `Other.Ns.Class.Method`. A test is told apart by its assembly as well,
-    because the same name in two assemblies is two tests; the rows of one theory share both and are
-    one test. A project the filter matched nothing in writes a TRX with no results, which is no
-    evidence either way; a TRX that cannot be read is reported, because it may have held the answer.
+    `Ns.Class.Method` is not `Other.Ns.Class.Method`. The namespace ends at the last dot outside any
+    brackets and before any `+`, so `Probe<System.Int32>.One` and `Outer+Inner.One` are names.
+
+    A test is told apart by its assembly as well, because the same name in two projects is two
+    tests: the assembly is its output path, lower-cased, with `/` for `\\` and without the
+    target-framework directory, so two projects of one file name are two and one project built for
+    several frameworks is one. The rows of one theory share both and are one test. A parameterised
+    name (`Rows(1)`, which is how NUnit and MSTest name a row) is not the method's name and matches
+    nothing: the xUnit the factory pins reports a theory under its method.
+
+    A project the filter matched nothing in writes a TRX with no results, which is no evidence either
+    way; a TRX that cannot be read is reported, because it may have held the answer.
     """
     outcomes, problems = {}, []
     for path in sorted(found for found in pathlib.Path(results).glob("*.trx") if found.is_file()):
@@ -460,20 +482,44 @@ def _results_of(test, results):
             problems.append(f"{path.name} cannot be read ({error}), so it shows no test running")
             continue
         units = list(root.iterfind(".//t:UnitTest", TRX_NS))
-        assemblies = {unit.get("id"): re.sub(r"\.dll$", "", re.split(r"[\\/]", unit.get("storage") or "")[-1])
-                      for unit in units}
+        assemblies = {unit.get("id"): _assembly(unit.get("storage") or "") for unit in units}
         methods = {unit.get("id"): (method.get("className") or "", method.get("name") or "")
                    for unit in units for method in unit.iterfind("t:TestMethod", TRX_NS)}
         for result in root.iterfind(".//t:UnitTestResult", TRX_NS):
             if result.find("t:InnerResults", TRX_NS) is not None:
                 continue    # a parent the writer made over the rows beneath it
             klass, method = methods.get(result.get("testId"), ("", ""))
-            if method and test in (f"{klass}.{method}", f"{klass.rpartition('.')[2]}.{method}"):
+            if method and test in (f"{klass}.{method}", f"{_unqualified(klass)}.{method}"):
                 assembly = assemblies.get(result.get("testId"))
                 label = f"{klass}.{method}" + (f" ({assembly})" if assembly else "")
                 seen = outcomes.setdefault(label, {})
                 seen[result.get("outcome")] = seen.get(result.get("outcome"), 0) + 1
     return outcomes, problems
+
+
+def _unqualified(klass):
+    """`klass` without its namespace: after the last dot that is outside brackets and before any `+`."""
+    depth = cut = 0
+    for index, character in enumerate(klass):
+        if character in "<[":
+            depth += 1
+        elif character in ">]":
+            depth -= 1
+        elif depth == 0 and character == "+":
+            break
+        elif depth == 0 and character == ".":
+            cut = index + 1
+    return klass[cut:]
+
+
+def _assembly(storage):
+    """The project an output path belongs to: the path with its target-framework directory taken out."""
+    parts = [part for part in re.split(r"[\\/]", storage.lower()) if part]
+    target = re.compile(r"net(coreapp|standard)?\d+(\.\d+)*(-[a-z0-9.]+)?")
+    kept = [part for part in parts[:-1] if not target.fullmatch(part)] + parts[-1:]
+    path = "/".join(kept)
+    root = ROOT.as_posix().lower().strip("/") + "/"
+    return path[len(root):] if path.startswith(root) else path
 
 
 def _bytes_of(path):
@@ -538,31 +584,32 @@ def main(argv=None):
         return 1
 
     results = []
-    baselines = {}
+    baselines = {}      # test -> the outcome of its unmutated run
+    resolved = {}       # test -> the one test (name and assembly) that run found
     for number, spec in enumerate(specs, start=1):
         label = spec.get("name") or spec["test"]
         test = spec["test"]
 
-        if not args.no_baseline and test not in baselines:
-            outcome, line = run_test(solution, test, args.configuration)
-            baselines[test] = outcome
-            if outcome != GREEN:
-                print(f"[{number}/{len(specs)}] {label}\n"
-                      f"    BASELINE {outcome}: {line}", flush=True)
-        if baselines.get(test, GREEN) != GREEN:
-            results.append((label, f"BASELINE {baselines[test]}", "the test was not green before the mutation"))
-            continue
-
-        # From just before the first write until the last file is back, SIGTERM and SIGHUP are an
-        # interrupt: a terminated process runs no `finally`, and would leave the source mutated.
-        # `apply` puts back what it wrote if it is interrupted, and `restore` finishes every file
-        # before it raises.
+        # From before the first thing that makes a temporary directory until the last file is back,
+        # SIGTERM and SIGHUP are an interrupt: a terminated process runs no `finally`, and would
+        # leave the results directory of a run behind, or, after the first write, the source
+        # mutated. `apply` puts back what it wrote if it is interrupted, and `restore` finishes
+        # every file before it raises.
         named = []
         previous = {}
         for signum in (signal.SIGTERM, getattr(signal, "SIGHUP", None)):
             if signum is not None:
                 previous[signum] = signal.signal(signum, _terminated)
         try:
+            if not args.no_baseline and test not in baselines:
+                outcome, line, found = run_test(solution, test, args.configuration)
+                baselines[test], resolved[test] = outcome, found
+                if outcome != GREEN:
+                    print(f"[{number}/{len(specs)}] {label}\n"
+                          f"    BASELINE {outcome}: {line}", flush=True)
+            if baselines.get(test, GREEN) != GREEN:
+                results.append((label, f"BASELINE {baselines[test]}", "the test was not green before the mutation"))
+                continue
             try:
                 named = _named_originals(spec)
                 restore_pairs = apply(spec, f"spec {number}")
@@ -574,7 +621,9 @@ def main(argv=None):
                 results.append((label, "REFUSED", str(error)))
                 continue
             try:
-                outcome, line = run_test(solution, test, args.configuration)
+                # Judged against the test the unmutated run found, not against whatever the name
+                # resolves to now: an edit can add a test of the same name and remove the first.
+                outcome, line, _ = run_test(solution, test, args.configuration, expected=resolved.get(test))
             finally:
                 try:
                     failed = restore(restore_pairs)
@@ -594,8 +643,9 @@ def main(argv=None):
                       f"could not be restored -- fix them before anything else:\n  "
                       + "\n  ".join(str(p) for p in failed), file=sys.stderr)
                 return 1
-            print(f"INTERRUPTED: {error or 'interrupted'}; every file the mutation touched was put "
-                  f"back.", file=sys.stderr)
+            print(f"INTERRUPTED: {error or 'interrupted'}; "
+                  + ("every file the mutation touched was put back." if named else "nothing had been mutated."),
+                  file=sys.stderr)
             return 1
         finally:
             for signum, handler in previous.items():

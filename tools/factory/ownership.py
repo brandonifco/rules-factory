@@ -91,7 +91,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 31,
+    Row("AGENTS.md", MANAGED, 32,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares, one per package for a "
@@ -155,7 +155,8 @@ TABLE = (
         "cancels itself out is refused (#623); the verdict is the named test's own result, read from "
         "the TRX of every test project, so a sibling the filter also selected, a line of test output, "
         "or a project the filter matched nothing in decides nothing, and a build is judged by its own "
-        "exit status, whatever class of error it prints (#625, #662)"),
+        "exit status, whatever class of error it prints (#625, #662); a test is told apart by its name and its "
+        "assembly, and a mutated run is judged only against the test the unmutated run found"),
     Row("tools/re-produce.sh", MANAGED, 8,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252); "
@@ -419,6 +420,7 @@ RECIPE_SHA256 = {
         29: "747d6d7c57d43b7caad66e0017c29c4102223ccba62c1787e98f07e25a7c13c5",
         30: "bac17949671c440fa89fe655cd990496cf0debb59fa8ca81b5bd797275594fd0",
         31: "6a491708e330e18d5abb83a3dd050140c62516d3f5d91ff3fe0d6f98739aa711",
+        32: "2529749d4d1c5a7b1ed9e1198b15f7b5ff4275a39de34e768e12f657e2590ad1",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -460,7 +462,7 @@ RECIPE_SHA256 = {
     "tools/mutate.py": {
         1: "d33f7ddedc923388af4582ffb6c04a1434c09f695738ca34f191839f21847901",
         2: "eb722639671ba46c0703f699dc85177fe88f52e00ced99ccf4e90f54a30c49eb",
-        3: "83dd7a9d93a994b1540250b9c17a8ed05b231264d4e116b3ec8daa3eb89db571",
+        3: "6bc179834bd3be6db9819e138e38d72411dd6ed46cea329459fdc461b1c2e198",
     },
     "tools/re-produce.sh": {
         1: "2a281f94f81ce141733494a94744caa96c88af3cd9fa848cec21c13e73739499",
