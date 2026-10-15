@@ -91,7 +91,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 31,
+    Row("AGENTS.md", MANAGED, 30,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares, one per package for a "
@@ -190,7 +190,7 @@ TABLE = (
     Row("tools/record-verdict.py", MANAGED, 8,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
-        "whose role could carry it, because a structural cut holds no entry evidence at all (#467); every verdict leaves a validated attestation whose digest is in the status, a delta PASS posts a context no gate requires, and a carry posts a comprehensive PASS again only when nothing moved (0071); refuses a semantic verdict on a packet whose review class owes none, and on an identity that names no review class, deciding both from the one table the gate reads (0076, #615)"),
+        "whose role could carry it, because a structural cut holds no entry evidence at all (#467); every verdict leaves a validated attestation whose digest is in the status, a delta PASS posts a context no gate requires, and a carry posts a comprehensive PASS again only when nothing moved (0071); refuses a semantic verdict on a packet whose review class owes none (0076)"),
     Row("tools/conformance-gate.py", MANAGED, 6,
         "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
         "file list is undecidable (0029, #193); the semantic surface is read in the engine's own paths, "
@@ -415,7 +415,6 @@ RECIPE_SHA256 = {
         28: "c764a5a4d78e8cf475847fd7143fbd35c3aac652285908065f22768f3a34c8a8",
         29: "747d6d7c57d43b7caad66e0017c29c4102223ccba62c1787e98f07e25a7c13c5",
         30: "bac17949671c440fa89fe655cd990496cf0debb59fa8ca81b5bd797275594fd0",
-        31: "809f499d16a9e0ca8745b9edabd2fed33c106b210c9f62b01d397b531059deda",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",

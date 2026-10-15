@@ -505,9 +505,6 @@ decline that names why and cites where — that is the engine working, not the e
   nested list the indentation is the meaning.
   `tools/review-packet.py` refuses a **semantic** packet for a change that owes none: an entry, a
   self-review and a packet written to satisfy a policy are the ceremony this removes.
-  `tools/record-verdict.py` asks the same table (`scripts/factory/reviewclass.py`'s `OWES`) the gate
-  does and keeps no list of classes of its own: it refuses a semantic verdict on a packet whose class
-  owes none, and on a packet identity that names no class or one that is not a class.
 - **No reviewer is paid before the implementer has attacked its own work.** For a
   `semantic-implementation`, a semantic, independent or final packet is refused until every entry
   it names has a committed
