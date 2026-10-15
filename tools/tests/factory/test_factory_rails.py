@@ -1001,6 +1001,21 @@ if kind == "api" and "/pulls/" in argv[1] and argv[1].split("?")[0].endswith("/f
     for row in rows:
         print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified") + "\t" + (row.get("previous") or ""))
     sys.exit(0)
+if kind == "api" and "/git/trees/" in argv[1]:
+    # `gh api repos/{owner}/{repo}/git/trees/<sha>?recursive=1 --jq '.truncated, (.tree[] | ... | @tsv)'`: the
+    # base commit's files, as the truncation flag and then `mode<TAB>path` for each. A ref the fixture names in
+    # `unknownRefs` is one GitHub has never heard of; one that names no files is a commit with none (#612).
+    ref = argv[1].split("/git/trees/", 1)[1].split("?")[0]
+    if ref in (fixture.get("unknownRefs") or []):
+        sys.stderr.write("gh: Not Found (HTTP 404)\\n")
+        sys.exit(1)
+    if "tree" in (fixture.get("contentsUnreadable") or []):
+        sys.stderr.write("gh: HTTP 502: Bad Gateway\\n")
+        sys.exit(1)
+    print("true" if fixture.get("treeTruncated") else "false")
+    for path in sorted((fixture.get("contents") or {}).get(ref) or {}):
+        print(("120000" if path in (fixture.get("contentsSymlinks") or []) else "100644") + "\t" + path)
+    sys.exit(0)
 if kind == "api":
     # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base
     # commit, base64 as GitHub returns it. pr-policy.py reads the record this way and then hashes
@@ -1009,8 +1024,16 @@ if kind == "api":
     ref = query.split("ref=")[-1]
     wanted = route.split("/contents/", 1)[1] if "/contents/" in route else ""
     body = ((fixture.get("contents") or {}).get(ref) or {}).get(wanted)
+    if ref in (fixture.get("unknownRefs") or []):
+        sys.stderr.write(f"gh: No commit found for the ref {ref} (HTTP 404)\\n")
+        sys.exit(1)
+    if wanted in (fixture.get("contentsUnreadable") or []):
+        # GitHub is there and the answer is not: not a file that does not exist.
+        sys.stderr.write("gh: HTTP 502: Bad Gateway\\n")
+        sys.exit(1)
     if body is None:
-        sys.stderr.write(f"no {wanted} at {ref}\\n")
+        # What `gh api` says for a path that is not at that ref.
+        sys.stderr.write("gh: Not Found (HTTP 404)\\n")
         sys.exit(1)
     print(base64.b64encode(body.encode("utf-8")).decode("ascii"))
     sys.exit(0)
@@ -1525,6 +1548,8 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.fixture({
             "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
                          "headRefOid": head, "headRefName": "issue-27", "baseRefName": "main",
+                         # What GitHub always gives, and the only base a packet is cut against (#612).
+                         "baseRefOid": git(self.out, "rev-parse", "main"),
                          "files": [{"path": "overlay/altitude-limit.json"},
                                    {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"},
                                    {"path": "README.md"}],
@@ -2155,6 +2180,9 @@ class TestTheRepairPacket(RailsInAGitEngine):
             "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
                          "state": state, "isDraft": False,
                          "headRefOid": head, "headRefName": branch, "baseRefName": "main",
+                         # What GitHub always gives: the commit the pull request is based on, which is
+                         # where the surface it began on is read from (#612).
+                         "baseRefOid": git(self.out, "rev-parse", "main"),
                          "files": [{"path": "overlay/altitude-limit.json"}],
                          "closingIssuesReferences": [{"number": 27}][:issues]}},
             "issue": {"27": {"number": 27, "title": "Widen the altitude limit", "state": "OPEN",
@@ -2509,6 +2537,82 @@ class TestTheRepairPacket(RailsInAGitEngine):
         self.assertIn("not required as this pull request stands", text)
         self.assertIn("Your repair can change that", text, "and it says the requirement can come back")
 
+    def test_a_base_nobody_can_read_leaves_a_verdict_owed_whatever_the_policy_lists(self):
+        """#612: the brief took a base policy it could not read for a new one, so a policy that lists no
+        semantic path read as a change owing nothing, where the gate cannot decide it at all.
+
+        mutation: take a base policy that cannot be read for one that was never there
+        """
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["review"]["semanticPaths"] = []
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"] = [{"path": "src/Rules/AltitudeLimit.cs"}]
+        self.fixture(document)
+        # The base is readable and lists the surface: the surface the change began on is the one it is judged by.
+        self.assertIn("a semantic verdict at the new head", self.rendered())
+        document["pr"]["5"]["baseRefOid"] = "c" * 40
+        self.fixture(document)
+        self.assertIn("a semantic verdict at the new head", self.rendered(),
+                      "a base that cannot be read is not a policy the pull request is adding")
+
+    def test_any_failure_to_read_the_base_leaves_a_verdict_owed(self):
+        """#612 (review): only `BasePolicyUnreadable` left the verdict owed. `git` that cannot start raised an
+        `OSError`, which fell through to the head's surface, and a head that emptied its own read as owing nothing.
+
+        mutation: catch only `BasePolicyUnreadable` around the read of the base
+        """
+        import importlib.util
+        from unittest import mock
+        self.commit_engine()
+        self.pull_request(self.change())
+        spec = importlib.util.spec_from_file_location("repair_packet_under_test",
+                                                      os.path.join(self.out, "tools", "repair-packet.py"))
+        tool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(tool)
+        pull = {"files": [{"path": "README.md", "changeType": "MODIFIED"}],
+                "baseRefOid": git(self.out, "rev-parse", "main"), "headRefOid": "a" * 40, "body": ""}
+        self.assertEqual(tool.owed_review(pull, [])[0], False, "a readable base, and a document: nothing is owed")
+        with mock.patch.object(tool.subprocess, "run", side_effect=OSError("no git")):
+            self.assertEqual(tool.owed_review(pull, []), (True, "semantic-implementation"))
+
+    def test_a_base_that_is_not_the_ordinary_one_leaves_a_verdict_owed(self):
+        """#612 (review): the base's surface is used when it held one policy, at the head's path, with no link on the
+        way; a base with another policy, one that moved, or a link above it owes a verdict, as the gate says.
+
+        mutation: use the base's policy whenever it is found
+        """
+        import importlib.util
+        self.commit_engine()
+        self.pull_request(self.change())
+        spec = importlib.util.spec_from_file_location("repair_packet_basis", os.path.join(self.out, "tools",
+                                                                                          "repair-packet.py"))
+        tool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(tool)
+        pull = {"files": [{"path": "README.md", "changeType": "MODIFIED"}], "headRefOid": "a" * 40, "body": ""}
+        ordinary = git(self.out, "rev-parse", "main")
+        self.assertEqual(tool.owed_review({**pull, "baseRefOid": ordinary}, [])[0], False)
+        git(self.out, "checkout", "-q", "main")
+        os.makedirs(os.path.join(self.out, "other", ".github"))
+        with open(os.path.join(self.out, "other", ".github", "agent-policy.json"), "w", encoding="utf-8") as handle:
+            handle.write("{}")
+        git(self.out, "add", "-A")
+        git(self.out, "commit", "-qm", "another policy")
+        self.assertEqual(tool.owed_review({**pull, "baseRefOid": git(self.out, "rev-parse", "HEAD")}, []),
+                         (True, "semantic-implementation"), "the base held two policies")
+        git(self.out, "reset", "-q", "--hard", ordinary)
+        git(self.out, "mv", ".github", "config")
+        os.symlink("config", os.path.join(self.out, ".github"))
+        git(self.out, "add", "-A")
+        git(self.out, "commit", "-qm", "the policy's directory is a link")
+        self.assertEqual(tool.owed_review({**pull, "baseRefOid": git(self.out, "rev-parse", "HEAD")}, []),
+                         (True, "semantic-implementation"), "a link above the policy")
+
     def test_the_semantic_verdict_is_judged_in_the_engine_s_terms_when_it_is_embedded(self):
         """GitHub reports `engine/overlay/x.json`; the policy's surface says `overlay/**` (0069, #535).
 
@@ -2522,9 +2626,18 @@ class TestTheRepairPacket(RailsInAGitEngine):
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(record, handle, indent=2)
         git(self.out, "commit", "-qam", "embed the engine")
+        # The base of a pull request on an embedded engine keeps its policy where the head does (#612): this
+        # stand-in has the one git repository, so the base is a commit that holds the policy under `engine/`.
+        git(self.out, "checkout", "-qb", "base-embedded")
+        os.makedirs(os.path.join(self.out, "engine", ".github"))
+        git(self.out, "mv", ".github/agent-policy.json", "engine/.github/agent-policy.json")
+        git(self.out, "commit", "-qm", "the policy under the engine")
+        base = git(self.out, "rev-parse", "HEAD")
+        git(self.out, "checkout", "-q", "main")
         head = self.change()
         self.pull_request(head)
         document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["baseRefOid"] = base
         document["pr"]["5"]["files"] = [{"path": "engine/overlay/altitude-limit.json"}]
         self.fixture(document)
         self.assertIn("a semantic verdict at the new head", self.rendered(),
@@ -3664,6 +3777,7 @@ class TestAnEmbeddedEnginesPacketCarriesItsDiff(RailsInAGitEngine):
         self.fixture({
             "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
                          "headRefOid": head, "headRefName": "issue-27", "baseRefName": "main",
+                         "baseRefOid": git(self.repo, "rev-parse", "main"),
                          "files": [{"path": "engine/overlay/altitude-limit.json"},
                                    {"path": f"engine/src/{NAME}/Rules/AltitudeLimit.cs"},
                                    {"path": "README.md"}],
@@ -3721,6 +3835,96 @@ class TestAnEmbeddedEnginesPacketCarriesItsDiff(RailsInAGitEngine):
         text = self.cut("semantic")
         self.assertIn("entry-altitude-limit.md", text)
         self.assertIn("entry-speed-limit.md", text)
+
+
+    # --- #612 (review): the base policy of an embedded engine is read where git keeps it ------------------
+    #
+    # `git` runs in `engine/`, and `ls-tree` takes a path relative to where it runs, so asking for
+    # `engine/.github/agent-policy.json` there searched `engine/engine/` and succeeded with nothing: a
+    # policy the base never had, and a head that emptied its own surface was judged by none.
+
+    def emptied(self, policy_file="engine/.github/agent-policy.json"):
+        """The change, plus the head's policy emptied; the base (`main`) keeps the full one."""
+        head = self.change()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["review"]["semanticPaths"] = []
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "empty the surface")
+        head = subprocess.run(["git", "-C", self.repo, "rev-parse", "HEAD"], capture_output=True, text=True,
+                              check=True).stdout.strip()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"].append({"path": policy_file})
+        self.fixture(document)
+        return head
+
+    def packet(self, role):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "review-packet.py"), "5",
+                               "--base", "main", "--package-map", os.path.join(PART107, "corpus-map.json"),
+                               "--role", role, "--stdout"],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment())
+
+    def test_the_base_policy_of_an_embedded_engine_is_found(self):
+        # mutation: ask `ls-tree` for the repository-relative path from the engine's directory
+        self.commit_engine()
+        self.emptied()
+        done = self.packet("semantic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("`semantic-implementation`", done.stdout)
+        self.assertIn(f"engine/src/{NAME}/Rules/AltitudeLimit.cs", done.stdout)
+        # By the base's surface, found: not by the rule that a relocation owes review, which would also say so.
+        self.assertNotIn("the base commit held", done.stdout)
+        self.assertNotIn("what it was and what it became", done.stdout)
+
+    def test_a_link_above_the_base_policy_owes_review_and_is_not_a_new_engine(self):
+        # #612 (review): `engine/.github` a link to `config` left a listing with no policy named
+        # `.github/agent-policy.json`, which read as a new engine and judged an emptied head by nothing.
+        # mutation: look for a link at the policy file only
+        self.commit_engine()
+        git(self.repo, "mv", "engine/.github", "engine/config")
+        os.symlink("config", os.path.join(self.out, ".github"))
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "the policy's directory is a link")
+        self.emptied(policy_file="engine/config/agent-policy.json")
+        done = self.packet("semantic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("`semantic-implementation`", done.stdout)
+        self.assertIn("`engine/.github` is a symbolic link at the base commit", done.stdout)
+
+    def test_a_base_that_held_another_policy_owes_review(self):
+        # mutation: use the base's surface whenever it has a policy at the head's path
+        self.commit_engine()
+        self.emptied()
+        git(self.repo, "checkout", "-q", "main")
+        os.makedirs(os.path.join(self.repo, "other", ".github"))
+        with open(os.path.join(self.repo, "other", ".github", "agent-policy.json"), "w", encoding="utf-8") as handle:
+            handle.write("{}")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "another engine in the repository")
+        base = subprocess.run(["git", "-C", self.repo, "rev-parse", "HEAD"], capture_output=True, text=True,
+                              check=True).stdout.strip()
+        git(self.repo, "checkout", "-q", "issue-27")
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["baseRefOid"] = base
+        self.fixture(document)
+        done = self.packet("semantic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("the base commit held 2 policies", done.stdout)
+
+    def test_a_pull_request_with_no_base_commit_is_refused(self):
+        # #612 (review): `--base` named a local `origin/<branch>` that was used when GitHub gave no base, and that is
+        # whatever the checkout last fetched. mutation: fall back to the local ref
+        self.commit_engine()
+        self.emptied()
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        del document["pr"]["5"]["baseRefOid"]
+        self.fixture(document)
+        done = self.packet("semantic")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("names no base commit", done.stderr)
 
 
 class TestPrPolicy(RailsInAGitEngine):
@@ -4811,7 +5015,9 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         self.gh_with_statuses()
         files = files if files is not None else [{"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}]
         self.fixture({
-            "pr": {"5": {"number": 5, "headRefOid": head, "state": "OPEN",
+            # `baseRefOid` is what GitHub always gives; a pull request without one has no base to read the
+            # surface it began on from, and the gate cannot decide it (#612).
+            "pr": {"5": {"number": 5, "headRefOid": head, "baseRefOid": "d" * 40, "state": "OPEN",
                          "files": files,
                          "changedFiles": len(files) if changed_files is None else changed_files,
                          "closingIssuesReferences": [{"number": 27}]}},
@@ -5209,6 +5415,19 @@ if argv[0] == "api":
         for row in rows:
             print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified") + "\t" + (row.get("previous") or ""))
         raise SystemExit(0)
+    if "/git/trees/" in endpoint:
+        # The base commit's files (see the other stand-in for `gh`): the truncation flag, then `mode<TAB>path`.
+        ref = endpoint.split("/git/trees/", 1)[1].split("?")[0]
+        if ref in (fixture.get("unknownRefs") or []):
+            sys.stderr.write("gh: Not Found (HTTP 404)\\n")
+            sys.exit(1)
+        if "tree" in (fixture.get("contentsUnreadable") or []):
+            sys.stderr.write("gh: HTTP 502: Bad Gateway\\n")
+            sys.exit(1)
+        print("true" if fixture.get("treeTruncated") else "false")
+        for path in sorted((fixture.get("contents") or {}).get(ref) or {}):
+            print(("120000" if path in (fixture.get("contentsSymlinks") or []) else "100644") + "\t" + path)
+        raise SystemExit(0)
     if "/contents/" in endpoint:
         # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base commit,
         # base64 as GitHub returns it, which the review class reads for the files it compares (0076).
@@ -5217,8 +5436,16 @@ if argv[0] == "api":
         route, _, query = endpoint.split("#", 1)[0].partition("?")
         wanted, ref = urllib.parse.unquote(route.split("/contents/", 1)[1]), query.split("ref=")[-1]
         body = ((fixture.get("contents") or {}).get(ref) or {}).get(wanted)
+        if ref in (fixture.get("unknownRefs") or []):
+            sys.stderr.write(f"gh: No commit found for the ref {ref} (HTTP 404)\\n")
+            sys.exit(1)
+        if wanted in (fixture.get("contentsUnreadable") or []):
+            # GitHub is there and the answer is not: not a file that does not exist.
+            sys.stderr.write("gh: HTTP 502: Bad Gateway\\n")
+            sys.exit(1)
         if body is None:
-            sys.stderr.write(f"no {wanted} at {ref}\\n")
+            # What `gh api` says for a path that is not at that ref.
+            sys.stderr.write("gh: Not Found (HTTP 404)\\n")
             sys.exit(1)
         print(base64.b64encode(body.encode("utf-8")).decode("ascii"))
         raise SystemExit(0)

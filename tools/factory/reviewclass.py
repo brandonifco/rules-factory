@@ -99,16 +99,133 @@ def on_surface(path, patterns):
     return False
 
 
+class _Absent:
+    """The base policy is not there: the pull request adds it. An answer, and not the lack of one."""
+
+    def __repr__(self):
+        return "ABSENT"
+
+
+#: What a rail passes for `base` when it listed the base commit's files and found no policy in any of them.
+#: Anything else a rail could not read is `None`, which is not this (#612).
+ABSENT = _Absent()
+
+
+class BasePolicyUnreadable(Exception):
+    """The base commit's policy could not be read, so the surface the diff began on is unknown.
+
+    A rail that meets this cannot say what the diff owes, and says so (the conformance gate and the pull
+    request policy are undecidable; the review packet refuses). It does not fall back to the head's policy
+    alone: the head is the pull request's own file, and a diff that empties `semanticPaths` while the read
+    of the base fails would otherwise judge itself by a surface it removed (#612).
+    """
+
+
+def base_surface(raw):
+    """The `review.semanticPaths` the base commit's policy lists, `ABSENT` where it has none, or it raises.
+
+    `raw` is the policy's bytes at the base commit, `ABSENT` where the rail learned that the commit holds
+    no policy, or `None` where it could not find out (the API failed, the commit is not here, the file
+    could not be read). A policy that is there but is not JSON, is not an object, has a `review` that is
+    not one, a `semanticPaths` that is not a list, or an entry of it that is not a non-empty string says
+    nothing about its surface that can be trusted, and is unreadable too: an entry that is dropped is a
+    path that was on the surface and is not. A policy with no `semanticPaths` listed an empty surface.
+    """
+    if raw is ABSENT:
+        return ABSENT
+    if raw is None:
+        raise BasePolicyUnreadable("the base commit's policy could not be read")
+    try:
+        document = json.loads(raw.decode("utf-8"))
+    except (AttributeError, UnicodeDecodeError, ValueError):
+        raise BasePolicyUnreadable("the base commit's policy is not JSON")
+    # A field that is not there lists nothing. One that is there and is not what it should be (a null included)
+    # says nothing that can be trusted: reading it as empty is how a surface is dropped without anyone removing it.
+    if not isinstance(document, dict):
+        raise BasePolicyUnreadable("the base commit's policy is not an object")
+    review = document.get("review", {})
+    if not isinstance(review, dict):
+        raise BasePolicyUnreadable("the base commit's policy has a `review` that is not an object")
+    listed = review.get("semanticPaths", [])
+    if not isinstance(listed, list):
+        raise BasePolicyUnreadable("the base commit's policy does not list its semantic surface as a list")
+    if any(not isinstance(entry, str) or not entry for entry in listed):
+        raise BasePolicyUnreadable("the base commit's policy lists a semantic path that is not a pattern")
+    return list(listed)
+
+
+#: Where a policy lives in an engine, relative to the engine.
+POLICY_PATH = ".github/agent-policy.json"
+SYMLINK_MODE = "120000"
+GITLINK_MODE = "160000"
+
+
+def base_basis(blobs, head_path, files):
+    """`(the base policy to read or None, why the change owes a semantic review or None)`; or it raises.
+
+    The base commit's surface is used in one case, the ordinary one, and every other case is owed a
+    semantic review (#612). Carrying a surface across a relocation kept opening cases: a handler renamed out of
+    the old engine, a destination policy that is empty, a link that hides the policy so that the listing held
+    none. More review is the safe error, and a relocation is rare.
+
+    `blobs` is every file of the base commit as `(mode, repository-relative path)`, or None where it could
+    not be listed whole; `head_path` is where the head holds the policy; `files` is GitHub's list of the
+    changed files, a rename carrying the path it came from. The ordinary case is all of:
+      * the base held exactly one policy, at `head_path`, and it is a file and not a link or a submodule;
+      * or the base held none, and its listing holds no symbolic link or submodule anywhere that a policy could be
+        behind (none at all is then a new engine: the head's stands alone);
+      * no rename or copy crosses the engine's directory, in or out.
+    """
+    if blobs is None:
+        raise BasePolicyUnreadable("the base commit's files could not be listed")
+    engine = head_path[:-len(POLICY_PATH)].rstrip("/") if head_path.endswith(POLICY_PATH) else ""
+
+    def inside(path):
+        return not engine or path == engine or path.startswith(engine + "/")
+
+    for item in files or []:
+        before = item.get("previous")
+        if before and item.get("changeType") in ("RENAMED", "COPIED") and inside(item["path"]) != inside(before):
+            return None, (f"`{before}` was {'renamed' if item['changeType'] == 'RENAMED' else 'copied'} to "
+                          f"`{item['path']}`, across the engine's directory: what it was and what it became are "
+                          f"judged by two different policies")
+    held = [(mode, path) for mode, path in blobs if path == POLICY_PATH or path.endswith("/" + POLICY_PATH)]
+    if not held:
+        # No policy of the literal name is a new engine only when nothing in the listing could be hiding one: a
+        # link or submodule anywhere (`.github -> config` at the root, the policy at `config/agent-policy.json`) is
+        # on no path the head knows and is named as no policy, and the head would stand alone against a surface it
+        # emptied. A link above the policy at the head's path is this case too, since nothing is listed below a link.
+        # Any is owed review; it is rare, and more review is the safe error.
+        for mode, path in blobs:
+            if mode in (SYMLINK_MODE, GITLINK_MODE):
+                return None, (f"`{path}` is {'a symbolic link' if mode == SYMLINK_MODE else 'a submodule'} at the base "
+                              f"commit and the base holds no policy of the usual name, so a policy may be behind it")
+        return None, None
+    if [path for _, path in held] == [head_path]:
+        if held[0][0] in (SYMLINK_MODE, GITLINK_MODE):
+            return None, (f"`{head_path}` is {'a symbolic link' if held[0][0] == SYMLINK_MODE else 'a submodule'} at the "
+                          f"base commit, so what it holds is not what the listing shows")
+        return head_path, None
+    where = ", ".join(f"`{p}`" for _, p in held)
+    return None, (f"the base commit held {len(held)} polic{'y' if len(held) == 1 else 'ies'} ({where}) and the head holds "
+                  f"one at `{head_path}`: the engine moved, or there is more than one")
+
+
 def surface_patterns(head, base):
     """The semantic surface a diff is judged by: every pattern the head's policy lists and every one the base's did.
 
     The head's policy is the pull request's own file, and a diff that empties `semanticPaths` while it
     changes a handler would otherwise judge itself by a surface it removed. A pattern that was on the
-    surface when the change began stays on it for the change that removes it. `base` is None where the
-    base policy cannot be read (a policy being added), and then the head's stands alone.
+    surface when the change began stays on it for the change that removes it.
+
+    `base` is what `base_surface` returns: the patterns the base policy listed, or `ABSENT` where the pull
+    request adds the policy and the head's stands alone. Anything else, and `None` above all, is a base
+    that could not be read, and raises `BasePolicyUnreadable`: an unreadable policy is not a new one (#612).
     """
+    if base is not ABSENT and not isinstance(base, list):
+        raise BasePolicyUnreadable("the base commit's policy could not be read")
     out = []
-    for patterns in (head, base):
+    for patterns in (head, [] if base is ABSENT else base):
         for pattern in patterns or []:
             if isinstance(pattern, str) and pattern not in out:
                 out.append(pattern)
@@ -450,7 +567,7 @@ def regeneration(changed, read, fclass):
 # --- the class of a diff -----------------------------------------------------------------------
 
 
-def classify(changed, patterns, *, read, fclass):
+def classify(changed, patterns, *, read, fclass, owed=None):
     """The review class of a diff, computed. `changed` maps engine-relative path -> change type.
 
     `read(path, side)` returns the bytes at `"base"` or `"head"`, or None; `fclass` is
@@ -459,6 +576,9 @@ def classify(changed, patterns, *, read, fclass):
     the class of every `paths`, the `decisionRecords` among them (what a ruling review is owed on if
     the diff is, or is claimed to be, a ruling), the `reasons`,
     and the `regeneration` facts when that is what made it inert.
+
+    `owed` is a reason the change owes a semantic review whatever its paths are (a relocation, #612): then
+    every changed path is on the surface, the class is `semantic-implementation`, and the reason leads.
     """
     paths, reasons, compared = {}, [], [0]
     for path in sorted(changed):
@@ -495,6 +615,9 @@ def classify(changed, patterns, *, read, fclass):
             reasons.append(f"`{path}` ({cls}): {why}")
     if regen:
         reasons.extend(regen)
+    if owed:
+        computed, surface = SEMANTIC_IMPLEMENTATION, sorted(changed)
+        reasons.insert(0, owed)
     return {"class": computed, "onSurface": surface,
             "semanticFiles": surface if computed in SEMANTIC else [],
             "paths": {p: cls if cls != DERIVED else GENERATED_OR_PROVENANCE for p, (cls, _) in paths.items()},
