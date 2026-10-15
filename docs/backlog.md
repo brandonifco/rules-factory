@@ -262,7 +262,7 @@ transaction.
 
 | Label | What belongs in it |
 |---|---|
-| `review10-p1` | **A claim narrowed.** An unreadable base policy reads as a new one in the review class (#612); a `//` comment inside an interpolation hole ends only at LF (#613); `trace --html` can write elsewhere in the engine's repository, which the docs now say (#614); and `record-verdict.py` keeps an obligation set of its own beside `reviewclass.OWES` (#615). |
+| `review10-p1` | **A claim narrowed.** An unreadable base policy reads as a new one in the review class (#612, since fixed: an unreadable base is undecidable and only a policy the base commit lacks is new); a `//` comment inside an interpolation hole ends only at LF (#613); `trace --html` can write elsewhere in the engine's repository, which the docs now say (#614); and `record-verdict.py` keeps an obligation set of its own beside `reviewclass.OWES` (#615). |
 | `review10-p2` | **A reading tool saying slightly more than it established.** The HTML counts every test row as named (#616); `topology.agrees` carries no evidence class (#617). |
 
 #614 and #616 were fixed, because each is a claim the observability work makes itself and the same
