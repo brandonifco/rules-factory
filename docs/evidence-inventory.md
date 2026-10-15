@@ -2,7 +2,7 @@
 
 `examples/` is this repository's evidence: five corpora, nine maps, the transcripts of blind
 second mappings, trial reports, independent verdicts, and the results of the injection, collapse
-and validator-attack measurements: <!-- derived:evidence-totals -->241 tracked files, 15.9 MB, out of 22.1 MB tracked in all<!-- /derived:evidence-totals -->.
+and validator-attack measurements: <!-- derived:evidence-totals -->241 tracked files, 15.9 MB, out of 22.2 MB tracked in all<!-- /derived:evidence-totals -->.
 Those figures are written by `check-evidence.py --measure` and held to the lock by the gate, the way
 the commit named under *By trial* is
 ([#439](https://github.com/brandonifco/rules-factory/issues/439)): a count typed here that the
@@ -68,11 +68,11 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `ab99eb7`, over a gate run that failed no step (`measuredOver` in the lock says so,
+Measured at `94656f4`, over a gate run that failed no step (`measuredOver` in the lock says so,
 and `--measure` refuses a run with a failing step unless it is told to record that it was
-partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)). It names a commit
-`main` holds rather than the branch commit `--measure` would otherwise have recorded, because a
-squash merge destroys the second and #404's check is then right to refuse the lock
+partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)). It is the branch commit
+`--measure` recorded. A squash merge destroys a branch commit, and #404's check is then right to
+refuse the lock, so it is re-pointed at a commit `main` holds before the merge
 ([#426](https://github.com/brandonifco/rules-factory/issues/426)):
 
 | directory | active | release | archived |
@@ -109,12 +109,15 @@ only in part. Trial 9's `first-map.json` is held by `build-map-c.py --check`, tr
 `staged-inputs.json` is re-hashed by `mapper stage --verify`, and four trials' `results.json` are
 read by `check-map-review.py`. The second mapper's own `blind-map.json`, the `build.py` that
 produced it and the `compare.py` that compared the two are read by nothing for `srd-52-combat`,
-`tax-121-principal-residence` and `blind-mapping-trial`'s second run. **Two artifacts alternate
-between measurements** — `blind-mapping-trial/blind-map.json` and
-`acceptance-4-5/check-provenance.sh` — which
-[#408](https://github.com/brandonifco/rules-factory/issues/408) measured and closed; a role that
-flips is a fact about the reader that opened it, not about the bytes, and the figures below are
-one measurement rather than a constant.
+`tax-121-principal-residence` and `blind-mapping-trial`'s second run. Two of them,
+`blind-mapping-trial/blind-map.json` and `acceptance-4-5/check-provenance.sh`, used to trade
+`active` and `archived` at every measurement
+([#408](https://github.com/brandonifco/rules-factory/issues/408),
+[#663](https://github.com/brandonifco/rules-factory/issues/663)): a fetch test opened "the first
+`archived` artifact in the lock", so the lock being replaced chose which artifact the measurement
+then found read. It opens a stand-in of its own now, and a test holds what the lock's tests open
+to the same set whatever roles the lock records. Three consecutive measurements of one tree give
+one role table.
 
 **`archived` does not mean disposable.** It means nothing reads the bytes. Whether that is because
 an artifact is spare or because a check is missing is a question for a person. Seven of the

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "ab99eb791c9d0ecdfe69831ed0cefbf880508841",
+  "measuredAt": "94656f45c1d929fe2508e4428a2f640fe4569aec",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,8 +17,8 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 561,
-    "trackedBytes": 23207788
+    "trackedFiles": 565,
+    "trackedBytes": 23258532
   },
   "artifacts": [
     {
@@ -45,10 +45,8 @@
       "path": "examples/acceptance-4-5/check-provenance.sh",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e",
       "bytes": 2248,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
