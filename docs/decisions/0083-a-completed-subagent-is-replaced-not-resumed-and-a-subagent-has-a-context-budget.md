@@ -96,6 +96,7 @@ them is argued from the record and not from this paragraph. The guard has a `POL
 | The orchestrator does not paste a transcript into the next brief | **Advisory** | `AGENTS.md` §4; no hook sees a brief's content |
 | The checkpoint note at 210,000 tokens | **Advisory** | `additionalContext`; the agent may ignore it |
 | A message by a name the ledger never saw launched (a teammate, another session, an agent launched before the guard was wired) | **Not covered**: allowed, and caught only after the fact by the backstop | |
+| A subagent that returns while background work of its own is still running is woken by the runtime when that work finishes, without any `SendMessage` | **Not covered**: no tool call to refuse. Observed on 2026-10-15 while building this change: the implementer of #677 woke three times after returning, re-sent its report and changed nothing. A brief tells an agent to finish or stop its background work before it returns (advisory) | |
 | Hooks disabled by the user (`disableAllHooks`), user-level settings | **Not covered**; `check-settings` reports `disableAllHooks` in the project file only | |
 | The main session's own context | **Not covered**: `agent_id` is absent there, so no budget applies | |
 | A transcript that is missing or in an unrecognised layout | **No budget verdict**: the guard neither warns nor stops | |
