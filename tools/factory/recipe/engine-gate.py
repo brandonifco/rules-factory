@@ -857,12 +857,13 @@ def _defined(result, definitions):
 def _identified(found):
     """(class, short class, method) of a Definition, all from one canonical string.
 
-    Real dotnet (SDK 10.0.112, xunit 2.9.2, VSTest 17.11.1) writes the declaring type in
-    `TestMethod className` and the method in `name` -- a `DisplayName` or a theory row's arguments
-    are in `UnitTest name` and the result's `testName` only. A runner that puts a name with dots
-    in `TestMethod name` (`className="Shared" name="Proof.Named"`) is read the same way, because
-    the one string `className + "." + name` is split once, by `_split_class`: the class a test is
-    stored under and the class a mapped name is looked up under cannot come from different splits.
+    Real dotnet (SDK 10.0.112, xunit 2.9.2, VSTest 17.11.1) usually writes the declaring type in
+    `TestMethod className` and the method in `name`, but VSTest's converter splits the fully
+    qualified name at the *display name* when the display name is a suffix of it: `Shared.Proof.Named`
+    with `[Fact(DisplayName = "Proof.Named")]` is `className="Shared" name="Proof.Named"`. So neither
+    field is the class or the method on its own. The one string `className + "." + name` is the fully
+    qualified name in every case, and it is split once, by `_split_class`: the class a test is stored
+    under and the class a mapped name is looked up under cannot come from different splits.
     """
     canonical = f"{found.class_name}.{found.method}" if found.class_name else found.method
     class_name, method = _split_class(canonical)

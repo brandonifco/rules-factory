@@ -1327,15 +1327,39 @@ class TestImplementedNamesItsTests(GateCase):
         self.assertIn("'Proof.Named' executed under net8.0 and did not execute under net10.0", output)
 
     # What real dotnet writes (SDK 10.0.112, xunit 2.9.2, Microsoft.NET.Test.Sdk 17.11.1, read from a
-    # TRX it produced): `[Fact(DisplayName = "Proof.Named")] Shared.Proof.Rule.Named` is
-    #   <UnitTest name="Proof.Named" ...><TestMethod className="Shared.Proof.Rule" name="Named" />
-    # and a theory row `Param(1.25)` is name="Shared.Proof.Rule.Param(value: 1.25)" over
-    # className="Shared.Proof.Rule" name="Param". The display name is in `UnitTest name` and the
-    # result's `testName` only; `TestMethod` is always the declaring type and the method.
+    # TRX it produced), for `class Shared.Proof` and its methods Named, Named2, Named3, Named4, Plain:
+    #   DisplayName "Proof.Named"         -> UnitTest name="Proof.Named"
+    #                                        TestMethod className="Shared"       name="Proof.Named"  (suffix split)
+    #   DisplayName "Named2"              -> UnitTest name="Named2"
+    #                                        TestMethod className="Shared.Proof" name="Named2"
+    #   DisplayName "Shared.Proof.Named3" -> TestMethod className="Shared.Proof" name="Named3"
+    #   DisplayName "Unrelated.Name"      -> TestMethod className="Shared.Proof" name="Named4"
+    #   (none)                            -> TestMethod className="Shared.Proof" name="Plain"
+    # and a theory row Param(1.25) is name="Shared.Proof.Rule.Param(value: 1.25)" over className=
+    # "Shared.Proof.Rule" name="Param". VSTest splits at the display name when it is a suffix of the
+    # fully qualified name, so className + "." + name is the one string that is always the full name.
+
+    def test_every_shape_real_dotnet_writes_for_a_display_name_is_found_by_class_dot_method(self):
+        """The five tests of the probe above, executed in both frameworks, each named as the map
+        names it (`Class.Method`, class short): all found, whichever field the dots landed in."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "real-shapes")
+        shapes = [("Shared", "Proof.Named", "Proof.Named"), ("Shared.Proof", "Named2", "Named2"),
+                  ("Shared.Proof", "Named3", "Shared.Proof.Named3"), ("Shared.Proof", "Named4", "Unrelated.Name"),
+                  ("Shared.Proof", "Plain", None)]
+        for framework in ("net8.0", "net10.0"):
+            write_raw_trx(os.path.join(results, f"{framework}.trx"),
+                          [(f"t{i}", cls, method, f"/engine/tests/a/bin/debug/{framework}/a.tests.dll")
+                           for i, (cls, method, _) in enumerate(shapes)],
+                          [(f"t{i}", "Passed", None) for i in range(len(shapes))], total=len(shapes), executed=len(shapes),
+                          display={f"t{i}": shown for i, (_, _, shown) in enumerate(shapes) if shown})
+        for name in ("Proof.Named", "Proof.Named2", "Proof.Named3", "Proof.Named4", "Proof.Plain"):
+            code, output = self.named(engine, self.implement(engine, name), results)
+            self.assertEqual(code, 0, f"{name}: {output}")
 
     def test_a_display_name_does_not_change_the_class_a_test_belongs_to(self):
-        """The shape xunit 2.9.2 writes: the declaring type is in `className`, the method in `name`,
-        and the display name nowhere that is read. One project, both frameworks, mapped `Rule.Named`."""
+        """A display name that is not a suffix of the full name leaves `className`/`name` as declared
+        and the display name in `UnitTest name` only. One project, both frameworks, mapped `Rule.Named`."""
         engine = self.engine()
         results = os.path.join(self.tmp, "display-name")
         for framework in ("net8.0", "net10.0"):
@@ -1368,11 +1392,12 @@ class TestImplementedNamesItsTests(GateCase):
         self.assertEqual(code, 0, output)
 
     def test_a_name_is_one_canonical_string_whichever_field_carries_the_dots(self):
-        """Codex review 3 of #664. Real dotnet puts the declaring type in `className`; a runner that
-        puts a display name with dots in `TestMethod name` (`className="Shared" name="Proof.Named"`)
-        is read the same way, from `className + "." + name`, so the key a test is stored under and the
-        key it is looked up under cannot be built from different splits. Two projects, one framework
-        each: the class is `Shared.Proof` in both, and a name mapped `Proof.Named` is ambiguous."""
+        """Codex review 3 of #664, reproduced with real dotnet. VSTest splits a test's full name at its
+        display name when that is a suffix of it, so `Shared.Proof.Named` with `DisplayName =
+        "Proof.Named"` is `className="Shared" name="Proof.Named"`. The test is read from
+        `className + "." + name`, so the key it is stored under and the key it is looked up under
+        cannot be built from different splits. Two projects, one framework each: the class is
+        `Shared.Proof` in both, and a name mapped `Proof.Named` is ambiguous."""
         engine = self.engine()
         results = os.path.join(self.tmp, "dotted-method-name")
         for project, framework in (("a", "net8.0"), ("b", "net10.0")):
