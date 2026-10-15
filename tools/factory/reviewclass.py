@@ -171,8 +171,9 @@ def base_basis(blobs, head_path, files):
     `blobs` is every file of the base commit as `(mode, repository-relative path)`, or None where it could
     not be listed whole; `head_path` is where the head holds the policy; `files` is GitHub's list of the
     changed files, a rename carrying the path it came from. The ordinary case is all of:
-      * the base held exactly one policy, at `head_path` (none at all is a new engine: the head's stands alone);
-      * nothing on the way to it is a symbolic link or a submodule, at any directory above it as well as the file;
+      * the base held exactly one policy, at `head_path`, and it is a file and not a link or a submodule;
+      * or the base held none, and its listing holds no symbolic link or submodule anywhere that a policy could be
+        behind (none at all is then a new engine: the head's stands alone);
       * no rename or copy crosses the engine's directory, in or out.
     """
     if blobs is None:
@@ -188,26 +189,24 @@ def base_basis(blobs, head_path, files):
             return None, (f"`{before}` was {'renamed' if item['changeType'] == 'RENAMED' else 'copied'} to "
                           f"`{item['path']}`, across the engine's directory: what it was and what it became are "
                           f"judged by two different policies")
-    parts = head_path.split("/")
-    way = {"/".join(parts[:i + 1]) for i in range(len(parts))}
-    for mode, path in blobs:
-        if mode in (SYMLINK_MODE, GITLINK_MODE) and path in way:
-            return None, (f"`{path}` is {'a symbolic link' if mode == SYMLINK_MODE else 'a submodule'} at the base "
-                          f"commit, on the way to the policy, so where the policy was is not what the listing shows")
-    held = [path for _, path in blobs if path == POLICY_PATH or path.endswith("/" + POLICY_PATH)]
+    held = [(mode, path) for mode, path in blobs if path == POLICY_PATH or path.endswith("/" + POLICY_PATH)]
     if not held:
         # No policy of the literal name is a new engine only when nothing in the listing could be hiding one: a
         # link or submodule anywhere (`.github -> config` at the root, the policy at `config/agent-policy.json`) is
-        # not on the head's path and not named as a policy, and the head would stand alone against a surface it
-        # emptied. Any is owed review; it is rare, and more review is the safe error.
+        # on no path the head knows and is named as no policy, and the head would stand alone against a surface it
+        # emptied. A link above the policy at the head's path is this case too, since nothing is listed below a link.
+        # Any is owed review; it is rare, and more review is the safe error.
         for mode, path in blobs:
             if mode in (SYMLINK_MODE, GITLINK_MODE):
                 return None, (f"`{path}` is {'a symbolic link' if mode == SYMLINK_MODE else 'a submodule'} at the base "
                               f"commit and the base holds no policy of the usual name, so a policy may be behind it")
         return None, None
-    if held == [head_path]:
+    if [path for _, path in held] == [head_path]:
+        if held[0][0] in (SYMLINK_MODE, GITLINK_MODE):
+            return None, (f"`{head_path}` is {'a symbolic link' if held[0][0] == SYMLINK_MODE else 'a submodule'} at the "
+                          f"base commit, so what it holds is not what the listing shows")
         return head_path, None
-    where = ", ".join(f"`{p}`" for p in held)
+    where = ", ".join(f"`{p}`" for _, p in held)
     return None, (f"the base commit held {len(held)} polic{'y' if len(held) == 1 else 'ies'} ({where}) and the head holds "
                   f"one at `{head_path}`: the engine moved, or there is more than one")
 

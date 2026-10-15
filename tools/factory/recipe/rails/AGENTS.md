@@ -502,11 +502,12 @@ decline that names why and cites where — that is the engine working, not the e
   request cannot narrow it for its own change. A base policy that cannot be read is not a new
   policy: the gate and `tools/pr-policy.py` are undecidable and `tools/review-packet.py` refuses,
   because the surface the change began on is unknown; only a base commit that holds no policy at
-  all lets the head's stand alone. The base's surface is used in the ordinary case only: the base
-  held exactly one policy, at the path the head holds one, with no symbolic link or submodule on
-  the way to it, and no rename or copy crosses the engine's directory. **Every other case owes a
-  semantic verdict** (an engine a pull request moves, a base with several policies, a link above
-  the policy, a rename in or out): carrying a surface across a relocation kept opening cases, more
+  all, and no symbolic link or submodule anywhere that a policy could be behind, lets the head's
+  stand alone. The base's surface is used in the ordinary case only: the base
+  held exactly one policy, at the path the head holds one, and it is a file, and no rename or copy
+  crosses the engine's directory. **Every other case owes a
+  semantic verdict** (an engine a pull request moves, a base with several policies, a link or
+  submodule in a base that holds no policy, a rename in or out): carrying a surface across a relocation kept opening cases, more
   review is the safe error, and a relocation is rare. A new decision record is `decision-record-only` and
   an edit to an existing one is a `semantic-ruling`, because a tool cannot tell a typo from a
   reversal, and a reviewer can; only line endings and trailing space are cosmetic, since in a
