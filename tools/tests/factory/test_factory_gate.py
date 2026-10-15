@@ -703,19 +703,22 @@ def write_trx(path, tests, assembly=f"{NAME}.Tests", framework="net8.0", counter
                      "  </ResultSummary>\n</TestRun>\n")
 
 
-def write_raw_trx(path, definitions, results, total, executed):
+def write_raw_trx(path, definitions, results, total, executed, display=None):
     """A TRX written result by result, for the shapes `write_trx` cannot say: a definition with no
     `storage`, a storage path of any shape, a result with `InnerResults`.
 
     `definitions` is [(test id, class name, method, storage or None[, execution id])]; `results`
     is a list of (test id, outcome, inner outcomes[, execution id]) -- the inner outcomes, when
-    given, are rows the writer synthesised beneath a parent result of that test id.
+    given, are rows the writer synthesised beneath a parent result of that test id. `display`
+    maps a test id to the `UnitTest name`: what the runner shows, which is not the declaring type
+    and method (xunit 2.9.2 writes a `DisplayName` or a theory row's arguments there).
     """
     units, rows = [], []
     for test_id, class_name, method, storage, *execution in definitions:
         place = f' storage="{storage}"' if storage is not None else ""
         bound = f'      <Execution id="{execution[0]}" />\n' if execution else ""
-        units.append(f'    <UnitTest name="{class_name}.{method}"{place} id="{test_id}">\n{bound}'
+        shown = (display or {}).get(test_id, f"{class_name}.{method}")
+        units.append(f'    <UnitTest name="{shown}"{place} id="{test_id}">\n{bound}'
                      f'      <TestMethod className="{class_name}" name="{method}" />\n    </UnitTest>')
     for test_id, outcome, inner, *execution in results:
         bound = f' executionId="{execution[0]}"' if execution else ""
@@ -1322,6 +1325,87 @@ class TestImplementedNamesItsTests(GateCase):
         code, output = self.named(engine, self.implement(engine, "Proof.Named"), results)
         self.assertEqual(code, 1, output)
         self.assertIn("'Proof.Named' executed under net8.0 and did not execute under net10.0", output)
+
+    # What real dotnet writes (SDK 10.0.112, xunit 2.9.2, Microsoft.NET.Test.Sdk 17.11.1, read from a
+    # TRX it produced): `[Fact(DisplayName = "Proof.Named")] Shared.Proof.Rule.Named` is
+    #   <UnitTest name="Proof.Named" ...><TestMethod className="Shared.Proof.Rule" name="Named" />
+    # and a theory row `Param(1.25)` is name="Shared.Proof.Rule.Param(value: 1.25)" over
+    # className="Shared.Proof.Rule" name="Param". The display name is in `UnitTest name` and the
+    # result's `testName` only; `TestMethod` is always the declaring type and the method.
+
+    def test_a_display_name_does_not_change_the_class_a_test_belongs_to(self):
+        """The shape xunit 2.9.2 writes: the declaring type is in `className`, the method in `name`,
+        and the display name nowhere that is read. One project, both frameworks, mapped `Rule.Named`."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "display-name")
+        for framework in ("net8.0", "net10.0"):
+            write_raw_trx(os.path.join(results, f"{framework}.trx"),
+                          [("t", "Shared.Proof.Rule", "Named", f"/engine/tests/a/bin/debug/{framework}/a.tests.dll")],
+                          [("t", "Passed", None)], total=1, executed=1, display={"t": "Proof.Named"})
+        code, output = self.named(engine, self.implement(engine, "Rule.Named"), results)
+        self.assertEqual(code, 0, output)
+
+    def test_a_display_name_does_not_hide_a_class_two_projects_share(self):
+        engine = self.engine()
+        results = os.path.join(self.tmp, "display-name-twin")
+        for project, framework in (("a", "net8.0"), ("b", "net10.0")):
+            write_raw_trx(os.path.join(results, f"{project}.trx"),
+                          [("t", "Shared.Proof.Rule", "Named", f"/engine/tests/{project}/bin/debug/{framework}/{project}.tests.dll")],
+                          [("t", "Passed", None)], total=1, executed=1, display={"t": "Proof.Named"})
+        code, output = self.named(engine, self.implement(engine, "Rule.Named"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("is ambiguous; class Rule is", output)
+
+    def test_a_theory_row_is_the_test_its_method_names(self):
+        engine = self.engine()
+        results = os.path.join(self.tmp, "theory")
+        for framework in ("net8.0", "net10.0"):
+            write_raw_trx(os.path.join(results, f"{framework}.trx"),
+                          [("t", "Shared.Proof.Rule", "Param", f"/engine/tests/a/bin/debug/{framework}/a.tests.dll")],
+                          [("t", "Passed", None)], total=1, executed=1,
+                          display={"t": "Shared.Proof.Rule.Param(value: 1.25)"})
+        code, output = self.named(engine, self.implement(engine, "Rule.Param"), results)
+        self.assertEqual(code, 0, output)
+
+    def test_a_name_is_one_canonical_string_whichever_field_carries_the_dots(self):
+        """Codex review 3 of #664. Real dotnet puts the declaring type in `className`; a runner that
+        puts a display name with dots in `TestMethod name` (`className="Shared" name="Proof.Named"`)
+        is read the same way, from `className + "." + name`, so the key a test is stored under and the
+        key it is looked up under cannot be built from different splits. Two projects, one framework
+        each: the class is `Shared.Proof` in both, and a name mapped `Proof.Named` is ambiguous."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "dotted-method-name")
+        for project, framework in (("a", "net8.0"), ("b", "net10.0")):
+            write_raw_trx(os.path.join(results, f"{project}.trx"),
+                          [("t", "Shared", "Proof.Named", f"/engine/tests/{project}/bin/debug/{framework}/{project}.tests.dll")],
+                          [("t", "Passed", None)], total=1, executed=1)
+        code, output = self.named(engine, self.implement(engine, "Proof.Named"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("is ambiguous; class Proof is", output)
+
+    def test_two_projects_cannot_combine_into_coverage_under_a_dotted_method_name(self):
+        """The reviewer's exact case: mapped `Shared.Proof.Named`, run under net8.0 by one project and
+        net10.0 by another. Stored under the class `Shared` and looked up under `Shared.Proof`, the
+        two never met and both frameworks counted as covered."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "dotted-method-name-combined")
+        for project, framework in (("a", "net8.0"), ("b", "net10.0")):
+            write_raw_trx(os.path.join(results, f"{project}.trx"),
+                          [("t", "Shared", "Proof.Named", f"/engine/tests/{project}/bin/debug/{framework}/{project}.tests.dll")],
+                          [("t", "Passed", None)], total=1, executed=1)
+        code, output = self.named(engine, self.implement(engine, "Shared.Proof.Named"), results)
+        self.assertEqual(code, 1, output)
+        self.assertNotIn("every one found and executed", output)
+
+    def test_a_dotted_method_name_is_still_one_test_in_one_project(self):
+        engine = self.engine()
+        results = os.path.join(self.tmp, "dotted-method-name-one")
+        for framework in ("net8.0", "net10.0"):
+            write_raw_trx(os.path.join(results, f"{framework}.trx"),
+                          [("t", "Shared", "Proof.Named", f"/engine/tests/a/bin/debug/{framework}/a.tests.dll")],
+                          [("t", "Passed", None)], total=1, executed=1)
+        code, output = self.named(engine, self.implement(engine, "Proof.Named"), results)
+        self.assertEqual(code, 0, output)
 
     def test_two_assemblies_with_one_file_name_are_two_assemblies(self):
         """Codex review 2 of #664: identity was the dll's file name, so `tests/A/.../common.tests.dll`

@@ -854,6 +854,21 @@ def _defined(result, definitions):
     return found[0] if len(found) == 1 else None
 
 
+def _identified(found):
+    """(class, short class, method) of a Definition, all from one canonical string.
+
+    Real dotnet (SDK 10.0.112, xunit 2.9.2, VSTest 17.11.1) writes the declaring type in
+    `TestMethod className` and the method in `name` -- a `DisplayName` or a theory row's arguments
+    are in `UnitTest name` and the result's `testName` only. A runner that puts a name with dots
+    in `TestMethod name` (`className="Shared" name="Proof.Named"`) is read the same way, because
+    the one string `className + "." + name` is split once, by `_split_class`: the class a test is
+    stored under and the class a mapped name is looked up under cannot come from different splits.
+    """
+    canonical = f"{found.class_name}.{found.method}" if found.class_name else found.method
+    class_name, method = _split_class(canonical)
+    return class_name, _split_class(class_name)[1], method
+
+
 def _split_class(name):
     """(namespace and class, member) of a name at its last dot **outside** any (), [] or <>.
 
@@ -992,14 +1007,14 @@ def named_tests(args):
         definitions = _definitions(root)
         names = {}
         for found in (d for listed in definitions[0].values() for d in listed):
-            short = _split_class(found.class_name)[1]
+            class_name, short, method = _identified(found)
             identity = _placed(found.storage, frameworks).identity
             # An assembly nobody can place is not a second assembly: it adds the class and no
             # identity, so a definition with no `storage` cannot make a class ambiguous.
-            classes.setdefault(short, {}).setdefault(found.class_name, set())
+            classes.setdefault(short, {}).setdefault(class_name, set())
             if identity:
-                classes[short][found.class_name].add(identity)
-            names[found] = f"{short}.{found.method}"
+                classes[short][class_name].add(identity)
+            names[found] = f"{short}.{method}"
         # Leaves only, as the matrix counts them (`_counted`): a result with `InnerResults` is a
         # parent the writer synthesised over the rows beneath it, and its outcome is not an execution.
         leaves = [r for r in root.iterfind(".//t:UnitTestResult", TRX_NS) if r.find("t:InnerResults", TRX_NS) is None]
