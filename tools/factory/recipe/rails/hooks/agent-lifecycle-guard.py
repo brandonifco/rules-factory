@@ -54,8 +54,13 @@ WHAT IT CANNOT SEE
   * The context budget reads the subagent's transcript tail. A transcript that is missing,
     unreadable, or in a layout this file does not recognise gives NO budget verdict: the guard
     cannot tell, so it neither warns nor stops. It never crashes the hook over it.
-  * A hard-bound Bash command is judged by its tokens, not run in a shell: this is accident
-    prevention for an agent that has been told to stop, not security.
+  * A hard-bound Bash command is judged by a quote-aware scan, not run in a shell: this is accident
+    prevention for an agent that has been told to stop, not security. The scan fails closed. Only
+    `git ...`, `cd ...` and the guard's `handoff`, joined by `&&` or `;`, are allowed; a newline, a
+    `#`, a backtick, a redirect, pipe, subshell, background job or any other operator outside quotes
+    refuses the whole command, and so does an unterminated quote. Inside double quotes `$(...)` is
+    not looked into, so a commit message may be a heredoc: a command substitution there is not
+    judged.
   * An internal error is reported on stderr and lets the call through. A guard that blocks every
     tool because of its own bug is worse than a missing one, and `check-settings`, the rail-bytes
     check and the tests are what notice a guard that is not what it should be.
@@ -63,17 +68,26 @@ WHAT IT CANNOT SEE
 THE LEDGER: one append-only JSONL file per session, in $RULES_AGENT_LEDGER_DIR, else
 ${XDG_STATE_HOME:-~/.local/state}/rules-agent-lifecycle/, named by the sanitised session_id.
 It is never inside a repository: it is the machine's record of what happened in a session, not a
-build input. Records: launched, stopped, checkpoint, denied, violation.
+build input. A location is used only when it is an absolute path and neither it nor any directory
+above it (symbolic links followed) holds a `.git`. A $RULES_AGENT_LEDGER_DIR that fails this is
+REFUSED with a message on stderr, before anything is created, and the default location is used
+instead; a relative $XDG_STATE_HOME is ignored as the XDG specification says. If the default fails
+too (HOME is itself a work tree), there is no ledger: nothing is written and nothing is read, and
+the PreToolUse SendMessage check fails closed as it does for any id it never saw launched, because
+with no ledger it cannot show an id is running. Records: launched, stopped, checkpoint, denied,
+violation.
 
 USAGE
   agent-lifecycle-guard.py                          hook mode: one JSON event on stdin
   agent-lifecycle-guard.py handoff [--base REF]     brief from committed state (default origin/main)
   agent-lifecycle-guard.py check-settings PATH      0 iff PATH wires this guard (REQUIRED_HOOKS)
-  agent-lifecycle-guard.py measure [--projects-dir DIR] [--match REGEX] [--ledger-dir DIR]
+  agent-lifecycle-guard.py measure [--projects-dir DIR] [--match REGEX] [--ledger-dir DIR] [--events]
+                                                    summary; --events adds one line per resume
 
 Hook answers: a PreToolUse refusal is `permissionDecision: deny` on stdout, exit 0. A PostToolUse
 correction is `decision: block`; a note is `additionalContext`. Malformed stdin is exit 2 with a
-message on stderr: this guard cannot tell what it was asked, so it does not guess.
+message on stderr: this guard cannot tell what it was asked, so it does not guess. That includes
+stdin the JSON parser cannot take at all (nested too deeply, not UTF-8).
 
 Standard library only; emitted to engines as `.claude/hooks/agent-lifecycle-guard.py`.
 """
@@ -112,9 +126,11 @@ REQUIRED_HOOKS = (
     ("PostToolUse", ALL_TOOLS, "record launches, detect a resume, issue the checkpoint note"),
     ("SubagentStop", None, "record that an agent completed"),
 )
-# Tool names a matcher is probed with to decide whether it covers "all tools".
-PROBE_TOOLS = ("Bash", "Read", "Edit", "Write", "Glob", "Grep", "Agent", "SendMessage",
-               "NotebookEdit", "WebFetch", "TodoWrite", "mcp__server__tool")
+# The matchers that mean every tool, whatever tools exist: absent, empty, `*`, `.*`. A matcher that
+# lists tools covers those and nothing else, however long the list, so it is not on this list.
+UNRESTRICTED_MATCHERS = (None, "", "*", ".*")
+# Interpreter options that leave the script argument the script (`-c` and `-m` would not).
+HARMLESS_INTERPRETER_FLAGS = ("-B", "-I", "-S", "-s", "-u", "-E")
 
 TAIL_START = 256 * 1024
 TAIL_MAX = 16 * 1024 * 1024
@@ -125,25 +141,55 @@ BRIEF_FILES = 80
 # --------------------------------------------------------------------------- the ledger
 
 
-def ledger_dir() -> Path:
+def inside_work_tree(path: Path) -> bool:
+    """True when `path`, or a directory above it once symbolic links are followed, holds a `.git`."""
+    try:
+        resolved = Path(os.path.realpath(path))
+    except (OSError, ValueError):
+        return True  # cannot tell where it is, so it is not shown to be outside
+    return any((directory / ".git").exists() for directory in (resolved, *resolved.parents))
+
+
+def usable_ledger_dir(path: Path) -> bool:
+    return path.is_absolute() and not inside_work_tree(path)
+
+
+def ledger_dir() -> Path | None:
+    """Where the ledger lives, or None when no location is usable (see THE LEDGER)."""
     override = os.environ.get("RULES_AGENT_LEDGER_DIR")
     if override:
-        return Path(override)
-    state = os.environ.get("XDG_STATE_HOME") or os.path.join(os.path.expanduser("~"), ".local", "state")
-    return Path(state) / "rules-agent-lifecycle"
+        if usable_ledger_dir(Path(override)):
+            return Path(override)
+        print(f"{GUARD_NAME}: RULES_AGENT_LEDGER_DIR={override!r} is relative or inside a git work tree, "
+              f"so it is refused and the default location is used; the ledger is never inside a repository.",
+              file=sys.stderr)
+    state = os.environ.get("XDG_STATE_HOME")
+    if not state or not os.path.isabs(state):
+        state = os.path.join(os.path.expanduser("~"), ".local", "state")
+    default = Path(state) / "rules-agent-lifecycle"
+    if usable_ledger_dir(default):
+        return default
+    print(f"{GUARD_NAME}: no usable ledger location ({default} is relative or inside a git work tree), so "
+          f"nothing is recorded.", file=sys.stderr)
+    return None
 
 
-def ledger_file(session_id: object) -> Path:
+def ledger_file(session_id: object) -> Path | None:
+    directory = ledger_dir()
+    if directory is None:
+        return None
     name = re.sub(r"[^A-Za-z0-9_.-]", "_", session_id if isinstance(session_id, str) else "")[:128]
     if not name.strip("."):
         name = "unknown-session"
-    return ledger_dir() / f"{name}.jsonl"
+    return directory / f"{name}.jsonl"
 
 
 def ledger_append(session_id: object, record: dict) -> bool:
     """Append one record; False when the ledger cannot be written (the hook goes on without it)."""
     try:
         path = ledger_file(session_id)
+        if path is None:
+            return False
         path.parent.mkdir(parents=True, exist_ok=True)
         line = (json.dumps(record, sort_keys=True) + "\n").encode("utf-8")
         descriptor = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
@@ -156,7 +202,9 @@ def ledger_append(session_id: object, record: dict) -> bool:
         return False
 
 
-def ledger_records(path: Path) -> list[dict]:
+def ledger_records(path: Path | None) -> list[dict]:
+    if path is None:
+        return []
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
@@ -363,45 +411,106 @@ def subagent_context(payload: dict) -> int | None:
     return latest_context(path) if path else None
 
 
+def command_segments(command: str) -> list[list[str]] | None:
+    """The simple commands of `command`, as lists of words, or None when it is not safe to read.
+
+    A scan of the characters with the quote state kept, so punctuation inside quotes is data. The
+    only separators are `&&` and `;`. A newline, `#` or backtick outside quotes, any other operator
+    (`| & < > ( )`) outside quotes, a backslash at the end or before a newline, and an unterminated quote all give None:
+    a reader that guesses where a comment ends, or what a newline separates, can be made to read a
+    second command as the arguments of the first.
+    """
+    segments: list[list[str]] = [[]]
+    word: list[str] | None = None
+    i, n = 0, len(command)
+
+    def flush() -> None:
+        nonlocal word
+        if word is not None:
+            segments[-1].append("".join(word))
+            word = None
+
+    while i < n:
+        char = command[i]
+        if char in " \t\r":
+            flush()
+            i += 1
+        elif char in "\n#`":
+            return None
+        elif char in "();<>|&":
+            if command.startswith("&&", i):
+                width = 2
+            elif char == ";":
+                width = 1
+            else:
+                return None
+            flush()
+            segments.append([])
+            i += width
+        elif char == "\\":
+            if i + 1 >= n or command[i + 1] == "\n":
+                return None
+            word = (word or []) + [command[i + 1]]
+            i += 2
+        elif char == "'":
+            end = command.find("'", i + 1)
+            if end < 0:
+                return None
+            word = (word or []) + [command[i + 1:end]]
+            i = end + 1
+        elif char == '"':
+            word = word or []
+            i += 1
+            while True:
+                if i >= n:
+                    return None
+                char = command[i]
+                if char == '"':
+                    i += 1
+                    break
+                if char == "\\" and i + 1 < n and command[i + 1] in '"\\$`\n':
+                    if command[i + 1] != "\n":
+                        word.append(command[i + 1])
+                    i += 2
+                else:
+                    word.append(char)
+                    i += 1
+        else:
+            word = (word or []) + [char]
+            i += 1
+    flush()
+    return [segment for segment in segments if segment]
+
+
+def invokes_guard(words: list[str], subcommand: str | None = None) -> bool:
+    """True for `python3 [harmless flags] <path>/agent-lifecycle-guard.py [subcommand]`, exactly."""
+    if not words or not re.fullmatch(r"python3?(\.\d+)?", os.path.basename(words[0])):
+        return False
+    index = 1
+    while index < len(words) and words[index] in HARMLESS_INTERPRETER_FLAGS:
+        index += 1
+    if index >= len(words) or os.path.basename(words[index]) != GUARD_NAME:
+        return False
+    rest = words[index + 1:]
+    return rest == [] if subcommand is None else rest[:1] == [subcommand]
+
+
 def allowed_at_hard_bound(tool: str, tool_input: dict) -> bool:
     """Past the hard bound only a git command, or this file's `handoff`, may run (POLICY 2).
 
-    The command is tokenised the way a shell would (quotes respected, so a commit message may hold
-    anything) and split on `&&`, `;` and newlines. Every piece must be `git ...`, `cd ...`, or
-    `python3 <path>/agent-lifecycle-guard.py handoff ...`. A pipe, redirect, subshell or background
-    job outside quotes refuses the whole command.
+    The command is read by `command_segments` (quotes respected, so a commit message may hold any
+    punctuation, and anything it cannot read refused). Every segment must be `git ...`, `cd ...`, or
+    `python3 <path>/agent-lifecycle-guard.py handoff ...`.
     """
     if tool != "Bash":
         return False
     command = tool_input.get("command")
     if not isinstance(command, str) or not command.strip():
         return False
-    try:
-        lexer = shlex.shlex(command, posix=True, punctuation_chars="();<>|&\n")
-        lexer.whitespace_split = True
-        lexer.whitespace = " \t\r"
-        tokens = list(lexer)
-    except ValueError:
-        return False
-    segments: list[list[str]] = [[]]
-    for token in tokens:
-        if token.strip("();<>|&\n") == "" and token != "":
-            if token.replace("\n", "").replace(" ", "") not in ("", "&&", ";"):
-                return False
-            segments.append([])
-        else:
-            segments[-1].append(token)
-    segments = [segment for segment in segments if segment]
+    segments = command_segments(command)
     if not segments:
         return False
-    for segment in segments:
-        if segment[0] in ("git", "cd"):
-            continue
-        if segment[0] in ("python3", "python") and len(segment) >= 3 \
-                and os.path.basename(segment[1]) == GUARD_NAME and segment[2] == "handoff":
-            continue
-        return False
-    return True
+    return all(segment[0] in ("git", "cd") or invokes_guard(segment, "handoff") for segment in segments)
 
 
 # --------------------------------------------------------------------------- hook events
@@ -509,7 +618,7 @@ def subagent_stop(payload: dict) -> int:
 def hook() -> int:
     try:
         payload = json.load(sys.stdin)
-    except ValueError:
+    except Exception:  # noqa: BLE001 -- ValueError, RecursionError, MemoryError, a read error: all one refusal
         payload = None
     if not isinstance(payload, dict):
         print(f"{GUARD_NAME}: stdin is not a JSON object, so this guard cannot tell what it was asked "
@@ -598,7 +707,7 @@ def cmd_handoff(args: argparse.Namespace) -> int:
 
 
 def matcher_covers(matcher: object, tool: str) -> bool:
-    if matcher is None or matcher in ("", "*"):
+    if matcher in UNRESTRICTED_MATCHERS:
         return True
     if not isinstance(matcher, str):
         return False
@@ -612,8 +721,18 @@ def covers(matcher: object, scope: str | None) -> bool:
     if scope is None:
         return True
     if scope == ALL_TOOLS:
-        return all(matcher_covers(matcher, tool) for tool in PROBE_TOOLS)
+        # Every tool, including ones this file cannot name (any MCP tool): only a matcher that
+        # restricts nothing covers that, so a list of tool names does not, however long.
+        return matcher in UNRESTRICTED_MATCHERS
     return matcher_covers(matcher, scope)
+
+
+def runs_guard(command: object) -> bool:
+    """True when `command` runs this guard in hook mode: python3, this file as the script, no subcommand."""
+    if not isinstance(command, str):
+        return False
+    segments = command_segments(command)
+    return segments is not None and len(segments) == 1 and invokes_guard(segments[0])
 
 
 def describe(event: str, scope: str | None) -> str:
@@ -638,10 +757,11 @@ def settings_problems(settings: object) -> list[str]:
                 continue
             for hook_ in entry.get("hooks") if isinstance(entry.get("hooks"), list) else []:
                 if isinstance(hook_, dict) and hook_.get("type", "command") == "command" \
-                        and GUARD_NAME in str(hook_.get("command", "")):
+                        and runs_guard(hook_.get("command")):
                     found = True
         if not found:
-            problems.append(f"missing: {describe(event, scope)} does not run {GUARD_NAME} (needed to {why})")
+            problems.append(f"missing: {describe(event, scope)} does not run {GUARD_NAME} in hook mode "
+                            f"(`python3 <path>/{GUARD_NAME}`, no subcommand), needed to {why}")
     return problems
 
 
@@ -808,9 +928,9 @@ def cmd_measure(args: argparse.Namespace) -> int:
         print("first-assignment peak context: no agent turns found")
 
     directory = Path(args.ledger_dir) if args.ledger_dir else ledger_dir()
-    files = sorted(directory.glob("*.jsonl")) if directory.is_dir() else []
+    files = sorted(directory.glob("*.jsonl")) if directory is not None and directory.is_dir() else []
     if not files:
-        print(f"guard ledger: none at {directory}")
+        print(f"guard ledger: none at {directory if directory is not None else 'any usable location'}")
     else:
         records = [r for f in files for r in ledger_records(f)]
         reasons: dict[str, int] = {}
@@ -823,7 +943,9 @@ def cmd_measure(args: argparse.Namespace) -> int:
         print(f"guard violations (a completed agent was resumed anyway): "
               f"{sum(1 for r in records if r.get('event') == 'violation')}")
         print(f"checkpoint notes issued: {sum(1 for r in records if r.get('event') == 'checkpoint')}")
-    if counted:
+    if counted and not args.events:
+        print(f"(--events lists the {len(counted)} resume events, one line each)")
+    if counted and args.events:
         print("resume events (time, agent):")
         for stamp, agent in counted:
             print(f"  {stamp or 'untimed'} {agent}")
@@ -844,6 +966,7 @@ def build_parser() -> argparse.ArgumentParser:
     measure.add_argument("--projects-dir", default=None, help="default ~/.claude/projects")
     measure.add_argument("--match", default=None, help="regex over project directory names")
     measure.add_argument("--ledger-dir", default=None, help="default: the ledger directory this guard writes")
+    measure.add_argument("--events", action="store_true", help="also list every resume event (one line each)")
     return parser
 
 

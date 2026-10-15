@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposed — 2026-10-15, for the owner's acceptance. Implements
+Accepted — 2026-10-15, on the owner's (brandonifco's) instruction of that date to implement and enforce
+the single-use subagent policy. Implements
 [#676](https://github.com/brandonifco/rules-factory/issues/676). Builds on the rule of
 [#465](https://github.com/brandonifco/rules-factory/issues/465), "one agent, one attempt"
 (`AGENTS.md` §4 of the rails, [0029](0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)),
@@ -52,16 +53,26 @@ What a hook does not see is the runtime's resolution of a name: `PreToolUse` run
    `CHECKPOINT_TOKENS` = 210,000 it is told once to commit, keep to its assignment, and return a
    handoff brief if the remaining work is separable. At `HARD_TOKENS` = 350,000 every tool is refused
    except a `git` command and the guard's `handoff`: it commits and returns, and a fresh agent
-   continues.
+   continues. A Bash command is read by a quote-aware scan that fails closed: `git`, `cd` and
+   `handoff` joined by `&&` or `;` pass; a newline, a `#`, a backtick, a pipe, redirect, subshell or
+   background job outside quotes, or an unterminated quote, refuses the whole command, while the same
+   characters inside quotes (a commit message) are data.
 4. **A handoff is a brief from committed repository state, never a transcript.** `handoff` prints the
    branch, the head commit and its subject, the commits and files since the base, and the upstream
    state, and refuses a worktree with uncommitted work, because that would not survive the handoff.
 5. **A missing or stale guard is detected.** `factory rails --check` and `tools/agent-doctor.py`
    report the rail bytes through the existing managed-file comparison, and the doctor reports a
    `WRONG` row when `.claude/settings.json` does not wire the guard, by running the guard's own
-   `check-settings`, so the required registrations are stated once (`REQUIRED_HOOKS`).
+   `check-settings`, so the required registrations are stated once (`REQUIRED_HOOKS`). A registration
+   counts only when its command runs this guard in hook mode (`python3 <path>/agent-lifecycle-guard.py`,
+   no subcommand, no prefix, no shell operator), and "all tools" only when its matcher is absent, empty,
+   `*` or `.*`: a list of tool names covers those tools and no other, however long.
 6. **State is kept outside any repository.** One append-only JSONL ledger per session in
-   `$RULES_AGENT_LEDGER_DIR`, else `${XDG_STATE_HOME:-~/.local/state}/rules-agent-lifecycle/`.
+   `$RULES_AGENT_LEDGER_DIR`, else `${XDG_STATE_HOME:-~/.local/state}/rules-agent-lifecycle/`. A
+   location that is relative, or inside a git work tree (a `.git` in it or any directory above it,
+   links followed), is refused before anything is created: a refused `$RULES_AGENT_LEDGER_DIR` falls
+   back to the default location, and if the default is refused too there is no ledger, so nothing is
+   written and the `SendMessage` check fails closed for an id it cannot show was launched.
 
 **The thresholds, and why.** They are the measured peaks of a first assignment: the checkpoint is
 the p75 (211k, rounded down) and the hard bound the p95 (348k, rounded up). The checkpoint is where
@@ -78,7 +89,8 @@ them is argued from the record and not from this paragraph. The guard has a `POL
 | A `SendMessage` to a completed subagent is refused | **Mechanically enforced** (Claude Code) | `PreToolUse` on `SendMessage`; test: completed reuse by name and by id |
 | A `SendMessage` to an id never launched in the session is refused | **Mechanically enforced**, fail closed | same; test: unknown id denied |
 | A resume the runtime reports is detected and the model told to stop it | **Mechanically detected**, after the fact | `PostToolUse` on `SendMessage` (`resumedAgentId`, or "Resuming agent") |
-| A subagent past 350,000 tokens may only commit and return | **Mechanically enforced** in subagents | `PreToolUse` on every tool, from the subagent's transcript |
+| A subagent past 350,000 tokens may only commit and return | **Mechanically enforced** in subagents | `PreToolUse` on every tool, from the subagent's transcript; tests: a comment or newline cannot hide a second command, quoted punctuation is data |
+| The ledger is never inside a repository | **Mechanically enforced** | a relative or in-work-tree location is refused before it is created; tests: ledger location |
 | A missing or stale guard is detected | **Mechanically detected** | `factory rails --check` and `agent-doctor.py` (bytes); `agent-doctor.py` via `check-settings` (wiring) |
 | A handoff refuses uncommitted work | **Mechanically enforced** by the subcommand | `handoff` |
 | The orchestrator does not paste a transcript into the next brief | **Advisory** | `AGENTS.md` §4; no hook sees a brief's content |
@@ -88,7 +100,8 @@ them is argued from the record and not from this paragraph. The guard has a `POL
 | The main session's own context | **Not covered**: `agent_id` is absent there, so no budget applies | |
 | A transcript that is missing or in an unrecognised layout | **No budget verdict**: the guard neither warns nor stops | |
 | Codex `resume_agent` and `send_input` | **Not covered, unverified**; Codex is used here only as one-shot `codex exec` reviewers, which are not resumed | |
-| An internal error in the guard | **Fails open**, with a message on stderr; malformed stdin fails closed (exit 2) | |
+| A Bash command past the hard bound is judged by a scan, not run in a shell | **Accident prevention, not security**: a `$(...)` inside double quotes (a heredoc commit message) is not looked into | |
+| An internal error in the guard | **Fails open**, with a message on stderr; malformed stdin, including stdin nested too deeply to parse, fails closed (exit 2) | |
 
 ## Alternatives considered
 

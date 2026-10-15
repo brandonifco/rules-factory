@@ -212,11 +212,90 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
         self.assertNotIn("/", name)
 
     def test_malformed_stdin_fails_closed(self):
-        for stdin in ("", "not json", "[1, 2]", "null"):
+        for stdin in ("", "not json", "[1, 2]", "null", "[" * 100_000, '{"a":' * 100_000, "\xff"):
             with self.subTest(stdin=stdin):
                 done = run_guard(stdin=stdin, RULES_AGENT_LEDGER_DIR=self.ledger)
                 self.assertEqual(done.returncode, 2, done.stdout)
                 self.assertIn("refuses", done.stderr)
+                self.assertNotIn("Traceback", done.stderr)
+
+
+class TestTheLedgerIsNeverInsideARepository(GuardCase):
+    """RULES_AGENT_LEDGER_DIR must be absolute and outside any git work tree, or it is not used."""
+
+    def launch(self, cwd=None, **environment):
+        payload = self.event("PostToolUse", tool_name="Agent", tool_input={"name": "n"},
+                             tool_response={"agentId": WORKER})
+        return run_guard(stdin=json.dumps(payload), cwd=cwd, **environment)
+
+    def repository(self, name="checkout"):
+        repo = os.path.join(self.tmp, name)
+        os.makedirs(os.path.join(repo, ".git"))
+        return repo
+
+    def tree(self, root):
+        return sorted(os.path.join(base, name) for base, dirs, files in os.walk(root) for name in dirs + files)
+
+    def test_a_ledger_dir_inside_a_work_tree_is_refused_and_the_default_is_used(self):
+        repo = self.repository()
+        before = self.tree(repo)
+        state = os.path.join(self.tmp, "state")
+        for configured in (os.path.join(repo, "ledger"), os.path.join(repo, "a", "b", "c"), repo,
+                           os.path.join(repo, ".git", "ledger")):
+            with self.subTest(configured=configured):
+                done = self.launch(RULES_AGENT_LEDGER_DIR=configured, XDG_STATE_HOME=state)
+                self.assertEqual(done.returncode, 0, done.stderr)
+                self.assertEqual(self.tree(repo), before, "the guard wrote inside the repository")
+                self.assertIn("RULES_AGENT_LEDGER_DIR", done.stderr)
+                self.assertEqual(os.listdir(os.path.join(state, "rules-agent-lifecycle")), [f"{SESSION}.jsonl"])
+
+    def test_a_symlink_into_a_work_tree_is_inside_it(self):
+        repo = self.repository()
+        link = os.path.join(self.tmp, "link")
+        os.symlink(repo, link)
+        self.launch(RULES_AGENT_LEDGER_DIR=os.path.join(link, "ledger"), XDG_STATE_HOME=os.path.join(self.tmp, "state"))
+        self.assertEqual(os.listdir(repo), [".git"])
+
+    def test_a_relative_ledger_dir_is_refused_whatever_the_working_directory(self):
+        elsewhere = os.path.join(self.tmp, "cwd")
+        os.makedirs(elsewhere)
+        state = os.path.join(self.tmp, "state")
+        done = self.launch(cwd=elsewhere, RULES_AGENT_LEDGER_DIR="ledger", XDG_STATE_HOME=state)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(os.listdir(elsewhere), [])
+        self.assertIn("RULES_AGENT_LEDGER_DIR", done.stderr)
+        self.assertEqual(os.listdir(os.path.join(state, "rules-agent-lifecycle")), [f"{SESSION}.jsonl"])
+
+    def test_a_relative_xdg_state_home_is_ignored_as_the_xdg_specification_says(self):
+        elsewhere = os.path.join(self.tmp, "cwd")
+        home = os.path.join(self.tmp, "home")
+        os.makedirs(elsewhere)
+        done = self.launch(cwd=elsewhere, XDG_STATE_HOME="state", HOME=home)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(os.listdir(elsewhere), [])
+        self.assertEqual(os.listdir(os.path.join(home, ".local", "state", "rules-agent-lifecycle")),
+                         [f"{SESSION}.jsonl"])
+
+    def test_with_no_usable_location_nothing_is_written_and_an_unseen_id_is_still_refused(self):
+        # The default is inside a work tree too: there is no ledger, so the PreToolUse SendMessage
+        # check cannot show an id is running, and fails closed as for any id it never saw launched.
+        repo = self.repository()
+        before = self.tree(repo)
+        env = {"RULES_AGENT_LEDGER_DIR": os.path.join(repo, "ledger"), "XDG_STATE_HOME": os.path.join(repo, "state")}
+        self.assertEqual(self.launch(**env).returncode, 0)
+        self.assertEqual(self.tree(repo), before)
+        message = self.event("PreToolUse", tool_name="SendMessage", tool_input={"to": WORKER, "message": "m"})
+        done = run_guard(stdin=json.dumps(message), **env)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(json.loads(done.stdout)["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertEqual(self.tree(repo), before)
+
+    def test_an_absolute_ledger_dir_outside_any_work_tree_is_used_as_told(self):
+        done = self.launch(RULES_AGENT_LEDGER_DIR=self.ledger, XDG_STATE_HOME=os.path.join(self.tmp, "state"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(done.stderr, "")
+        self.assertEqual(os.listdir(self.ledger), [f"{SESSION}.jsonl"])
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "state")))
 
 
 class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
@@ -307,6 +386,32 @@ class TestTheContextBudget(GuardCase):
                 self.assertAllowed(at_hard("Bash", {"command": command}))
         # Just below the bound nothing is refused.
         self.assertAllowed(at_hard("Read", {"file_path": "/x"}, context=HARD - 1))
+
+    def at_hard_bash(self, command):
+        return self.hook(self.in_subagent("PreToolUse", WORKER, [1_000, HARD], "Bash", {"command": command}))
+
+    def test_a_comment_cannot_hide_a_second_command_past_the_hard_bound(self):
+        # shlex reads a comment to the end of the line AND swallows the newline, so the second line
+        # became arguments of the allowed git segment; it ran.
+        for command in ('git --version # inspect version\npython3 -c "print(123)"',
+                        "git status # x\nrm -rf x", "git status #", "git log HEAD#x", "git status;#\nrm x",
+                        "git status\ngit log", "git status\r\npython3 x.py", "git log \\\npython3 x.py",
+                        "git log `rm x`", "git log $(rm x)", "git log <(rm x)", "(git log)"):
+            with self.subTest(command=command):
+                self.assertDenied(self.at_hard_bash(command), f"{HARD:,}", "git command", "handoff")
+
+    def test_punctuation_inside_quotes_is_data_not_an_operator(self):
+        for command in ('git commit -m ">"', 'git commit -m "|"', "git commit -m '|'", 'git commit -m ";"',
+                        'git commit -m "&&"', 'git commit -m "&"', "git commit -m '#'", 'git commit -m "fix #12"',
+                        "git commit -m 'a # b'", 'git commit -m "a\nb"', 'git commit -m "(x)" -m \'<y>\'',
+                        'git commit -m "say \\"hi\\" > you"', "git log --grep=\\> -- a\\|b",
+                        "git commit -m '' && git status ; git log"):
+            with self.subTest(command=command):
+                self.assertAllowed(self.at_hard_bash(command))
+        # An unterminated quote is refused: this cannot say where the command ends.
+        for command in ('git commit -m ">', "git commit -m '|", "git log \\"):
+            with self.subTest(command=command):
+                self.assertDenied(self.at_hard_bash(command), "git command")
 
     def test_the_denial_is_recorded(self):
         self.hook(self.in_subagent("PreToolUse", WORKER, [HARD], "Read", {"file_path": "/x"}))
@@ -471,6 +576,58 @@ class TestCheckSettings(GuardCase):
         settings["hooks"]["PostToolUse"][0]["matcher"] = ".*"
         self.assertEqual(self.check(settings).returncode, 0)
 
+    def with_command(self, settings, command, events=("PreToolUse", "PostToolUse", "SubagentStop")):
+        for event in events:
+            for entry in settings["hooks"][event]:
+                for hook in entry["hooks"]:
+                    if "agent-lifecycle-guard" in hook["command"]:
+                        hook["command"] = command
+        return settings
+
+    def test_a_command_that_merely_names_the_guard_does_not_invoke_it(self):
+        guard = "$CLAUDE_PROJECT_DIR/.claude/hooks/agent-lifecycle-guard.py"
+        for command in ("echo agent-lifecycle-guard.py", f'echo "{guard}"', f'cat "{guard}"',
+                        f'python3 "{guard}" handoff', f'python3 "{guard}" measure', f'python3 "{guard}" check-settings x',
+                        f'FOO=1 python3 "{guard}"', f'python3 -c "import x" "{guard}"', f'python3 "{guard}" && true',
+                        f'python3 "{guard}" | cat', f'python3 "{guard}" >/dev/null', f'python3 "{guard}" # note',
+                        f'sh -c \'python3 "{guard}"\'', f'python3 "{guard}.bak"', "python3 other/agent-lifecycle-guard.pyc",
+                        f'true; python3 "{guard}"', "", f'python3 "{guard}" "'):
+            with self.subTest(command=command):
+                done = self.check(self.with_command(self.load(RAILS_SETTINGS), command))
+                self.assertEqual(done.returncode, 1, done.stdout)
+                for event in ("PreToolUse for SendMessage", "PostToolUse for all tools", "SubagentStop"):
+                    self.assertIn(event, done.stdout)
+
+    def test_the_ways_to_invoke_the_guard_in_hook_mode_are_accepted(self):
+        guard = "$CLAUDE_PROJECT_DIR/.claude/hooks/agent-lifecycle-guard.py"
+        for command in (f'python3 "{guard}"', f"python3 {guard}", f'python "{guard}"', f'python3 -B "{guard}"',
+                        "python3 tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py",
+                        f'/usr/bin/python3 "{guard}"'):
+            with self.subTest(command=command):
+                done = self.check(self.with_command(self.load(RAILS_SETTINGS), command))
+                self.assertEqual(done.returncode, 0, done.stdout)
+
+    def test_a_finite_matcher_is_not_all_tools_however_long(self):
+        listed = "Bash|Read|Edit|Write|Glob|Grep|Agent|SendMessage|NotebookEdit|WebFetch|TodoWrite|mcp__server__tool"
+        for matcher in (listed, "Bash|Read|Edit|Write|Glob|Grep|Agent|SendMessage|NotebookEdit|WebFetch|TodoWrite|mcp__.*",
+                        "^(?!Foo$).*$", "[A-Za-z_]+", "mcp__.*"):
+            for event in ("PreToolUse", "PostToolUse"):
+                with self.subTest(matcher=matcher, event=event):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"][event][-1]["matcher"] = matcher
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(f"{event} for all tools", done.stdout)
+        for matcher in (None, "", "*", ".*"):
+            with self.subTest(unrestricted=matcher):
+                settings = self.load(RAILS_SETTINGS)
+                for event in ("PreToolUse", "PostToolUse"):
+                    if matcher is None:
+                        del settings["hooks"][event][-1]["matcher"]
+                    else:
+                        settings["hooks"][event][-1]["matcher"] = matcher
+                self.assertEqual(self.check(settings).returncode, 0)
+
     def test_a_sendmessage_only_pretooluse_does_not_satisfy_the_every_tool_bound(self):
         settings = self.load(RAILS_SETTINGS)
         settings["hooks"]["PreToolUse"][1]["matcher"] = "SendMessage"
@@ -555,7 +712,7 @@ class TestMeasure(GuardCase):
     def test_the_report_has_the_exact_counts_and_the_reread_estimate(self):
         root = self.build()
         self.ledger_with_history()
-        done = self.measure(root, "--match", "rules")
+        done = self.measure(root, "--match", "rules", "--events")
         self.assertEqual(done.returncode, 0, done.stderr)
         lines = done.stdout.splitlines()
         wanted = {
@@ -581,6 +738,21 @@ class TestMeasure(GuardCase):
         self.assertIn("guard denials: 3 (completed-agent: 2, context-hard-bound: 1)", lines)
         self.assertIn("guard violations (a completed agent was resumed anyway): 1", lines)
         self.assertIn("checkpoint notes issued: 1", lines)
+
+    def test_the_summary_is_the_default_and_the_event_list_is_opt_in(self):
+        root = self.build()
+        summary = self.measure(root, "--match", "rules")
+        self.assertEqual(summary.returncode, 0, summary.stderr)
+        self.assertIn("resume events: 1", summary.stdout.splitlines())
+        self.assertNotIn("resume events (time, agent):", summary.stdout)
+        self.assertNotIn(WORKER, summary.stdout)
+        self.assertIn("--events", summary.stdout)
+        listed = self.measure(root, "--match", "rules", "--events")
+        self.assertIn("resume events (time, agent):", listed.stdout)
+        without_hint = summary.stdout.splitlines()[:-1]
+        self.assertEqual(listed.stdout.splitlines()[:len(without_hint)], without_hint)
+        self.assertEqual(len(listed.stdout.splitlines()), len(without_hint) + 2)
+        self.assertNotIn("lists the", listed.stdout)
 
     def test_a_message_id_is_counted_once_and_a_project_outside_the_match_not_at_all(self):
         root = self.build()
