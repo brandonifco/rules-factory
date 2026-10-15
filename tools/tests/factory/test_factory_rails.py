@@ -7343,7 +7343,9 @@ class TestTheMutationRunner(RailsInAGitEngine):
         """The handlers were installed after the baseline, so SIGTERM there ended the process with its `finally` unrun."""
         self.engine_with_a_probe()
         self.plan({"say": "never printed", "terminate": True})
+        began = time.monotonic()
         done = self.mutate(self.spec())
+        self.assertLess(time.monotonic() - began, 20, "the signal waited for `dotnet test` (the stub sleeps 30 s)")
         self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
         self.assertIn("INTERRUPTED", done.stderr)
         self.assertIn("nothing had been mutated", done.stderr)
