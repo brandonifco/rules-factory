@@ -7495,6 +7495,33 @@ class TestTheMutationRunner(RailsInAGitEngine):
         results = argv[argv.index("--results-directory") + 1]
         self.assertFalse(os.path.exists(results), f"the results directory {results} was left behind")
 
+    def test_a_termination_just_after_the_results_directory_is_made_still_removes_it(self):
+        """The window between `mkdir` succeeding and the removal `try` starting: nothing owned the directory yet."""
+        self.engine_with_a_probe()
+        self.plan(GREEN)
+        module = self.runner()
+        names = {"PATH": self.bin + os.pathsep + os.environ["PATH"], "DOTNET_PLAN": self.plan_path,
+                 "DOTNET_CALLS": self.calls_path, "DOTNET_WATCH": os.path.join(self.out, PROBE)}
+        real, made = os.mkdir, []
+
+        def made_then_interrupted(path, *args, **kwargs):
+            real(path, *args, **kwargs)
+            if os.path.basename(str(path)).startswith("mutate-") and not made:
+                made.append(str(path))
+                raise KeyboardInterrupt("terminated by signal 15")    # the signal, as `mkdir` returns
+
+        try:
+            with unittest.mock.patch.dict(os.environ, names), unittest.mock.patch("os.mkdir", made_then_interrupted):
+                with self.assertRaises(KeyboardInterrupt):
+                    module.run_test(pathlib.Path(self.out) / "Probe.slnx", "ProbeTests.Beta_is_beta", "Debug")
+            self.assertTrue(made, "no results directory was made, so the interrupt never fell after `mkdir`")
+            self.assertFalse(os.path.exists(made[0]), f"the results directory {made[0]} was left behind")
+            self.assertEqual(module.NOT_REMOVED, [])
+        finally:
+            for left in made:
+                if os.path.exists(left):
+                    shutil.rmtree(left)
+
     def test_the_rows_of_one_theory_are_one_test_and_any_failed_row_is_red(self):
         self.engine_with_a_probe()
         self.plan({"say": "Passed!  - Failed:     0, Passed:     2",
