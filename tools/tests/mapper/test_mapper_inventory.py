@@ -155,6 +155,20 @@ class TestTheEnumerationIsOfThePinnedCorpus(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn("enumerated no unit", out)
 
+    def test_a_map_citing_no_corpus_walks_nothing_and_fails(self):
+        """No entries and no envelope `corpus` leaves nothing cited, so there is no walk for the
+        per-walk verdict to judge; the run itself must say an inventory of nothing is not a pass
+        (#659). It printed nothing and exited 0."""
+        self.fixture.write("corpus-map.json", {
+            "schemaVersion": 1,
+            "extent": {"unit": "page", "from": 9, "to": 9},
+            "entries": [],
+        })
+        code, out = run(["inventory", self.fixture.map_path])
+        self.assertEqual(code, 1, out)
+        self.assertIn("cites no corpus", out)
+        self.assertIn("not a pass", out)
+
     def test_a_map_no_entry_of_which_is_located_fails(self):
         self.fixture.write("corpus-map.json", {
             "schemaVersion": 1, "corpus": "fixture", "baseline": "fixture",
