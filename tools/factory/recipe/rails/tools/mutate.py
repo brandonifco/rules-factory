@@ -105,6 +105,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -415,13 +416,16 @@ def run_test(solution, test, configuration, expected=None):
     if built.returncode != 0:
         return NO_BUILD, _diagnostic(f"{built.stdout}\n{built.stderr}", f"dotnet build exited {built.returncode}"), None
 
-    with tempfile.TemporaryDirectory(prefix="mutate-") as results:
+    results = tempfile.mkdtemp(prefix="mutate-")
+    try:
         ran = subprocess.run(
             ["dotnet", "test", str(solution.name), "-c", configuration, "--nologo", "--no-build",
              "--filter", f"FullyQualifiedName~{_escaped(test)}",
              "--logger", "trx", "--results-directory", results],
             cwd=ROOT, capture_output=True, text=True)
         outcomes, problems = _results_of(test, results)
+    finally:
+        _remove(results)
     if problems:
         return NO_TEST, problems[0], None
     if len(outcomes) > 1:
@@ -466,10 +470,12 @@ def _results_of(test, results):
 
     A test is told apart by its assembly as well, because the same name in two projects is two
     tests: the assembly is its output path, lower-cased, with `/` for `\\` and without the
-    target-framework directory, so two projects of one file name are two and one project built for
-    several frameworks is one. The rows of one theory share both and are one test. A parameterised
-    name (`Rows(1)`, which is how NUnit and MSTest name a row) is not the method's name and matches
-    nothing: the xUnit the factory pins reports a theory under its method.
+    target-framework directory under `bin/<Configuration>/`, so two projects of one file name are
+    two and one project built for several frameworks is one. The rows of one theory share both and
+    are one test. A parameterised name (`Rows(1)`, which is how NUnit and MSTest name a row) is not
+    the method's name and matches nothing: the xUnit the factory pins reports a theory under its
+    method. So does a `DisplayName`: the TRX names the result by it, and keeps the declaring class
+    and method in `TestMethod`, which is all a spec is read against.
 
     A project the filter matched nothing in writes a TRX with no results, which is no evidence either
     way; a TRX that cannot be read is reported, because it may have held the answer.
@@ -512,11 +518,37 @@ def _unqualified(klass):
     return klass[cut:]
 
 
+def _remove(directory):
+    """Remove `directory`, finishing the removal even if a signal turned into an interrupt inside it.
+
+    The interrupt is raised again once the directory is gone: it is the caller's to act on, and
+    leaving the directory behind is not.
+    """
+    interrupt = None
+    while True:
+        try:
+            shutil.rmtree(directory, ignore_errors=True)
+            break
+        except BaseException as error:
+            interrupt = interrupt or error
+    if interrupt is not None:
+        raise interrupt
+
+
 def _assembly(storage):
-    """The project an output path belongs to: the path with its target-framework directory taken out."""
+    """The project an output path belongs to: its output path without the framework's directory.
+
+    That is the one directly under `bin/<Configuration>/`, and no other: a directory above the
+    project that looks like a framework (`tests/net8.0/`) is part of which project it is, and a
+    runtime directory beneath the framework's (`linux-x64`) stays as it is.
+    """
     parts = [part for part in re.split(r"[\\/]", storage.lower()) if part]
     target = re.compile(r"net(coreapp|standard)?\d+(\.\d+)*(-[a-z0-9.]+)?")
-    kept = [part for part in parts[:-1] if not target.fullmatch(part)] + parts[-1:]
+    directories = parts[:-1]
+    framework = next((index + 2 for index in reversed(range(len(directories)))
+                      if directories[index] == "bin" and index + 2 < len(directories)
+                      and target.fullmatch(directories[index + 2])), None)
+    kept = [part for index, part in enumerate(directories) if index != framework] + parts[-1:]
     path = "/".join(kept)
     root = ROOT.as_posix().lower().strip("/") + "/"
     return path[len(root):] if path.startswith(root) else path
