@@ -103,14 +103,30 @@ class TestAnIdentifierCitationIsHeldToItsElement(RunChecker):
         self.assertIn("2 occurrence(s)", output)
 
     def test_a_citation_in_a_title_the_corpus_does_not_hold_is_not_resolved(self):
-        # Everything but the title is right: the paragraph, the quote, and a covered section 502.
-        # Only a checker that confuses t98 with t99 passes this (#655 review, finding 5).
+        # Everything but the title is right: the section, the paragraph and the quote name a
+        # passage the corpus holds, and every extent section is reached by another entry. Only
+        # a checker that confuses t98 with t99 passes this (#655 review, finding 5; #661
+        # review, finding 7).
         code, output = self.run_checker(document([
             entry("e1", "/us/usc/t98/s501/a/2", "A gadget shall be blue."),
+            entry("e2", "/us/usc/t99/s501/a/1, /us/usc/t99/s501/b", "A widget shall be red."),
             entry("e3", "/us/usc/t99/s502", "No gadget is a widget."),
         ]))
         self.assertEqual(1, code, output)
         self.assertIn("evidence also sits in /us/usc/t99/s501/a/2", output)
+        self.assertNotIn("reached by no entry", output)
+
+    def test_a_citation_naming_a_foreign_element_names_nothing(self):
+        # The only element identified `/us/usc/t99/s503` is not in the USLM namespace (#661
+        # review, finding 6), so there is no passage for the citation to name.
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "slice.xml")
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(SLICE.replace("</chapter>", '<x:section xmlns:x="urn:other" '
+                             'identifier="/us/usc/t99/s503">Foreign words</x:section></chapter>'))
+            text, spans = uslm.corpus_index(path)
+        self.assertNotIn(("t99/s503",), [owner for _, _, owner in spans])
+        self.assertNotIn("Foreign words", [text[start:end] for start, end, _ in spans])
 
     def test_a_quote_that_runs_into_text_outside_every_section_is_refused(self):
         # `Invented matters` is the chapter's heading; `§501.` opens section 501 (finding 2).
