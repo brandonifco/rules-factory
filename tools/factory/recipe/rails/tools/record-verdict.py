@@ -82,9 +82,6 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
 PROVENANCE = "provenance.json"
 SEMANTIC = "semantic"
-#: The review classes (rules-factory 0076) whose changes owe no semantic review. Named here and not
-#: imported: this tool reads a packet identity, and the identity carries the word.
-NO_SEMANTIC_REVIEW = frozenset({"decision-record-only", "generated-or-provenance", "documentation"})
 PACKET_FORMAT = 2
 #: The cuts that `tools/review-packet.py` makes with its `--role` flag, and the whole packet.
 #: Which bytes a reviewer actually read now depends on the cut as well as on the commit, so the
@@ -349,6 +346,50 @@ def scope_model():
     return reviewscope
 
 
+def review_classes():
+    """The engine's vendored `scripts/factory/reviewclass.py`: the one table of what each review class owes (0076).
+
+    The recorder names no class itself: a second list of the classes that owe a verdict is a second
+    statement of what the gate asks, and the two can come to disagree. It reads the module the gate reads,
+    which `factory produce` vendors into every engine beside `reviewscope.py`.
+    """
+    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+    try:
+        import reviewclass
+    except ImportError as error:
+        raise Refused(f"scripts/factory/reviewclass.py is not importable ({error}); run `factory produce` again")
+    return reviewclass
+
+
+def check_semantic_verdict_is_owed(identity):
+    """Refuse a semantic verdict the packet's change was not computed to owe, or cannot be shown to owe (#615).
+
+    The class a change was judged as is in the packet identity (`reviewContext.reviewClass.effective`,
+    written by `tools/review-packet.py`), and whether that class owes a verdict is `reviewclass.OWES`'s to
+    say: the same table the conformance gate reads. An identity that names no class, or one that is not a
+    class, is refused rather than allowed through: the gate has no answer for it, so a verdict recorded
+    on it would be one nothing can say was owed.
+
+    A delta or carry identity is written by `tools/review-scope.py`, which classifies nothing: it follows a
+    prior semantic attestation that this recorder already holds to its chain (0071), and so is held to the
+    table only where it does say a class.
+    """
+    classes = review_classes()
+    review_class = (identity["document"].get("reviewContext") or {}).get("reviewClass")
+    effective = review_class.get("effective") if isinstance(review_class, dict) else None
+    if review_class is None and identity["reviewType"] in ("delta", "carry"):
+        return
+    if not isinstance(effective, str) or effective not in classes.CLASSES:
+        raise Refused(f"this packet identity says its change was judged {effective!r}, which is not one of "
+                      f"{', '.join(classes.CLASSES)}, so the recorder cannot tell whether a semantic verdict is "
+                      f"owed on it. Regenerate the packet with `tools/review-packet.py`, which writes the class; "
+                      f"nothing is recorded.")
+    if not classes.owes(effective)["verdict"]:
+        raise Refused(f"this packet's change is `{effective}`, which owes no semantic review "
+                      f"(rules-factory 0076), so a semantic verdict on it would record a review nobody was owed. "
+                      f"Nothing is recorded.")
+
+
 def findings_of(args, scope):
     """(blocking, non-blocking) as the caller gave them, each blocking one bound to a claim where it can be."""
     blocking, observations = [], []
@@ -485,15 +526,11 @@ def main(argv=None):
 
         context = context_for(args.reviewer, identity["policy"])
         role_carries(args.reviewer, identity["role"])
-        # A packet that says what the change was computed to be (0076) cannot carry a semantic verdict
-        # for a class that owes none: the verdict would read as a review that was never owed, and a
-        # reader of the status could not tell it from one that was.
-        review_class = (identity["document"].get("reviewContext") or {}).get("reviewClass")
-        if args.reviewer == SEMANTIC and isinstance(review_class, dict) \
-                and review_class.get("effective") in NO_SEMANTIC_REVIEW:
-            raise Refused(f"this packet's change is `{review_class['effective']}`, which owes no semantic review "
-                          f"(rules-factory 0076), so a semantic verdict on it would record a review nobody was owed. "
-                          f"Nothing is recorded.")
+        # What the change was computed to be (0076) decides whether a semantic verdict is owed, from the table
+        # the gate reads: a verdict for a class that owes none would read as a review that was never owed, and
+        # an identity that names no class cannot be shown to owe one (#615).
+        if args.reviewer == SEMANTIC:
+            check_semantic_verdict_is_owed(identity)
         model = scope_model()
         attestation = None
         if identity["reviewType"] == "carry":
