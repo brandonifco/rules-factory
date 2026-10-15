@@ -6954,6 +6954,8 @@ if "--results-directory" in sys.argv:
         deep = results_directory / "run" / "In" / "host"
         deep.mkdir(parents=True)
         (deep / "old.trx").write_text(trx(step["nested"], 0))
+    if step.get("lock"):
+        os.chmod(results_directory, 0o555)    # a file the runner cannot remove: the directory cannot be emptied
 print(step["say"])
 sys.exit(step.get("code", 0))
 '''
@@ -7162,7 +7164,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
                    "results": {**both, "Ns.ProbeTests.One": "Failed"}})
         done = self.mutate(self.spec(test="ProbeTests.One"))
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("RED: Ns.ProbeTests.One (src/bin/debug/project0.dll): Failed 1", done.stdout,
+        self.assertIn("RED: Ns.ProbeTests.One (/src/bin/debug/project0.dll): Failed 1", done.stdout,
                       "the record names the test it resolved to, and the assembly it ran in")
 
     def test_a_failed_line_that_a_passing_test_printed_decides_nothing(self):
@@ -7413,6 +7415,41 @@ class TestTheMutationRunner(RailsInAGitEngine):
                     self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
                     self.assertIn(f"RED: {full} ", done.stdout)
 
+    # -- fifth review of #665: a path outside the engine, and a directory that stays ------------------
+
+    def test_a_project_outside_the_engine_is_not_the_one_inside_it_with_the_same_tail(self):
+        """Shortening for display dropped the leading `/` of `/tests/...` too, so it met `<engine>/tests/...`."""
+        self.engine_with_a_probe()
+        tail = "tests/Probe.Tests/bin/Debug/net10.0/Probe.Tests.dll"
+        self.plan({"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": [{"Ns.ProbeTests.One": "Passed"}, {"Ns.ProbeTests.One": "Failed"}],
+                   "assemblies": [os.path.join(os.path.realpath(self.out), tail), "/" + tail]})
+        done = self.mutate(self.spec(test="ProbeTests.One"), "--no-baseline")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("MORE THAN ONE TEST MATCHED", done.stdout)
+        self.assertNotIn("RED", done.stdout)
+        self.assertIn("(tests/probe.tests/bin/debug/probe.tests.dll)", done.stdout, "inside the engine: shown from its root")
+        self.assertIn("(/tests/probe.tests/bin/debug/probe.tests.dll)", done.stdout, "outside it: shown whole")
+
+    def test_a_results_directory_that_could_not_be_removed_is_said_and_fails_the_run(self):
+        """`rmtree(ignore_errors=True)` never said it had left the directory behind."""
+        if hasattr(os, "geteuid") and os.geteuid() == 0:
+            self.skipTest("root removes a read-only directory's files")
+        self.engine_with_a_probe()
+        self.plan({**RED, "lock": True})
+        done = self.mutate(self.spec(), "--no-baseline")
+        argv = self.calls()[0]["argv"]
+        results = argv[argv.index("--results-directory") + 1]
+        try:
+            self.assertTrue(os.path.exists(results), "the stub did not leave a directory the runner cannot remove")
+            self.assertEqual(done.returncode, 1, "RED, but a directory was left behind: " + done.stdout + done.stderr)
+            self.assertIn("NOT REMOVED", done.stderr)
+            self.assertIn(results, done.stderr)
+            self.assertIn("RED", done.stdout)
+        finally:
+            os.chmod(results, 0o755)
+            shutil.rmtree(results)
+
     def test_projects_that_differ_above_the_output_directory_are_two_tests(self):
         """Only the framework directory under `bin/<Configuration>/` is the project's own output; an ancestor named like one is not."""
         self.engine_with_a_probe()
@@ -7433,7 +7470,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
                                   "/engine/tests/bin/Debug/net10.0/linux-x64/Tests.dll"]})
         done = self.mutate(self.spec(test="ProbeTests.One"), "--no-baseline")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("(engine/tests/bin/debug/linux-x64/tests.dll)", done.stdout)
+        self.assertIn("(/engine/tests/bin/debug/linux-x64/tests.dll)", done.stdout)
 
     def test_a_termination_while_the_results_directory_is_being_removed_still_removes_it(self):
         """The window the `with` left open: an interrupt inside `rmtree` ended the removal half way."""
