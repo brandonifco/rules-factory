@@ -29,10 +29,14 @@ THE BOUNDARY, VERIFIED IN CLAUDE CODE 2.1.287
     `tool_response.status`: `async_launched` for a background agent, `completed` when a foreground
     agent returned its final result.
   * The MAIN session transcript (`transcript_path`, the same file inside a subagent) records a task
-    notification when an agent stops: a JSONL line, in a `queue-operation` record's `content` and in a
-    user message, whose text holds `<task-notification>`, `<task-id>AGENT_ID</task-id>` and
-    `<status>STATUS</status>`. It also holds the Agent `tool_use` (`input.name`) and its tool_result
-    (`toolUseResult.agentId`), which is how a name is resolved when the ledger never saw it.
+    notification when an agent stops, as a `queue-operation` record with `"operation": "enqueue"`
+    whose `content` is a string that STARTS with `<task-notification>` and holds `<task-id>AGENT_ID
+    </task-id>` and `<status>STATUS</status>`. The runtime may also append the same text inside a
+    tool_result (when an agent reads it back), which is not a notification; a subagent's message to
+    the main session is enqueued wrapped as `<agent-message from="...">`, so it cannot start with
+    `<task-notification>`; a user prompt can (the user is trusted). The transcript also holds the Agent
+    `tool_use` (`input.name`) and its tool_result (`toolUseResult.agentId`), which is how a name is
+    resolved when the ledger never saw it.
   * SubagentStop is NOT evidence of completion: another stop hook can veto it (the agent then keeps
     running), so this guard neither registers for it nor handles it.
   * SendMessage's target `to` is resolved by the runtime to a RUNNING task ("Message queued for
@@ -45,8 +49,11 @@ THE BOUNDARY, VERIFIED IN CLAUDE CODE 2.1.287
 WHAT IT ENFORCES
   * PreToolUse SendMessage to a target with definitive evidence of completion: denied. The evidence
     is (a) a PostToolUse of Agent whose tool_response status is `completed` (a foreground agent
-    returned), recorded in the ledger, or (b) a task notification for it in the main transcript with
-    any status but `running`. A name is resolved to an id from the ledger first, else from the main
+    returned), recorded in the ledger, or (b) a task notification for it, read ONLY from a main
+    transcript `queue-operation` enqueue record whose content starts with `<task-notification>` (task
+    id and status from that leading block alone), with any status but `running`. A notification
+    quoted anywhere else (a tool_result that read a file or a log, an `<agent-message>`, any other
+    record, any string past the leading block) is not evidence. A name is resolved to an id from the ledger first, else from the main
     transcript. To an id-shaped target ("a" + 16 hex) neither the ledger nor the transcript saw
     launched: denied, because this cannot show it is running (fail closed). To a launched agent with
     no completion evidence (running): allowed. To "main": allowed.
@@ -69,19 +76,21 @@ WHAT IT CANNOT SEE
   * The context budget reads the subagent's transcript tail. A transcript that is missing,
     unreadable, or in a layout this file does not recognise gives NO budget verdict: the guard
     cannot tell, so it neither warns nor stops. It never crashes the hook over it.
-  * A hard-bound Bash command is judged by a quote-aware scan, not run in a shell: this is accident
-    prevention for an agent that has been told to stop, not security. The scan fails closed. Only
-    these, joined by `&&` or `;`, are allowed: `git [-C <dir>] <subcommand> ...` with a subcommand in
-    GIT_SUBCOMMANDS (add, commit, status, diff, log, show, push, rev-parse, and `branch` for listing
-    only), `cd <dir>`, and `python3 <path> handoff [--base REF]` where <path>, resolved against the
-    hook's `cwd` and any `cd` before it, is this very file (real path). Any other global git option
-    (`-c`, `--config-env`, `--exec-path`), a git alias, and an argument that makes git run a program
-    (`--exec=`, `--receive-pack=`, `--upload-pack=`, `--ext-diff`, `--textconv`, `--output=`) refuse
-    the command; so does a newline, a `#`, a backtick, a redirect, pipe, subshell, background job or
-    any other operator outside quotes, and so does an unterminated quote. Inside double quotes
-    `$(...)` is not looked into, so a commit message may be a heredoc: a command substitution there is
-    not judged. What a permitted git command runs of the repository's own configuration (a commit
-    hook, a configured external diff driver) is not judged either.
+  * A hard-bound Bash command is not parsed by any shell model: the whole command string must
+    FULLMATCH a strict regular grammar (`HARD_BOUND_GIT`, `HARD_BOUND_HANDOFF`), and anything else is
+    refused. Tokens are SAFE words, `[A-Za-z0-9_./:@+=,-]+` (no `::`, so no `ext::` transport); a word
+    that starts with `-` must be one of the subcommand's allowlisted options (`GIT_OPTIONS`). The
+    forms are `git [-C <dir>] <subcommand> <options and words>`, with the subcommand one of add,
+    commit, status, diff, log, show, push, rev-parse and `branch --show-current`, and
+    `python3 <path> handoff [--base <ref>]`, where <path> resolved against the hook's `cwd` is the
+    running guard's own file (real path). A commit message is the one quoted thing: `-m "..."` with
+    no `$`, backtick, backslash, `!`, double quote or newline in it. Every other character anywhere
+    (dollar, a quote other than a commit message's, `; & | < > # ( ) { } * ? ~`, backslash, `!`,
+    backtick, newline) refuses the command, so `cd`, `&&`, redirects, `$(...)`, `$'...'`, a comment, a heredoc and an alias `-c` are all refused. By design a
+    commit message written as a heredoc or with `$(...)` is refused past the bound: it is the price of
+    not judging a shell's parse. A guard path outside the SAFE characters cannot be run past the
+    bound either. What a permitted git command runs of the repository's own configuration (a commit
+    hook, a configured external diff driver) is not judged: accident prevention, not security.
   * An internal error is reported on stderr and lets the call through. A guard that blocks every
     tool because of its own bug is worse than a missing one, and `check-settings`, the rail-bytes
     check and the tests are what notice a guard that is not what it should be.
@@ -105,8 +114,10 @@ USAGE
   agent-lifecycle-guard.py handoff [--base REF]     brief from committed state (default origin/main)
   agent-lifecycle-guard.py check-settings PATH [--guard-path REL]
                                                     0 iff PATH wires this guard (REQUIRED_HOOKS): each
-                                                    registration is foreground (no `async: true`) and
-                                                    runs exactly `python3 "$CLAUDE_PROJECT_DIR/REL"`
+                                                    registration is a hook group with only `matcher`
+                                                    and `hooks`, holding a hook with only `type`
+                                                    ("command"), `command` and `timeout`, and that
+                                                    command is exactly `python3 "$CLAUDE_PROJECT_DIR/REL"`
                                                     (REL default .claude/hooks/agent-lifecycle-guard.py)
   agent-lifecycle-guard.py measure [--projects-dir DIR] [--match REGEX] [--ledger-dir DIR] [--events]
                                                     summary; --events adds one line per resume
@@ -161,12 +172,37 @@ DEFAULT_GUARD_PATH = ".claude/hooks/agent-lifecycle-guard.py"
 # Hook keys that run a command in the background, where a decision cannot be enforced.
 BACKGROUND_KEYS = ("async", "asyncRewake")
 
-# Past the hard bound the only git that runs: no global option but `-C <dir>`, one of these
-# subcommands (an alias is not one), and no argument that runs a program of its own.
-GIT_SUBCOMMANDS = ("add", "commit", "status", "diff", "log", "show", "push", "rev-parse", "branch")
-BRANCH_LISTING = ("--show-current", "--list", "-l", "-a", "--all", "-r", "--remotes", "-v", "-vv", "--verbose")
-GIT_PROGRAM_OPTIONS = ("exec", "receive-pack", "upload-pack", "ext-diff", "textconv", "output",
-                       "open-files-in-pager")
+# Past the hard bound the only commands that run are the ones this grammar accepts, as a whole string
+# and with no shell model behind it (see WHAT IT CANNOT SEE). A word is SAFE when made only of these
+# characters; a word that starts with `-` is accepted only as one of the subcommand's options below.
+# `::` is left out of a plain word so that no `ext::` or `fd::` transport can be named.
+_WS = r"[ \t]+"
+_PLAIN = r"(?!-)(?:[A-Za-z0-9_./@+=,-]|:(?!:))+"
+_MESSAGE = r'"[^"$`\\!\n]*"'
+# subcommand -> options it may carry (regular expression alternatives), whether a plain word may follow.
+GIT_OPTIONS = {
+    "add": (r"-A|--all|-u|--", True),
+    "commit": (r"-a|--all|-m" + _WS + _MESSAGE, True),
+    "status": (r"-s|--short|--porcelain|-b", True),
+    "diff": (r"--stat|--name-status|--cached|--staged", True),
+    "log": (r"--oneline|--stat|-n|-[0-9]+", True),
+    "show": (r"--stat|--name-status", True),
+    "push": (r"-u|--set-upstream", True),
+    "rev-parse": (r"--abbrev-ref|--show-toplevel", True),
+    "branch": (r"--show-current", False),   # listing only: a plain word would create a branch
+}
+
+
+def _git_subcommand(name: str) -> str:
+    options, words = GIT_OPTIONS[name]
+    return rf"{re.escape(name)}(?:{_WS}(?:{options}{'|' + _PLAIN if words else ''}))*"
+
+
+HARD_BOUND_GIT = re.compile(
+    rf"[ \t]*git(?:{_WS}-C{_WS}{_PLAIN})?{_WS}(?:" + "|".join(_git_subcommand(n) for n in GIT_OPTIONS)
+    + r")[ \t]*", re.ASCII)
+HARD_BOUND_HANDOFF = re.compile(
+    rf"[ \t]*python3{_WS}({_PLAIN}){_WS}handoff(?:{_WS}--base{_WS}{_PLAIN})?[ \t]*", re.ASCII)
 
 TAIL_START = 256 * 1024
 TAIL_MAX = 16 * 1024 * 1024
@@ -396,19 +432,6 @@ def main_transcript(payload: dict) -> Path | None:
     return path
 
 
-def strings_in(value: object, depth: int = 0):
-    if depth > 8:
-        return
-    if isinstance(value, str):
-        yield value
-    elif isinstance(value, dict):
-        for inner in value.values():
-            yield from strings_in(inner, depth + 1)
-    elif isinstance(value, list):
-        for inner in value:
-            yield from strings_in(inner, depth + 1)
-
-
 def transcript_lines(path: Path, needles: tuple[bytes, ...]):
     """(raw, parsed) for each line of `path` holding any of `needles` that parses as a JSON object.
     Streaming: a long transcript is never held in memory, and a line that lacks every needle is not parsed."""
@@ -427,30 +450,48 @@ def transcript_lines(path: Path, needles: tuple[bytes, ...]):
         return
 
 
+TASK_NOTIFICATION = "<task-notification>"
+_NOTIFIED_ID = re.compile(r"<task-id>\s*([^<\s]+)\s*</task-id>")
+_NOTIFIED_STATUS = re.compile(r"<status>\s*([A-Za-z_-]+)\s*</status>")
+
+
+def enqueued_notification(parsed: dict) -> tuple[str, str] | None:
+    """(task id, status) of a genuine task notification record, else None.
+
+    Genuine means one thing: a `queue-operation` record with `operation` `enqueue` whose `content` is a
+    string STARTING with `<task-notification>`. The id and the status are read from that leading block,
+    up to its first `</task-notification>`, and from nowhere else: a notification quoted in a
+    tool_result, in an `<agent-message>` or past the block is text someone wrote, not the runtime.
+    """
+    if parsed.get("type") != "queue-operation" or parsed.get("operation") != "enqueue":
+        return None
+    content = parsed.get("content")
+    if not isinstance(content, str) or not content.startswith(TASK_NOTIFICATION):
+        return None
+    block = content.split("</task-notification>", 1)[0]
+    task, status = _NOTIFIED_ID.search(block), _NOTIFIED_STATUS.search(block)
+    return (task.group(1), status.group(1) if status else "") if task else None
+
+
 def transcript_agent_state(path: Path, agent: str) -> tuple[bool, bool]:
     """(seen, completed) for `agent` in the main transcript.
 
-    Seen: an Agent tool result carried this agent id, or a task notification named it. Completed: a task
-    notification for it, whatever its status but `running` (Claude Code 2.1.287 writes it as text with
-    `<task-notification>` and `<task-id>AGENT</task-id>` ... `<status>STATUS</status>` in a
-    `queue-operation` record's `content` and in a user message), or a foreground Agent result that says
-    the agent completed.
+    Seen: an Agent tool result carried this agent id, or a genuine task notification named it.
+    Completed: a genuine task notification (`enqueued_notification`) for it whose status is not
+    `running`, or a foreground Agent result that says the agent completed.
     """
-    pattern = re.compile(r"<task-notification>\s*<task-id>" + re.escape(agent) + r"</task-id>"
-                         r"(?:(?!</task-notification>).)*?<status>\s*([A-Za-z_-]+)\s*</status>", re.DOTALL)
     seen = completed = False
-    for raw, parsed in transcript_lines(path, (agent.encode("utf-8"),)):
+    for _, parsed in transcript_lines(path, (agent.encode("utf-8"),)):
         result = parsed.get("toolUseResult")
         if isinstance(result, dict) and result.get("agentId") == agent:
             seen = True
             if result.get("status") == "completed":
                 completed = True
-        if b"<task-notification>" in raw:
-            for text in strings_in(parsed):
-                for match in pattern.finditer(text):
-                    seen = True
-                    if match.group(1) != "running":
-                        completed = True
+        found = enqueued_notification(parsed)
+        if found is not None and found[0] == agent:
+            seen = True
+            if found[1] and found[1] != "running":
+                completed = True
     return seen, completed
 
 
@@ -560,169 +601,32 @@ def subagent_context(payload: dict) -> int | None:
     return latest_context(path) if path else None
 
 
-def command_segments(command: str) -> list[list[str]] | None:
-    """The simple commands of `command`, as lists of words, or None when it is not safe to read.
-
-    A scan of the characters with the quote state kept, so punctuation inside quotes is data. The
-    only separators are `&&` and `;`. A newline, `#` or backtick outside quotes, any other operator
-    (`| & < > ( )`) outside quotes, a backslash at the end or before a newline, and an unterminated quote all give None:
-    a reader that guesses where a comment ends, or what a newline separates, can be made to read a
-    second command as the arguments of the first.
-    """
-    segments: list[list[str]] = [[]]
-    word: list[str] | None = None
-    i, n = 0, len(command)
-
-    def flush() -> None:
-        nonlocal word
-        if word is not None:
-            segments[-1].append("".join(word))
-            word = None
-
-    while i < n:
-        char = command[i]
-        if char in " \t\r":
-            flush()
-            i += 1
-        elif char in "\n#`":
-            return None
-        elif char in "();<>|&":
-            if command.startswith("&&", i):
-                width = 2
-            elif char == ";":
-                width = 1
-            else:
-                return None
-            flush()
-            segments.append([])
-            i += width
-        elif char == "\\":
-            if i + 1 >= n or command[i + 1] == "\n":
-                return None
-            word = (word or []) + [command[i + 1]]
-            i += 2
-        elif char == "'":
-            end = command.find("'", i + 1)
-            if end < 0:
-                return None
-            word = (word or []) + [command[i + 1:end]]
-            i = end + 1
-        elif char == '"':
-            word = word or []
-            i += 1
-            while True:
-                if i >= n:
-                    return None
-                char = command[i]
-                if char == '"':
-                    i += 1
-                    break
-                if char == "\\" and i + 1 < n and command[i + 1] in '"\\$`\n':
-                    if command[i + 1] != "\n":
-                        word.append(command[i + 1])
-                    i += 2
-                else:
-                    word.append(char)
-                    i += 1
-        else:
-            word = (word or []) + [char]
-            i += 1
-    flush()
-    return [segment for segment in segments if segment]
-
-
-def git_allowed(words: list[str]) -> bool:
-    """`git [-C <dir>]... <subcommand> <args>` with a subcommand from GIT_SUBCOMMANDS, and nothing else.
-
-    No other global option (`-c`, `--config-env`, `--exec-path`, ...): `git -c alias.x='!cmd' x` runs
-    `cmd`. An alias is not a built-in subcommand, so it is refused with every other name. An argument
-    that makes git run a program (`--exec=`, `--receive-pack=`, `--ext-diff`, `--output=`, ...) is
-    refused, abbreviations included, and `branch` may only list.
-    """
-    rest = words[1:]
-    while rest[:1] == ["-C"]:
-        if len(rest) < 2 or rest[1].startswith("-"):
-            return False
-        rest = rest[2:]
-    if not rest or rest[0] not in GIT_SUBCOMMANDS:
-        return False
-    subcommand, args = rest[0], rest[1:]
-    for arg in args:
-        if arg.startswith("--") and arg != "--":
-            option = arg[2:].split("=", 1)[0]
-            if option and any(known.startswith(option) for known in GIT_PROGRAM_OPTIONS):
-                return False
-        if "ext::" in arg:
-            return False
-    if subcommand == "branch":
-        return all(arg in BRANCH_LISTING for arg in args)
-    return True
-
-
-def expand_project_dir(word: str, expand: bool) -> str:
-    """`$CLAUDE_PROJECT_DIR` at the start of a word, as the shell would expand it (not when a quote
-    or a backslash in the command may have stopped the shell expanding it)."""
-    project = os.environ.get("CLAUDE_PROJECT_DIR")
-    if expand and project and os.path.isabs(project):
-        for prefix in ("${CLAUDE_PROJECT_DIR}", "$CLAUDE_PROJECT_DIR"):
-            if word == prefix or word.startswith(prefix + "/"):
-                return project + word[len(prefix):]
-    return word
-
-
-def resolve_word(word: str, current: str | None, expand: bool) -> str | None:
-    """The real path a path word names from directory `current`, or None when it cannot be told."""
-    word = expand_project_dir(word, expand)
-    if not word or any(char in word for char in "$~*?[{"):
-        return None
+def runs_this_guard(match: re.Match, cwd: object) -> bool:
+    """`python3 <path> handoff [--base REF]` where <path>, from the hook's cwd, is this very file."""
+    word = match.group(1)
     if not os.path.isabs(word):
-        if current is None:
-            return None
-        word = os.path.join(current, word)
-    return os.path.realpath(word)
-
-
-def runs_this_guard(words: list[str], current: str | None, expand: bool) -> bool:
-    """`python3 <path> handoff [--base REF]`, where <path> is, resolved from `current`, this very file."""
-    if len(words) < 3 or words[0] != "python3" or words[2] != "handoff":
-        return False
-    tail = words[3:]
-    if tail and not (len(tail) == 2 and tail[0] == "--base" and tail[1] and not tail[1].startswith("-")):
-        return False
-    path = resolve_word(words[1], current, expand)
-    return path is not None and path == os.path.realpath(__file__)
+        if not isinstance(cwd, str) or not os.path.isabs(cwd):
+            return False
+        word = os.path.join(os.path.realpath(cwd), word)
+    return os.path.realpath(word) == os.path.realpath(__file__)
 
 
 def allowed_at_hard_bound(tool: str, tool_input: dict, cwd: object = None) -> bool:
     """Past the hard bound only a bounded git command, or this file's `handoff`, may run (POLICY 2).
 
-    The command is read by `command_segments` (quotes respected, so a commit message may hold any
-    punctuation, and anything it cannot read refused). Every segment must be `git_allowed`, `cd <dir>`,
-    or `python3 <this file> handoff [--base REF]`; the script is identified by its real path, resolved
-    against the hook's `cwd` and any `cd` before it, and not by its name.
+    The command string must fullmatch HARD_BOUND_GIT or HARD_BOUND_HANDOFF: no tokenising, no quote
+    state, no shell model. The script of a handoff is identified by its real path, resolved against the
+    hook's `cwd`, not by its name.
     """
     if tool != "Bash":
         return False
     command = tool_input.get("command")
     if not isinstance(command, str) or not command.strip():
         return False
-    segments = command_segments(command)
-    if not segments:
-        return False
-    current = os.path.realpath(cwd) if isinstance(cwd, str) and os.path.isabs(cwd) else None
-    expand = "'" not in command and "\\" not in command
-    for words in segments:
-        if words[0] == "git":
-            allowed = git_allowed(words)
-        elif words[0] == "cd":
-            allowed = len(words) == 2
-            if allowed:
-                current = resolve_word(words[1], current, expand)
-        else:
-            allowed = runs_this_guard(words, current, expand)
-        if not allowed:
-            return False
-    return True
+    if HARD_BOUND_GIT.fullmatch(command):
+        return True
+    handoff = HARD_BOUND_HANDOFF.fullmatch(command)
+    return bool(handoff) and runs_this_guard(handoff, cwd)
 
 
 # --------------------------------------------------------------------------- hook events
@@ -740,10 +644,12 @@ def pre_tool_use(payload: dict) -> int:
             record(payload, "denied", reason="context-hard-bound", agent_id=agent, tool=tool, tokens=context)
             return deny("PreToolUse", (
                 f"Context budget: this agent is at {context:,} tokens, past the hard bound of "
-                f"{HARD_TOKENS:,}. Only a git command (add, commit, status, diff, log, show, push, "
-                f"rev-parse, branch; `-C <dir>` is the one global option) or the guard's `handoff` may run "
-                f"now. Commit what is done (`git add` and `git commit`), run `{guard_command()}` from the "
-                f"worktree, and return the brief it prints as your final message. A fresh agent "
+                f"{HARD_TOKENS:,}. Only one plain command at a time may run now, with no shell syntax: a git "
+                f"command (add, commit, status, diff, log, show, push, rev-parse, branch --show-current; "
+                f"`-C <dir>` is the one global option; a commit message is a double-quoted `-m \"...\"` "
+                f"without `$`, a backtick, a backslash, `!` or a newline, so no heredoc) or the guard's "
+                f"`handoff`. Commit what is done (`git add` and `git commit`), run `{guard_command()}` "
+                f"from the worktree, and return the brief it prints as your final message. A fresh agent "
                 f"continues from the repository; do not keep working in this one."))
 
     if tool == "SendMessage":
@@ -957,13 +863,35 @@ def describe(event: str, scope: str | None) -> str:
     return f"{event} for all tools (matcher \"*\")" if scope == ALL_TOOLS else f"{event} for {scope}"
 
 
+GROUP_KEYS = ("matcher", "hooks")
+HOOK_KEYS = ("type", "command", "timeout")
+
+
+def unsupported_keys(group: dict, hook_: dict) -> list[str]:
+    """Keys of a registration that change what Claude Code does with it, naming where each sits.
+
+    A hook group carries a matcher and its hooks, a lifecycle hook a type, a command and a timeout, and
+    nothing more. Verified in Claude Code 2.1.287: `args` makes the whole command string the executable
+    name, with no shell expansion, so the guard never runs; `if` skips the hook for other tools; `once`
+    removes it after one run; `async` and `asyncRewake` run it in the background; `shell` changes what
+    interprets it. None of them can be told apart from a working registration by the command alone.
+    """
+    found = [f"{key!r} on the hook group" for key in group if key not in GROUP_KEYS]
+    found += [f"{key!r} on the hook" for key in hook_ if key not in HOOK_KEYS]
+    if hook_.get("type") != "command":
+        found.append(f"'type' is {hook_.get('type')!r}, not 'command'")
+    return found
+
+
 def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) -> list[str]:
     """One line per registration `REQUIRED_HOOKS` asks for that `settings` does not carry.
 
     A registration counts when its matcher covers the scope, its command is exactly
     `expected_command(guard_path)` (compared as the string it is: parsing it would discard the quotes
-    that decide whether the variable expands), and it is not a background hook, whose decisions
-    Claude Code does not wait for and cannot enforce.
+    that decide whether the variable expands), and nothing else about it changes how Claude Code runs
+    it: the hook group has only `matcher` and `hooks`, the hook only `type` (`command`), `command` and
+    `timeout`. Any other key (`args`, `if`, `once`, `async`, `shell`, ...) leaves it not wired and is
+    named. A background hook is among them: Claude Code does not wait for its decisions.
     """
     if not isinstance(settings, dict):
         return ["the settings are not a JSON object"]
@@ -974,26 +902,29 @@ def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) ->
     hooks = settings.get("hooks") if isinstance(settings.get("hooks"), dict) else {}
     for event, scope, why in REQUIRED_HOOKS:
         found = False
-        background: list[str] = []
+        refused: list[str] = []
         entries = hooks.get(event) if isinstance(hooks.get(event), list) else []
         for entry in entries:
             if not isinstance(entry, dict) or not covers(entry.get("matcher"), scope):
                 continue
             for hook_ in entry.get("hooks") if isinstance(entry.get("hooks"), list) else []:
-                if not isinstance(hook_, dict) or hook_.get("type", "command") != "command" \
-                        or hook_.get("command") != command:
+                if not isinstance(hook_, dict) or hook_.get("command") != command:
                     continue
-                keys = [key for key in BACKGROUND_KEYS if hook_.get(key) is True]
-                if keys:
-                    background.extend(keys)
+                extra = unsupported_keys(entry, hook_)
+                if extra:
+                    refused.extend(extra)
                 else:
                     found = True
         if found:
             continue
-        if background:
-            problems.append(f"background: {describe(event, scope)} runs {GUARD_NAME} with "
-                            f"\"{background[0]}\": true, so its decisions are not enforced; it must run in the "
-                            f"foreground, needed to {why}")
+        if refused:
+            background = [key for key in BACKGROUND_KEYS if any(f"'{key}'" in item for item in refused)]
+            tail = ("it runs in the background, so its decisions are not enforced; it must run in the "
+                    "foreground" if background else
+                    "a key Claude Code reads changes how it runs, so it may not enforce")
+            problems.append(f"not wired: {describe(event, scope)} runs {GUARD_NAME} with {'; '.join(refused)}: "
+                            f"{tail} (a group has only {', '.join(GROUP_KEYS)}; a hook only "
+                            f"{', '.join(HOOK_KEYS)} with type 'command'), needed to {why}")
         else:
             problems.append(f"missing: {describe(event, scope)} does not run {GUARD_NAME} as exactly "
                             f"`{command}`, needed to {why}")

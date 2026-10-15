@@ -202,16 +202,20 @@ Claude agents:
   agent id this session never launched, because that cannot be shown to be running; a message to a
   running agent (a continuation of its assignment) and to `main` goes through. An agent counts as
   completed only on definitive evidence: a foreground `Agent` call that returned its final result, or
-  a task notification for it in the session's main transcript with a status other than `running`. A
+  a task notification for it that the runtime enqueued in the session's main transcript, with a status
+  other than `running` (the same text quoted in a tool result or in another agent's message is not one). A
   `SubagentStop` event is not evidence, because another stop hook can veto it and the agent then keeps
   running, so the guard does not register for it;
 - if the runtime reports that it resumed an agent anyway, the guard records it and tells the model to
   stop that agent and dispatch a fresh one;
 - **a subagent has a context budget.** At 210,000 tokens (where three in four first assignments have
   finished) it is told once to commit and, if the remaining work is separable, to return a handoff; at
-  350,000 it may only commit and return: every tool is refused but `git` (with `-C <dir>` as the only
-  global option, and only `add`, `commit`, `status`, `diff`, `log`, `show`, `push`, `rev-parse` and
-  listing `branch`; no `-c`, no alias) and `handoff`;
+  350,000 it may only commit and return: every tool is refused but one plain command at a time, with no
+  shell syntax at all (no `cd`, `&&`, pipe, redirect, `$`, quote other than a commit message's, comment,
+  heredoc): `git` (with `-C <dir>` as the only global option, and only `add`, `commit`, `status`, `diff`,
+  `log`, `show`, `push`, `rev-parse` and `branch --show-current`, each with a short list of options; no
+  `-c`, no alias; a commit message is `-m "..."` without `$`, a backtick, a backslash, `!` or a
+  newline) and `handoff`;
 - a handoff is a brief from committed state, never a transcript:
   `python3 .claude/hooks/agent-lifecycle-guard.py handoff` prints the branch, the head, the commits and
   files since `origin/main` and the upstream state, and refuses a worktree with uncommitted work. The

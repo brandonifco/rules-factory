@@ -136,12 +136,14 @@ TABLE = (
     Row(".claude/hooks/agent-lifecycle-guard.py", MANAGED, 1,
         "the PreToolUse and PostToolUse guard behind one agent, one attempt (#676, 0083): it "
         "refuses a SendMessage to a subagent with definitive evidence of completion (a foreground result, or a "
-        "task notification in the main transcript; never a SubagentStop, which can be vetoed), or to an agent id it never saw "
+        "task notification the runtime enqueued in the main transcript; never a SubagentStop, which can be vetoed, and never a "
+        "notification quoted in a tool result), or to an agent id it never saw "
         "launched; it detects a resume the runtime reports; it tells a subagent to commit and hand off at "
-        "a measured context checkpoint and lets it only commit and return at the hard bound (a fixed git "
-        "subcommand list with no `-c`, and `handoff` of this very file); its `handoff` "
-        "is a brief from committed state; `check-settings` and `measure` are the wiring check and the "
-        "telemetry"),
+        "a measured context checkpoint and lets it only commit and return at the hard bound (one plain command "
+        "that fullmatches a strict grammar, with no shell syntax: a fixed git subcommand list with short option "
+        "lists and no `-c`, and `handoff` of this very file); its `handoff` "
+        "is a brief from committed state; `check-settings` and `measure` are the wiring check, which "
+        "refuses any key that changes how the hook runs, and the telemetry"),
     Row(".claude/settings.json", MANAGED, 2,
         "which tools the guards run before and after (0029); the lifecycle guard is wired on every tool "
         "before and after, in the foreground, and not on SubagentStop, which another stop hook can veto (#676, 0083)"),
@@ -400,7 +402,7 @@ RECIPE_SHA256 = {
         3: "2f15d7192c5328376c1cd1836229c699d1d48f90ef35b451e48fa79b7fbef238",
     },
     ".claude/hooks/agent-lifecycle-guard.py": {
-        1: "178feb6402167bcbaa4c4e101da922acad8d2da7c473d9f6583dff062f199475",
+        1: "1ba4fd4cc8971ec022677e7f735f119984145d0d633d796bbaa839e92f6e394a",
     },
     ".claude/settings.json": {
         1: "4d410acd10ba5b6ed2d3c6a016cc2cfde1cf8e621da54424755376a80da30aa0",
@@ -440,7 +442,7 @@ RECIPE_SHA256 = {
         31: "6a491708e330e18d5abb83a3dd050140c62516d3f5d91ff3fe0d6f98739aa711",
         32: "2529749d4d1c5a7b1ed9e1198b15f7b5ff4275a39de34e768e12f657e2590ad1",
         33: "4d6f196944d60473983d5f441c30db9b762c8fcefde7bb364ea74485cbf74c09",
-        34: "b1598edff6b867888ca715526f18acddea81b2d272ab3f82c3733f461c14a5e3",
+        34: "6eb7bbb2573473fd265dfd586d4efe2cff6fff70308d44fe5731f205c28ddc61",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
