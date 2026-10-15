@@ -7284,6 +7284,42 @@ class TestTheMutationRunner(RailsInAGitEngine):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("RED: Other.Ns.RealTests.Declared", done.stdout)
 
+    # The TrxLogger splits `className` and `name` at the display name when that is a dotted suffix of the
+    # fully qualified name (checked against dotnet 10.0.112, xunit 2.9.2 with runner 2.8.2):
+    #   [Fact(DisplayName = "RealTests.Declared")]   Other.Ns.RealTests.Declared -> className "Other.Ns",  name "RealTests.Declared"
+    #   [Fact(DisplayName = "Ns.RealTests.Third")]   Other.Ns.RealTests.Third    -> className "Other",     name "Ns.RealTests.Third"
+    #   a nested class's "Outer+Inner.Nested"        Other.Ns.Outer+Inner.Nested -> className "Other.Ns",  name "Outer+Inner.Nested"
+    # while "Declared", "Tail" and a full "Other.Ns.RealTests.Fourth" leave className alone.
+    SUFFIX_SPLIT = (("RealTests.Declared => Other.Ns::RealTests.Declared", "Other.Ns.RealTests.Declared"),
+                    ("Ns.RealTests.Third => Other::Ns.RealTests.Third", "Other.Ns.RealTests.Third"),
+                    ("Outer+Inner.Nested => Other.Ns::Outer+Inner.Nested", "Other.Ns.Outer+Inner.Nested"))
+
+    def test_a_namespace_is_never_taken_from_the_class_name_alone(self):
+        """className `Other.Ns` and name `RealTests.Declared` is the one test `Other.Ns.RealTests.Declared`, not `Ns.`'s."""
+        self.engine_with_a_probe()
+        for shown, full in self.SUFFIX_SPLIT:
+            wrong = "Ns." + ".".join(full.split(".")[-2:])    # what the class name's last segment would make of it
+            with self.subTest(shown=shown, spec=wrong):
+                self.plan({"say": "Failed!  - Failed:     1, Passed:     0", "code": 1, "results": {shown: "Failed"}})
+                done = self.mutate(self.spec(test=wrong), "--no-baseline")
+                self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+                self.assertIn("NO TEST MATCHED", done.stdout)
+                self.assertNotIn("RED", done.stdout)
+
+    def test_a_test_whose_display_name_splits_the_class_name_is_still_named_by_class_and_method(self):
+        self.engine_with_a_probe()
+        for shown, full in self.SUFFIX_SPLIT:
+            short = ".".join(full.rsplit(".", 2)[-2:])
+            for spec_test in (full, short):
+                with self.subTest(shown=shown, spec=spec_test):
+                    self.plan({"say": "Passed!  - Failed:     0, Passed:     1", "results": {shown: "Passed"}},
+                              {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1, "results": {shown: "Failed"}})
+                    if os.path.exists(self.calls_path):
+                        os.remove(self.calls_path)
+                    done = self.mutate(self.spec(test=spec_test))
+                    self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+                    self.assertIn(f"RED: {full} ", done.stdout)
+
     def test_projects_that_differ_above_the_output_directory_are_two_tests(self):
         """Only the framework directory under `bin/<Configuration>/` is the project's own output; an ancestor named like one is not."""
         self.engine_with_a_probe()
