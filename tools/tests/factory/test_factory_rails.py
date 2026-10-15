@@ -6822,23 +6822,33 @@ if "--results-directory" in sys.argv:
     from xml.sax.saxutils import quoteattr
     wanted = sys.argv[sys.argv.index("--filter") + 1].split("~", 1)[1].replace("\\\\", "") if "--filter" in sys.argv else ""
     projects = step.get("results", {})
-    if step.get("raw"):
-        pathlib.Path(sys.argv[sys.argv.index("--results-directory") + 1], "broken.trx").write_text(step["raw"])
-    for number, project in enumerate(projects if isinstance(projects, list) else [projects]):
+    results_directory = pathlib.Path(sys.argv[sys.argv.index("--results-directory") + 1])
+
+    def trx(project, number):
         defined, ran = [], []
         for name, outcomes in project.items():
             name = "Ns." + wanted if name == "*" else name
             klass, _, method = name.rpartition(".")
             test_id = str(uuid.uuid4())
-            defined.append(f'<UnitTest name={quoteattr(name)} id="{test_id}"><Execution id="{uuid.uuid4()}" />'
+            defined.append(f'<UnitTest name={quoteattr(name)} storage="/src/bin/debug/net10.0/project{number}.dll" '
+                           f'id="{test_id}"><Execution id="{uuid.uuid4()}" />'
                            f'<TestMethod className={quoteattr(klass)} name={quoteattr(method)} /></UnitTest>')
             for outcome in ([outcomes] if isinstance(outcomes, str) else outcomes):
                 ran.append(f'<UnitTestResult executionId="{uuid.uuid4()}" testId="{test_id}" testName={quoteattr(name)} '
                            f'outcome="{outcome}" />')
-        pathlib.Path(sys.argv[sys.argv.index("--results-directory") + 1], f"project{number}.trx").write_text(
-            '<?xml version="1.0" encoding="UTF-8"?>\\n'
-            '<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">'
-            f'<Results>{"".join(ran)}</Results><TestDefinitions>{"".join(defined)}</TestDefinitions></TestRun>')
+        return ('<?xml version="1.0" encoding="UTF-8"?>\\n'
+                '<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">'
+                f'<Results>{"".join(ran)}</Results><TestDefinitions>{"".join(defined)}</TestDefinitions></TestRun>')
+
+    if step.get("raw"):
+        (results_directory / "broken.trx").write_text(step["raw"])
+    for number, project in enumerate(projects if isinstance(projects, list) else [projects]):
+        (results_directory / f"project{number}.trx").write_text(trx(project, number))
+    if step.get("nested"):
+        # What VSTest copies beneath the results directory: a test's own attachment, not a result file.
+        deep = results_directory / "run" / "In" / "host"
+        deep.mkdir(parents=True)
+        (deep / "old.trx").write_text(trx(step["nested"], 0))
 print(step["say"])
 sys.exit(step.get("code", 0))
 '''
@@ -7047,7 +7057,8 @@ class TestTheMutationRunner(RailsInAGitEngine):
                    "results": {**both, "Ns.ProbeTests.One": "Failed"}})
         done = self.mutate(self.spec(test="ProbeTests.One"))
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("Ns.ProbeTests.One: Failed 1", done.stdout)
+        self.assertIn("RED: Ns.ProbeTests.One (project0): Failed 1", done.stdout,
+                      "the record names the test it resolved to, and the assembly it ran in")
 
     def test_a_failed_line_that_a_passing_test_printed_decides_nothing(self):
         """The first line starting `Failed!` was the verdict, wherever it came from."""
@@ -7103,6 +7114,57 @@ class TestTheMutationRunner(RailsInAGitEngine):
                    "results": {**both, "B.ProbeTests.One": "Failed"}})
         done = self.mutate(self.spec(test="B.ProbeTests.One"))
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    # -- review of #665: what makes two results one test, and which files are results ---------------
+
+    def test_one_name_in_two_assemblies_is_two_tests(self):
+        """Keyed by class and method alone, project B's red was credited to project A's test."""
+        self.engine_with_a_probe()
+        same = [{"Ns.ProbeTests.One": "Passed"}, {"Ns.ProbeTests.One": "Passed"}]
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     2", "results": same})
+        done = self.mutate(self.spec(test="ProbeTests.One"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("BASELINE MORE THAN ONE TEST MATCHED", done.stdout)
+        self.assertIn("project0", done.stdout)
+        self.assertIn("project1", done.stdout)
+        self.assertEqual(len(self.calls()), 1, "it mutated a spec that names two tests")
+
+    def test_one_name_in_two_assemblies_is_not_red_when_only_the_second_fails(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": [{"Ns.ProbeTests.One": "Passed"}, {"Ns.ProbeTests.One": "Failed"}]})
+        done = self.mutate(self.spec(test="ProbeTests.One"), "--no-baseline")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("MORE THAN ONE TEST MATCHED", done.stdout)
+        self.assertNotIn("RED", done.stdout)
+
+    def test_a_results_file_nested_beneath_the_results_directory_is_not_a_result(self):
+        """VSTest copies a test's attachments under the results directory; one may be an old TRX."""
+        self.engine_with_a_probe()
+        self.plan(GREEN, {**GREEN, "nested": {"*": "Failed"}})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("GREEN", done.stdout)
+        self.assertNotIn("RED", done.stdout)
+
+    def test_a_qualified_name_is_not_matched_by_a_longer_namespace(self):
+        """`Ns.ProbeTests.One` does not name `Other.Ns.ProbeTests.One`: a namespace the spec spells is its own."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Failed!  - Failed:     1, Passed:     0", "code": 1,
+                   "results": {"Other.Ns.ProbeTests.One": "Failed"}})
+        done = self.mutate(self.spec(test="Ns.ProbeTests.One"), "--no-baseline")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("NO TEST MATCHED", done.stdout)
+        self.assertNotIn("RED", done.stdout)
+
+    def test_a_class_and_method_fits_a_global_class_and_a_namespaced_one_alike(self):
+        """`ProbeTests.One` is exact for the global class and short for `Ns.ProbeTests`; neither wins silently."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     2",
+                   "results": {"ProbeTests.One": "Passed", "Ns.ProbeTests.One": "Passed"}})
+        done = self.mutate(self.spec(test="ProbeTests.One"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("BASELINE MORE THAN ONE TEST MATCHED", done.stdout)
 
     def test_the_rows_of_one_theory_are_one_test_and_any_failed_row_is_red(self):
         self.engine_with_a_probe()
