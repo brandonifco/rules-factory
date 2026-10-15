@@ -66,11 +66,25 @@ interrupt is reported as having left the source as it was only after every file 
 been read again and found byte for byte what it was before the run; otherwise the files that differ
 are listed, and the exit is 1. The one thing worse than no mutation evidence is a source tree quietly carrying a mutation.
 
+**What the verdict is about.** Exactly the test the spec names, and nothing else the run printed.
+The solution is built first, and a build that exits non-zero is the end of it. Then the tests run
+with a TRX logger writing to a temporary directory that is removed afterwards, and the verdict is
+read from the results of the named test in the TRX files of every test project: RED when one of
+that test's own results is `Failed`, GREEN when it ran and every one of its results is `Passed`.
+`test` is a fully qualified test name, with or without its namespace (`Ns.Class.Method` or
+`Class.Method`). The `--filter` only narrows what runs, and its operators are escaped. Other tests the filter happens to select (`Probe.OneMore`
+for `Probe.One`) run, and nothing they do decides anything. A test project the filter matches
+nothing in is silent, not a verdict. A `test` that names more than one test (the same
+`Class.Method` in two namespaces) is reported as such and is not red. The rows of one theory are
+one test: any `Failed` row is red.
+
 **A mutation that does not compile is not a red test.** It is reported as its own outcome and
-counts as a failure of the run: the test was never asked the question.
+counts as a failure of the run: the test was never asked the question. It is classified from the
+build's exit status, and the diagnostic quoted is the build's own first `error XXX####` line,
+whatever its class (`CS`, `MSB`, `NETSDK`, ...). Test output is never searched for one.
 
 **Exit code.** 0 when every mutation turned its test red, and 1 otherwise -- green, did not
-compile, no test matched, or refused. One non-zero for "the evidence AGENTS.md asks for was not
+compile, no test matched, more than one did, or refused. One non-zero for "the evidence AGENTS.md asks for was not
 produced", because that is the only distinction a caller acts on; which of them it was is in the
 output, loudly. Exit 2 stays argparse's, for a command called wrongly.
 
@@ -85,6 +99,8 @@ import re
 import signal
 import subprocess
 import sys
+import tempfile
+import xml.etree.ElementTree as ET
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PROVENANCE = "provenance.json"
@@ -96,6 +112,9 @@ RED = "RED"
 GREEN = "GREEN"
 NO_BUILD = "DID NOT COMPILE"
 NO_TEST = "NO TEST MATCHED"
+MANY_TESTS = "MORE THAN ONE TEST MATCHED"
+
+TRX_NS = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
 
 
 class Refused(Exception):
@@ -375,28 +394,76 @@ def _put_back(path, original):
 
 
 def run_test(solution, test, configuration):
-    """`dotnet test` filtered to one test. Returns (outcome, the line that says so)."""
-    result = subprocess.run(
-        ["dotnet", "test", str(solution.name), "-c", configuration, "--nologo",
-         "--filter", f"FullyQualifiedName~{test}"],
-        cwd=ROOT, capture_output=True, text=True)
-    out = f"{result.stdout}\n{result.stderr}"
-    lines = out.splitlines()
+    """Build, run the filter, and judge the one test. Returns (outcome, the line that says so)."""
+    built = subprocess.run(["dotnet", "build", str(solution.name), "-c", configuration, "--nologo"],
+                           cwd=ROOT, capture_output=True, text=True)
+    if built.returncode != 0:
+        return NO_BUILD, _diagnostic(f"{built.stdout}\n{built.stderr}", f"dotnet build exited {built.returncode}")
 
-    compile_error = next((line.strip() for line in lines if "error CS" in line or "error MSB" in line), None)
-    if compile_error:
-        return NO_BUILD, compile_error
-    failed = next((line.strip() for line in lines if line.startswith("Failed!")), None)
-    if failed:
-        return RED, failed
-    passed = next((line.strip() for line in lines if line.startswith("Passed!")), None)
-    if passed:
-        if re.search(r"\bPassed:\s*0\b", passed) or "No test matches" in out:
-            return NO_TEST, passed
-        return GREEN, passed
-    if "No test matches" in out or "no test is available" in out.lower():
-        return NO_TEST, "no test matched the filter"
-    return NO_TEST, (lines[-1].strip() if lines else f"dotnet test exited {result.returncode} and said nothing")
+    with tempfile.TemporaryDirectory(prefix="mutate-") as results:
+        ran = subprocess.run(
+            ["dotnet", "test", str(solution.name), "-c", configuration, "--nologo", "--no-build",
+             "--filter", f"FullyQualifiedName~{_escaped(test)}",
+             "--logger", "trx", "--results-directory", results],
+            cwd=ROOT, capture_output=True, text=True)
+        outcomes, problems = _results_of(test, results)
+    if problems:
+        return NO_TEST, problems[0]
+    if len(outcomes) > 1:
+        return MANY_TESTS, f"{_excerpt(test)} names {len(outcomes)} tests: {', '.join(sorted(outcomes))}"
+    if not outcomes:
+        lines = [line.strip() for line in f"{ran.stdout}\n{ran.stderr}".splitlines()
+                 if line.strip() and not line.startswith("Results File:")]
+        return NO_TEST, (f"no test named {_excerpt(test)} produced a result"
+                         + (f"; dotnet test exited {ran.returncode}: {lines[-1]}" if ran.returncode and lines else ""))
+    (name, seen), = outcomes.items()
+    said = f"{name}: " + ", ".join(f"{outcome} {count}" for outcome, count in sorted(seen.items()))
+    if "Failed" in seen:
+        return RED, said
+    if set(seen) == {"Passed"}:
+        return GREEN, said
+    return NO_TEST, f"{said}; it did not run to a result of its own"
+
+
+def _escaped(test):
+    """`test` as a VSTest filter value: its operators are text, so it cannot widen what is selected."""
+    return re.sub(r"([\\()&|=!~])", r"\\\1", test)
+
+
+def _diagnostic(output, fallback):
+    """The build's first diagnostic of any class (`error CS1002`, `error NETSDK1045`), else its last line."""
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    found = next((line for line in lines if re.search(r"\berror\s+[A-Za-z]+\d+\b", line)), None)
+    return found or (lines[-1] if lines else fallback)
+
+
+def _results_of(test, results):
+    """({the test that matched: {outcome: results}}, problems), from every TRX under `results`.
+
+    A result belongs to the test when `test` is the test's fully qualified name (the TRX's class and
+    method) or the tail of it after a dot, so `Class.Method` names `Ns.Class.Method`. The rows of
+    one theory share a method and are one test. A project the filter matched nothing in writes a TRX
+    with no results, which is no evidence either way; a TRX that cannot be read is reported, because
+    it may have held the answer.
+    """
+    outcomes, problems = {}, []
+    for path in sorted(pathlib.Path(results).rglob("*.trx")):
+        try:
+            root = ET.parse(path).getroot()
+        except (ET.ParseError, OSError) as error:
+            problems.append(f"{path.name} cannot be read ({error}), so it shows no test running")
+            continue
+        methods = {unit.get("id"): f"{method.get('className')}.{method.get('name')}"
+                   for unit in root.iterfind(".//t:UnitTest", TRX_NS)
+                   for method in unit.iterfind("t:TestMethod", TRX_NS)}
+        for result in root.iterfind(".//t:UnitTestResult", TRX_NS):
+            if result.find("t:InnerResults", TRX_NS) is not None:
+                continue    # a parent the writer made over the rows beneath it
+            name = methods.get(result.get("testId"))
+            if name and (name == test or name.endswith("." + test)):
+                seen = outcomes.setdefault(name, {})
+                seen[result.get("outcome")] = seen.get(result.get("outcome"), 0) + 1
+    return outcomes, problems
 
 
 def _bytes_of(path):

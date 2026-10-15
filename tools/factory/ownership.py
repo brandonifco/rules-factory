@@ -146,13 +146,16 @@ TABLE = (
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029); a composed "
         "engine's packet is built over the whole composition and names the package its entry's id says it "
         "came from (#460)"),
-    Row("tools/mutate.py", MANAGED, 2,
+    Row("tools/mutate.py", MANAGED, 3,
         "a recorded mutation, run: the edit, the named test, and the source put back, so the evidence "
         "AGENTS.md asks for is re-runnable by the reviewer rather than a sentence (#454); a spec's edits "
         "apply in order, each to the text the earlier ones left, so every edit to a file is in place for "
         "the run, and one that reads another's output is refused (#623); an interrupt, SIGTERM or SIGHUP puts every "
         "file back, every name of a hard-linked file is restored, and a spec that names no site or "
-        "cancels itself out is refused (#623)"),
+        "cancels itself out is refused (#623); the verdict is the named test's own result, read from "
+        "the TRX of every test project, so a sibling the filter also selected, a line of test output, "
+        "or a project the filter matched nothing in decides nothing, and a build is judged by its own "
+        "exit status, whatever class of error it prints (#625, #662)"),
     Row("tools/re-produce.sh", MANAGED, 8,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252); "
@@ -456,6 +459,7 @@ RECIPE_SHA256 = {
     "tools/mutate.py": {
         1: "d33f7ddedc923388af4582ffb6c04a1434c09f695738ca34f191839f21847901",
         2: "eb722639671ba46c0703f699dc85177fe88f52e00ced99ccf4e90f54a30c49eb",
+        3: "6b6b9dac813551466b5f6a88338e85ea814c15bc28a0ab83327f3f36bf88a746",
     },
     "tools/re-produce.sh": {
         1: "2a281f94f81ce141733494a94744caa96c88af3cd9fa848cec21c13e73739499",
