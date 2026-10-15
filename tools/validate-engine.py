@@ -1517,12 +1517,15 @@ elif argv[:1] == ["api"] and len(argv) > 1:
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(state, handle, indent=2)
         print("{}")
-    elif route.startswith(prefix + "contents/") and "?ref=" in route:
-        # The base commit's provenance.json, which pr-policy.py reads for a retired deletion (#243).
-        body = state.get("contents", {}).get(route.split("?ref=", 1)[1])
+    elif route.startswith(("repos/{owner}/{repo}/contents/", prefix + "contents/")) and "?ref=" in route:
+        # A file at the base commit. The rails ask for `repos/{owner}/{repo}/...`, which `gh` expands to the
+        # current repository. pr-policy.py reads the base's provenance.json for a retired deletion (#243), and
+        # every rail that classifies the diff reads the base's agent-policy.json (#612): this base holds no
+        # such policy, which is a path that is not there, and `gh api` says so in exactly these words. The
+        # rails tell a policy the base never had from a base they could not read by that text.
+        wanted, ref = route.split("/contents/", 1)[1].split("?ref=", 1)
+        body = state.get("contents", {}).get(ref) if wanted == "provenance.json" else None
         if body is None:
-            # What `gh api` prints for a path that is not at that ref. The rails tell a policy the base
-            # never had from a base they could not read by exactly this text (#612).
             refuse("gh: Not Found (HTTP 404)")
         print(json.dumps(body))
     elif route.startswith(prefix + "commits/") and route.endswith("/status"):
