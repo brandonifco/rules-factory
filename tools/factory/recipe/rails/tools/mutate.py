@@ -465,8 +465,9 @@ def _results_of(test, results):
     attachments beneath it, and one of those may be any TRX at all. A result belongs to the test
     when `test` is the test's fully qualified name (the TRX's class and method), or `Class.Method`,
     the same without the namespace. A name that spells a namespace is therefore that namespace's:
-    `Ns.Class.Method` is not `Other.Ns.Class.Method`. The namespace ends at the last dot outside any
-    brackets and before any `+`, so `Probe<System.Int32>.One` and `Outer+Inner.One` are names.
+    `Ns.Class.Method` is not `Other.Ns.Class.Method`. Both forms are cut from the one string
+    `className.name`, because the logger may have moved part of the class name into `name` (see
+    `_class_and_method`); `Probe<System.Int32>.One` and `Outer+Inner.One` are names.
 
     A test is told apart by its assembly as well, because the same name in two projects is two
     tests: the assembly is its output path, lower-cased, with `/` for `\\` and without the
@@ -495,27 +496,35 @@ def _results_of(test, results):
             if result.find("t:InnerResults", TRX_NS) is not None:
                 continue    # a parent the writer made over the rows beneath it
             klass, method = methods.get(result.get("testId"), ("", ""))
-            if method and test in (f"{klass}.{method}", f"{_unqualified(klass)}.{method}"):
+            full = f"{klass}.{method}"
+            if method and test in (full, _class_and_method(full)):
                 assembly = assemblies.get(result.get("testId"))
-                label = f"{klass}.{method}" + (f" ({assembly})" if assembly else "")
+                label = full + (f" ({assembly})" if assembly else "")
                 seen = outcomes.setdefault(label, {})
                 seen[result.get("outcome")] = seen.get(result.get("outcome"), 0) + 1
     return outcomes, problems
 
 
-def _unqualified(klass):
-    """`klass` without its namespace: after the last dot that is outside brackets and before any `+`."""
-    depth = cut = 0
-    for index, character in enumerate(klass):
-        if character in "<[":
+def _class_and_method(full):
+    """The last two names of a fully qualified test name, `Class.Method`, split at dots outside brackets.
+
+    The TrxLogger splits `className` and `name` at the display name when that is a dotted suffix of
+    the full name, so `Other.Ns.RealTests.Declared` with `DisplayName = "RealTests.Declared"` is
+    written as class `Other.Ns` and name `RealTests.Declared`. Only the whole string is the test's
+    name; every form is derived from it, and a namespace is never read from `className` alone.
+    A `+` is part of a name (`Outer+Inner`), and so are the dots inside `<>`, `[]` and `()`.
+    """
+    depth, names, start = 0, [], 0
+    for index, character in enumerate(full):
+        if character in "<[(":
             depth += 1
-        elif character in ">]":
+        elif character in ">])":
             depth -= 1
-        elif depth == 0 and character == "+":
-            break
         elif depth == 0 and character == ".":
-            cut = index + 1
-    return klass[cut:]
+            names.append(full[start:index])
+            start = index + 1
+    names.append(full[start:])
+    return ".".join(names[-2:])
 
 
 def _remove(directory):
