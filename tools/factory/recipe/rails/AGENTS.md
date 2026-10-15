@@ -338,7 +338,12 @@ decline that names why and cites where — that is the engine working, not the e
   Matching is plain substring search on the file's text as UTF-8 with its line endings untouched:
   CR LF is two characters, so an `old` that spans a line ending must name the file's own ending,
   and an `old` of LF alone also matches the LF inside a CR LF. It refuses an empty `old`, and a
-  spec whose edits cancel out and would leave every file as it was. It runs each test unmutated first, because a test that was already red
+  spec whose edits cancel out and would leave every file as it was. The `test` of a spec names one
+  test, `Class.Method` or `Namespace.Class.Method`, and the verdict is that test's own result, read
+  from the TRX of every test project in the solution: a sibling whose name contains it, a line of
+  test output, or a project the filter matches nothing in decides nothing, and a name that fits two
+  tests is reported, not run. A build that fails is "did not compile", whatever class of error it
+  prints. It runs each test unmutated first, because a test that was already red
   proves nothing either. And it names the one failure the prose cannot — **a mutation that leaves
   its test green**, which is precisely the test nobody has watched fail — by reporting it and
   exiting non-zero. Paste its output into the pull request as the evidence, and put the specs
