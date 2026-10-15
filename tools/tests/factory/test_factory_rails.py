@@ -3082,6 +3082,91 @@ class TestReviewEvidenceAcrossRepairs(RailsInAGitEngine):
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("a later review was recorded", done.stderr)
 
+    def posted(self):
+        """What the stand-in `gh` holds as posted statuses."""
+        path = os.path.join(self.tmp, "statuses.json")
+        return json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+
+    def delta_identity(self):
+        """A real delta identity for a repair of the failed full review, and the statuses file the recorder writes."""
+        attestation, _ = self.failed_full_review()
+        head, committed = self.repair(attestation)
+        done = self.run_tool("review-scope.py", "delta", "5", "--prior", committed, "--package-map", self.MAP,
+                             "--out", os.path.join(self.tmp, "delta"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        _, identity = self.packet_paths(done)
+        return identity, head, committed
+
+    def test_a_delta_identity_names_the_class_its_change_was_judged_as(self):
+        """#615: `review-scope.py` classifies the pull request as `review-packet.py` does, so the recorder can hold a
+        delta or a carry to the table of what each class owes, with no exemption for the two.
+
+        mutation: write the delta identity without the review class
+        """
+        identity, head, committed = self.delta_identity()
+        document = json.load(open(identity, encoding="utf-8"))
+        self.assertEqual(document["reviewType"], "delta")
+        self.assertEqual(document["reviewContext"]["reviewClass"]["effective"], "semantic-implementation")
+        self.assertEqual(document["reviewContext"]["reviewClass"]["computed"], "semantic-implementation")
+
+    def test_a_delta_or_a_carry_that_names_no_class_cannot_post_a_semantic_verdict(self):
+        """#615 (review): the recorder trusted a delta or carry identity's `reviewType` and let it name no class,
+        or an explicit null, so a hand-written one posted a semantic status for a change the gate says owes none.
+
+        mutation: exempt `delta` and `carry` identities from the class check again
+        """
+        identity, head, committed = self.delta_identity()
+        original = json.load(open(identity, encoding="utf-8"))
+        posted = self.posted()
+        for label, change in (("a class removed", None), ("an explicit null", "null"),
+                              ("a class that owes none", {"computed": "documentation", "effective": "documentation",
+                                                          "declared": None}),
+                              ("a class that is not one", {"effective": "semantic-novelty"})):
+            with self.subTest(label):
+                document = json.loads(json.dumps(original))
+                if change is None:
+                    del document["reviewContext"]["reviewClass"]
+                elif change == "null":
+                    document["reviewContext"]["reviewClass"] = None
+                else:
+                    document["reviewContext"]["reviewClass"] = change
+                forged = identity
+                with open(forged, "w", encoding="utf-8") as handle:
+                    json.dump(document, handle)
+                for verdict in ("pass", "fail"):
+                    extra = ("--finding", "entry:altitude-limit=x") if verdict == "fail" else ()
+                    refused = self.run_tool("record-verdict.py", "--pr", "5", "--packet", forged, "--reviewer", "semantic",
+                                            "--verdict", verdict, *extra)
+                    self.assertEqual(refused.returncode, 1, refused.stdout + refused.stderr)
+                    self.assertIn("semantic verdict", refused.stderr)
+        self.assertEqual(self.posted(), posted, "nothing was posted")
+
+    def test_a_delta_for_a_change_that_owes_no_semantic_review_is_refused(self):
+        """A delta follows a semantic review; if the pull request now owes none, there is nothing to bound.
+
+        mutation: write the delta packet without asking what the change owes
+        """
+        identity, head, committed = self.delta_identity()
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"] = [{"path": "README.md"}]
+        self.fixture(document)
+        refused = self.run_tool("review-scope.py", "delta", "5", "--prior", committed, "--package-map", self.MAP,
+                                "--out", os.path.join(self.tmp, "delta-docs"))
+        self.assertEqual(refused.returncode, 1, refused.stdout)
+        self.assertIn("owes no semantic review", refused.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "delta-docs")), "a refusal writes nothing")
+
+    def test_a_delta_cannot_be_classified_from_a_truncated_file_list(self):
+        # mutation: classify the files that were listed and say nothing of the rest
+        identity, head, committed = self.delta_identity()
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["changedFiles"] = 250
+        self.fixture(document)
+        refused = self.run_tool("review-scope.py", "delta", "5", "--prior", committed, "--package-map", self.MAP,
+                                "--out", os.path.join(self.tmp, "delta-truncated"))
+        self.assertEqual(refused.returncode, 1, refused.stdout)
+        self.assertIn("truncated", refused.stderr)
+
     def test_an_attestation_edited_after_it_was_recorded_is_not_reused(self):
         attestation, _ = self.failed_full_review()
         document = json.load(open(attestation, encoding="utf-8"))
@@ -4693,6 +4778,10 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
                     }
                     for package in provenance["maps"]
                 ],
+                # What `tools/review-packet.py` writes: the class the change was judged as. The recorder holds a
+                # semantic verdict to it, and refuses an identity that names none (#615).
+                "reviewClass": {"computed": "semantic-implementation", "effective": "semantic-implementation",
+                                "declared": None},
             },
             "entryPackets": [],
         }
@@ -4855,6 +4944,10 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
                     }
                     for package in provenance["maps"]
                 ],
+                # What `tools/review-packet.py` writes: the class the change was judged as. The recorder holds a
+                # semantic verdict to it, and refuses an identity that names none (#615).
+                "reviewClass": {"computed": "semantic-implementation", "effective": "semantic-implementation",
+                                "declared": None},
             },
             "entryPackets": [],
         }
