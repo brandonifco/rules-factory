@@ -250,8 +250,8 @@ it.
 
 Unaccounted units are **NOT VERIFIED** (exit 3), never a failure: whether a passage owed an entry
 is decided by reading the corpus, and this tool does not read it. What *is* a failure is an
-enumeration of no units, or a run in which no entry's quote is found at all — an inventory of
-nothing has nothing unaccounted.
+enumeration of no units, a map that cites no corpus (so there is no walk at all), or a run in
+which no entry's quote is found at all — an inventory of nothing has nothing unaccounted.
 
 The nine committed maps whose extent one corpus holds report 408 unaccounted units of 1,351,
 against 227 recorded rejections

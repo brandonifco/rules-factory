@@ -272,6 +272,11 @@ def command_inventory(args):
     wrong in.
     """
     walks = _walks(args)
+    if not walks:
+        print(f"{os.path.basename(args.map_path)} cites no corpus, so there is no walk to "
+              f"inventory; an inventory of nothing accounts for nothing and is not a pass",
+              file=sys.stderr)
+        return 1
     worst, totals = 0, {"units": 0, "unaccounted": 0, "unaddressable": 0, "located": 0}
     for walk in walks:
         if len(walks) > 1:
