@@ -364,7 +364,7 @@ def describe(result, head):
 def command_delta(args):
     """Write the delta packet for PR `args.pr`, or refuse with the reasons a full review is owed."""
     pull = json.loads(PACKET.gh("pr", "view", str(args.pr), "--json",
-                                "number,title,body,headRefOid,baseRefOid,closingIssuesReferences"))
+                                "number,title,body,headRefOid,baseRefOid,files,changedFiles,closingIssuesReferences"))
     head = pull.get("headRefOid") or ""
     base = pull.get("baseRefOid") or PACKET.git("rev-parse", "origin/main").strip()
     issues = pull.get("closingIssuesReferences") or []
@@ -378,6 +378,7 @@ def command_delta(args):
         prior, reusable, why = load_prior(snapshot, args.prior, head)
         copies = checked(args.package_map, snapshot, head, parent)
         model, current, facts = engine_state(snapshot, copies, entries)
+        review_class = judged_class(args.pr, pull, snapshot, facts, base)
         result = model.impact(prior, current, ceiling=ceiling_of(facts["policy"], model), reusable=reusable)
         if result["mode"] == "full":
             reasons = "\n".join(f"  - {r['code']}: {r['detail']}" + (f" ({why})" if why and r["code"] ==
@@ -436,7 +437,7 @@ def command_delta(args):
             "reviewPacketFormat": 2, "reviewRole": "semantic", "reviewType": "carry" if mode == "none" else "delta",
             "pullRequest": args.pr, "reviewedCommit": head, "baseCommit": base,
             "reviewPacket": {"path": f"{stem}.md", "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()},
-            "reviewContext": delta_context(snapshot, facts, copies),
+            "reviewContext": delta_context(snapshot, facts, copies, review_class),
             "entryPackets": [{"entryId": p["entryId"], "path": p["name"], "sha256": p["sha256"]} for p in packets],
             "prior": {"path": f"{stem}.prior.attestation.json", "sha256": hashlib.sha256(
                 (snapshot / args.prior).read_bytes()).hexdigest(), "source": args.prior},
@@ -462,7 +463,29 @@ def command_delta(args):
     return 0
 
 
-def delta_context(snapshot, facts, copies):
+def judged_class(number, pull, snapshot, facts, base):
+    """`{"computed", "effective", "declared"}`: what the pull request owes, judged as `review-packet.py` judges it (0076).
+
+    A delta identity names its class so the recorder holds it to the same table as every other identity,
+    with no exemption for the two types this tool writes (#615). A file list GitHub did not give whole
+    cannot be classified, and a change that now owes no semantic review has nothing for a delta to bound.
+    """
+    files = PACKET.listed_files(pull, number)
+    count = pull.get("changedFiles")
+    if isinstance(count, int) and len(files) != count:
+        raise Refused(f"GitHub listed {len(files)} of PR #{number}'s {count} changed files, so the file list is "
+                      f"truncated and what the pull request owes cannot be decided from it")
+    record = json.loads((snapshot / PROVENANCE).read_bytes())
+    patterns = (facts["policy"].get("review") or {}).get("semanticPaths") or []
+    result, effective, _, _, declared, classes = PACKET.review_class(snapshot, record, files, patterns,
+                                                                     pull.get("body") or "", base)
+    if not classes.owes(effective)["verdict"]:
+        raise Refused(f"this change is `{effective}`, which owes no semantic review, so there is no review for a delta "
+                      f"to bound. The review it gets is structural (`tools/review-packet.py {number} --role structural`)")
+    return {"computed": result["class"], "effective": effective, "declared": declared}
+
+
+def delta_context(snapshot, facts, copies, review_class):
     """The review context a delta identity carries: the same members a full packet's does (0053)."""
     record_bytes = (snapshot / PROVENANCE).read_bytes()
     policy_bytes = (snapshot / POLICY).read_bytes()
@@ -478,6 +501,7 @@ def delta_context(snapshot, facts, copies):
                   "readSha256": hashlib.sha256(pathlib.Path(c).read_bytes()).hexdigest()}
                  for p, c in zip(PACKET.map_packages(record), copies)],
         "mapsReadFrom": "--package-map, checked against the reviewed commit, and the entry packets built from those exact bytes",
+        "reviewClass": review_class,
     }
 
 

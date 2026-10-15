@@ -1784,6 +1784,10 @@ class FakeGitHub:
                     }
                     for package in provenance["maps"]
                 ],
+                # What `tools/review-packet.py` writes: the class the change was judged as. The recorder holds a
+                # semantic verdict to it, and refuses an identity that names none (#615).
+                "reviewClass": {"computed": "semantic-implementation", "effective": "semantic-implementation",
+                                "declared": None},
             },
             "entryPackets": [],
         }

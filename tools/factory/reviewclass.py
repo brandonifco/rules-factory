@@ -51,7 +51,6 @@ DECISION_RECORD_ONLY = "decision-record-only"
 GENERATED_OR_PROVENANCE = "generated-or-provenance"
 DOCUMENTATION = "documentation"
 CLASSES = (SEMANTIC_IMPLEMENTATION, SEMANTIC_RULING, DECISION_RECORD_ONLY, GENERATED_OR_PROVENANCE, DOCUMENTATION)
-SEMANTIC = frozenset({SEMANTIC_IMPLEMENTATION, SEMANTIC_RULING})
 #: Which of two semantic classes is the stronger. A declaration may raise a class and never lower one.
 RANK = {SEMANTIC_IMPLEMENTATION: 2, SEMANTIC_RULING: 1}
 #: Which of the non-semantic classes a mixed diff is *named* as: the most specific description of
@@ -71,6 +70,10 @@ OWES = {
     DOCUMENTATION: {"entries": False, "self_review": False, "ruling_review": False,
                     "packet": False, "verdict": False},
 }
+#: The classes that owe a semantic verdict: the verdict column of `OWES`, read and not restated. The gate asks
+#: `effective in SEMANTIC` and the recorder asks `owes(effective)["verdict"]`, and both are answers to the one
+#: table, so a change to what a class owes cannot reach one of them and not the other (#615).
+SEMANTIC = frozenset(name for name in CLASSES if OWES[name]["verdict"])
 
 REMOVALS = frozenset({"DELETED", "REMOVED"})
 DERIVED = "derived"
