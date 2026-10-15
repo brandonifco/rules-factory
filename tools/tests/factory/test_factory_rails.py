@@ -43,6 +43,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 import unittest.mock
@@ -7498,8 +7499,10 @@ class TestTheMutationRunner(RailsInAGitEngine):
 
     # The results directory is housekeeping the run owes: a SIGTERM must neither orphan the directory it made nor
     # remove one it did not. Each window below delivers a real SIGTERM (through the module's own handler) at the
-    # point named, from inside a patched call. Where the signal is deferred it arrives once the directory is owned
-    # or removed; where it is not, it arrives inside the window.
+    # point named, from inside a patched call, sent to this thread: a signal sent to the process may be taken by
+    # another thread (the test runner has some), and a thread that has blocked it would not defer it.
+    # Where the signal is deferred it arrives once the directory is owned or removed; where it is not, it arrives
+    # inside the window.
 
     def run_test_with_a_signal(self, module, **patches):
         """`module.run_test` in this process, with the stub `dotnet` and the module's SIGTERM handler installed."""
@@ -7533,7 +7536,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
             real(path, *args, **kwargs)
             if os.path.basename(str(path)).startswith("mutate-") and not made:
                 made.append(str(path))
-                os.kill(os.getpid(), signal.SIGTERM)
+                signal.pthread_kill(threading.get_ident(), signal.SIGTERM)
 
         try:
             with self.assertRaises(KeyboardInterrupt):
@@ -7554,12 +7557,13 @@ class TestTheMutationRunner(RailsInAGitEngine):
         self.plan(GREEN)
         module, real, made = self.runner(), os.mkdir, []
         taken = os.path.join(tempfile.gettempdir(), "mutate-" + "ab" * 8)
+        os.rmdir(tempfile.mkdtemp(prefix="mutate-"))    # seed tempfile's own names now, not from the patched urandom
         os.mkdir(taken)
 
         def signalled_then_made(path, *args, **kwargs):
             if os.path.basename(str(path)).startswith("mutate-") and not made:
                 made.append(str(path))
-                os.kill(os.getpid(), signal.SIGTERM)
+                signal.pthread_kill(threading.get_ident(), signal.SIGTERM)
             return real(path, *args, **kwargs)
 
         try:
@@ -7588,7 +7592,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
 
         def signalled_then_removed(directory):
             seen.append(directory)
-            os.kill(os.getpid(), signal.SIGTERM)
+            signal.pthread_kill(threading.get_ident(), signal.SIGTERM)
             return real(directory)
 
         try:
