@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "0fd57c909424cdfcb81879bd9679d0160ac3dcba",
+  "measuredAt": "ab99eb791c9d0ecdfe69831ed0cefbf880508841",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,8 +17,8 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 564,
-    "trackedBytes": 23359269
+    "trackedFiles": 561,
+    "trackedBytes": 23207788
   },
   "artifacts": [
     {
@@ -163,8 +163,8 @@
     },
     {
       "path": "examples/can-spam/README.md",
-      "sha256": "923f282bc55938279fee49002ed4bb7e4f3dea8c1c4c7904c98daef5cf431ffd",
-      "bytes": 4856,
+      "sha256": "15b68b98ebf381abd5c280940003f00e989f86a00f46b41930f263ec612c1cfa",
+      "bytes": 2162,
       "role": "active",
       "readBy": [
         "links"
@@ -172,25 +172,35 @@
       "archive": null
     },
     {
-      "path": "examples/can-spam/usc15-ch103.corpus.build.json",
-      "sha256": "8669978d76eeda5bcebb6508bd13f0ac36a989a58bbdb3c593d63fc488582aec",
-      "bytes": 2566,
+      "path": "examples/can-spam/REFERENCE-CHECK.md",
+      "sha256": "4474dc246fe1bc9b0ede2a4a58e649c4e51c721f7eaac14ac150042f3d93368b",
+      "bytes": 16823,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/part316.corpus.build.json",
+      "sha256": "d85d62d04d369f8482fe11d5ac544e74f6a0ca290de38580ee74a3c8c2ded114",
+      "bytes": 731,
       "role": "archived",
       "readBy": [],
       "archive": null
     },
     {
-      "path": "examples/can-spam/usc15-ch103.corpus.expect.json",
-      "sha256": "8c0f1a4b481cb23afda03fb651d20c855d97bbeadf7c0a676f7c68d87ccadd52",
-      "bytes": 106,
+      "path": "examples/can-spam/part316.corpus.expect.json",
+      "sha256": "cb350f41601a38a1e82d0c54c5b6190ab0077e095ab98e68e43044afb3647230",
+      "bytes": 30,
       "role": "archived",
       "readBy": [],
       "archive": null
     },
     {
-      "path": "examples/can-spam/usc15-ch103.xml",
-      "sha256": "be849fb57eb2c2aa914f7369ec5ec3f52091ebbee7ae0e6ef0fc270772449d89",
-      "bytes": 141128,
+      "path": "examples/can-spam/part316.xml",
+      "sha256": "45bf26b68a06dc81f55388a06eb4e376ceb061a490e3858fb6105143d1d583b0",
+      "bytes": 13487,
       "role": "archived",
       "readBy": [],
       "archive": null
