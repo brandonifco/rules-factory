@@ -1340,6 +1340,32 @@ class UslmXml(Adapter):
                 seen.append(owner[0])
         return seen
 
+    def portion_of(self, extent):
+        """The extent's items that are USLM identifiers this corpus holds (0042, #660).
+
+        A court rule (`Rule 6`) and a section of the Code (`/us/usc/t15/s7704`) are the two forms
+        this grammar reads, and `units` refuses anything else -- so a map citing this corpus
+        beside an eCFR one, whose extent also lists `§ 316.1`, was refused outright while this
+        returned the whole extent, as the base does. An item is this corpus's when it is one of
+        those forms **and** the corpus prints it: the corpus is the authority for what it
+        contains, as in `EcfrXml.portion_of`. Anything else is left for another corpus's walk or,
+        if none holds it, for the caller's check of the union.
+        """
+        if not isinstance(extent, dict) or extent.get("unit") != "section-designation":
+            return extent, None
+        listed = extent.get("sections")
+        if not isinstance(listed, list):
+            return extent, None
+        here = set(self._rules())
+        mine = []
+        for item in listed:
+            match = None
+            if isinstance(item, str):
+                match = self.RULE.match(item.strip()) or self.SECTION.match(item.strip())
+            if match and match.group(1) in here:
+                mine.append(item)
+        return dict(extent, sections=mine), set(mine)
+
     def units(self, extent):
         if not isinstance(extent, dict) or extent.get("unit") != "section-designation":
             self._refuse_unit(extent)
