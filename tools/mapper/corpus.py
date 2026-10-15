@@ -1295,7 +1295,11 @@ class UslmXml(Adapter):
         found = []
 
         def walk(element, owner):
-            here = self._path_of(element.get("identifier"))
+            # Only an element in the USLM namespace names a unit: the `identifier` of a foreign
+            # element is not this schema's address, whatever it says.
+            here = (self._path_of(element.get("identifier"))
+                    if isinstance(element.tag, str) and element.tag.startswith(self.NAMESPACE)
+                    else None)
             owner = here if here is not None else owner
             if element.text and element.text.strip():
                 found.append((owner, normalise(element.text)))
@@ -1314,6 +1318,15 @@ class UslmXml(Adapter):
             else:
                 runs.append((owner, [text]))
         return [(owner, " ".join(parts)) for owner, parts in runs]
+
+    @staticmethod
+    def _run(designation, name, nth):
+        """The key of the `nth` run (the first being unnamed) that an identifier prints.
+
+        Runs are named by what they are and numbered from the second of that name, so that the
+        key of a run that was the only one of its name is unchanged and no two share one.
+        """
+        return f"{designation} {name}" + ("" if nth <= 2 else f" {nth - 1}")
 
     @staticmethod
     def _named(number):
@@ -1362,7 +1375,8 @@ class UslmXml(Adapter):
                 # The rule element prints its heading before its subsections and its source
                 # credit after them. Two runs, two units, keyed by which run they are: a key
                 # names one passage or it names none.
-                key = f"{designation} heading" if nth == 1 else f"{designation} source credit"
+                key = (f"{designation} heading" if nth == 1
+                       else self._run(designation, "source credit", nth))
                 found.append(Unit(key, "heading" if nth == 1 else "paragraph", text))
             elif runs[owner] == 1:
                 # A section that prints no subdivision, or a paragraph with no text after its
@@ -1371,13 +1385,14 @@ class UslmXml(Adapter):
             elif len(owner) == 1:
                 # A statute's section prints its heading (and lead-in) first, and after its
                 # last subdivision the source credit and the notes the OLRC sets under it.
-                key = f"{designation} heading" if nth == 1 else f"{designation} closing"
+                key = (f"{designation} heading" if nth == 1
+                       else self._run(designation, "closing", nth))
                 found.append(Unit(key, "heading" if nth == 1 else "paragraph", text))
             else:
                 # An element that prints text after its children -- a `<continuation>` -- is
-                # two runs. Both are kept, and keyed apart, for the reason the rule's two are.
-                found.append(Unit(designation if nth == 1 else f"{designation} continuation",
-                                  "paragraph", text))
+                # two runs, or more. All are kept, and keyed apart, for the reason the rule's are.
+                key = designation if nth == 1 else self._run(designation, "continuation", nth)
+                found.append(Unit(key, "paragraph", text))
         return found
 
 

@@ -16,7 +16,9 @@ order, same text.
 import importlib.util
 import json
 import os
+import re
 import sys
+import tempfile
 import unittest
 
 sys.dont_write_bytecode = True
@@ -102,8 +104,11 @@ class TestAStatuteChapterIsInventoried(unittest.TestCase):
         for unit, (start, end, path) in zip(units, spans):
             designation = self.checker.designation(path)
             with self.subTest(unit=unit.key):
-                self.assertTrue(unit.key == designation
-                                or unit.key.startswith(designation + " "), unit.key)
+                # Exactly the designation, or the designation and one of the run names the
+                # adapter gives (#661 review, finding 7): a suffix of any other spelling is a
+                # key nothing documents.
+                self.assertRegex(unit.key, "^" + re.escape(designation)
+                                 + r"(?: (?:heading|closing|continuation)(?: [0-9]+)?)?$")
                 self.assertEqual(unit.text, text[start:end])
 
     def test_no_two_units_share_a_key(self):
@@ -127,6 +132,72 @@ class TestAStatuteChapterIsInventoried(unittest.TestCase):
         with self.assertRaises(Refused):
             self.adapter.units({"unit": "section-designation",
                                 "sections": ["/us/usc/t26/s7701"]})
+
+
+NS = "http://xml.house.gov/schemas/uslm/1.0"
+S = "/us/usc/t99/s501"
+
+
+def invented(body):
+    return (f'<?xml version="1.0" encoding="UTF-8"?>\n<uscDoc xmlns="{NS}" identifier="/us/usc/t99">'
+            f'<main><chapter identifier="/us/usc/t99/ch5">{body}</chapter></main></uscDoc>')
+
+
+class TestAnInventedChapter(unittest.TestCase):
+    """A chapter small enough to read, for what the real one cannot be made to print."""
+
+    def units(self, body, sections=(S,)):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "slice.xml")
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(invented(body))
+            extent = {"unit": "section-designation", "sections": list(sections)}
+            walked = UslmXml(path).units(extent)
+            indexed = _checker().corpus_index(path)
+        return walked, indexed
+
+    def test_every_run_of_text_after_the_first_is_keyed_apart(self):
+        """#661 review, finding 5: three runs under one identifier were keyed as two."""
+        walked, _ = self.units(
+            f'<section identifier="{S}"><heading>H</heading>'
+            f'<subsection identifier="{S}/a"><chapeau>Start</chapeau>'
+            f'<paragraph identifier="{S}/a/1">One</paragraph><continuation>Middle</continuation>'
+            f'<paragraph identifier="{S}/a/2">Two</paragraph><continuation>End</continuation>'
+            f'</subsection><sourceCredit>Credit</sourceCredit>'
+            f'<paragraph identifier="{S}/z">Zed</paragraph><notes>Note one</notes>'
+            f'<paragraph identifier="{S}/y">Why</paragraph><notes>Note two</notes></section>')
+        self.assertEqual(
+            [(u.key, u.text) for u in walked],
+            [(f"{S} heading", "H"), (f"{S}/a", "Start"), (f"{S}/a/1", "One"),
+             (f"{S}/a continuation", "Middle"), (f"{S}/a/2", "Two"),
+             (f"{S}/a continuation 2", "End"), (f"{S} closing", "Credit"),
+             (f"{S}/z", "Zed"), (f"{S} closing 2", "Note one"), (f"{S}/y", "Why"),
+             (f"{S} closing 3", "Note two")])
+        self.assertEqual(len({u.key for u in walked}), len(walked))
+
+    def test_a_foreign_element_carrying_an_identifier_is_not_a_unit(self):
+        """#661 review, finding 6: ownership came from the attribute and never the namespace."""
+        walked, (text, spans) = self.units(
+            f'<section identifier="{S}"><heading>H</heading></section>'
+            f'<x:section xmlns:x="urn:other" identifier="/us/usc/t99/s502">Foreign words'
+            f'</x:section>', sections=(S,))
+        self.assertEqual([u.key for u in walked], [S])
+        with self.assertRaises(Refused):
+            self.units(f'<x:section xmlns:x="urn:other" identifier="{S}">Foreign words</x:section>')
+        # the checker's index is the same walk: the foreign words belong to no span
+        self.assertEqual([text[start:end] for start, end, _ in spans], ["H"])
+
+    def test_the_two_walks_agree_over_the_invented_chapter(self):
+        walked, (text, spans) = self.units(
+            f'<section identifier="{S}"><heading>H</heading>'
+            f'<subsection identifier="{S}/a"><chapeau>Start</chapeau>'
+            f'<paragraph identifier="{S}/a/1">One</paragraph><continuation>Middle</continuation>'
+            f'<x:aside xmlns:x="urn:other" identifier="{S}/q">Aside</x:aside>'
+            f'<paragraph identifier="{S}/a/2">Two</paragraph><continuation>End</continuation>'
+            f'</subsection><sourceCredit>Credit</sourceCredit></section>')
+        self.assertEqual(len(walked), len(spans))
+        for unit, (start, end, _) in zip(walked, spans):
+            self.assertEqual(unit.text, text[start:end])
 
 
 if __name__ == "__main__":
