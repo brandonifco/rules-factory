@@ -1015,6 +1015,73 @@ class TestImplementedNamesItsTests(GateCase):
         self.assertEqual(code, 1, output)
         self.assertIn("'SpeedTests.Nobody_wrote_this', which no result file shows running", output)
 
+    def implement(self, engine, test):
+        write_overlay(engine, {"speed-limit": {
+            "status": "implemented", "implementedIn": IMPLEMENTED_IN,
+            "tests": [{"test": test, "mutation": MUTATION}]}})
+        return self.merge(engine)[2]
+
+    def test_two_result_files_for_one_framework_do_not_stand_for_another(self):
+        """#428: `named_tests` counted result *files* per test name and compared the count with the
+        number of target frameworks, so two files for net8.0 satisfied "one per framework" while
+        net10.0 never ran the test. Watched failing: it printed "found and executed in all 2
+        target framework(s)" and exited 0. Each execution is now attributed to the framework its
+        `storage` path says it ran under."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "one-framework-twice")
+        for index in (1, 2):
+            write_trx(os.path.join(results, f"run{index}.trx"), [("first_bullet", "Passed")],
+                      framework="net8.0", class_name="Shared.Proof")
+        code, output = self.named(engine, self.implement(engine, "Proof.first_bullet"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("'Proof.first_bullet' executed under net8.0 and did not execute under net10.0", output)
+        self.assertNotIn("every one found and executed", output)
+
+    def test_one_result_file_per_framework_is_the_pass_the_check_always_gave(self):
+        engine = self.engine()
+        results = os.path.join(self.tmp, "each-framework-once")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"), [("first_bullet", "Passed")], framework=framework)
+        code, output = self.named(engine, self.implement(engine, "CorrespondenceTests.first_bullet"), results)
+        self.assertEqual(code, 0, output)
+        self.assertIn("every one found and executed in all 2 target framework(s)", output)
+
+    def test_a_result_the_file_cannot_place_in_a_framework_counts_for_none(self):
+        """An execution whose `storage` names no target framework cannot be attributed to one, so it
+        is not evidence for any of them. net9.0 is not a target framework of this engine."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "unplaced")
+        for framework in ("net8.0", "net9.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"), [("first_bullet", "Passed")], framework=framework)
+        code, output = self.named(engine, self.implement(engine, "CorrespondenceTests.first_bullet"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("did not execute under net10.0", output)
+
+    def test_one_class_fully_qualified_alike_in_two_projects_is_ambiguous(self):
+        """#428: the guard keyed on the short class name and collected *fully qualified* names, so
+        `Shared.Proof` in two assemblies collapsed to one entry and looked unambiguous. Here each
+        assembly runs it under one framework, so a framework-attributed count alone is satisfied
+        (net8.0 from `a`, net10.0 from `b`) -- two different tests standing for one. Watched
+        failing: exit 0."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "twin-classes")
+        for assembly, framework in (("A.Tests", "net8.0"), ("B.Tests", "net10.0")):
+            write_trx(os.path.join(results, f"{assembly}.trx"), [("first_bullet", "Passed")],
+                      assembly=assembly, framework=framework, class_name="Shared.Proof")
+        code, output = self.named(engine, self.implement(engine, "Proof.first_bullet"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("'Proof.first_bullet' is ambiguous; class Proof is ['Shared.Proof (a.tests)', "
+                      "'Shared.Proof (b.tests)']", output)
+
+    def test_one_class_in_one_assembly_across_frameworks_is_not_ambiguous(self):
+        engine = self.engine()
+        results = os.path.join(self.tmp, "one-class-two-frameworks")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"), [("first_bullet", "Passed")],
+                      framework=framework, class_name="Shared.Proof")
+        code, output = self.named(engine, self.implement(engine, "Proof.first_bullet"), results)
+        self.assertEqual(code, 0, output)
+
     def test_tests_ran_fails_on_no_result_files(self):
         engine = self.engine()
         empty = os.path.join(self.tmp, "empty")

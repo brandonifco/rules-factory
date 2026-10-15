@@ -757,6 +757,20 @@ def _trx(results_dir):
     return sorted(glob.glob(os.path.join(results_dir, "**", "*.trx"), recursive=True))
 
 
+def _placed(storage, frameworks):
+    """Where a TRX says a test ran: (assembly, target framework), each "" when the path does not say.
+
+    `storage` is the built assembly's path, lower-cased by the logger:
+    `.../bin/<configuration>/<framework>/<assembly>.dll`. It is the only thing in a result file
+    that associates an execution with the framework it ran under, so the matrix (`_counted`) and
+    the named tests (`named_tests`) both read it here, and cannot come to read it differently.
+    """
+    parts = [part.lower() for part in re.split(r"[\\/]", storage) if part]
+    assembly = re.sub(r"\.dll$", "", parts[-1]) if parts else ""
+    under = [part for part in parts[:-1] if part in frameworks]
+    return assembly, (under[-1] if under else "")
+
+
 def _counted(path, frameworks):
     """One TRX read: (executed, not executed, {(assembly, framework) that executed a test}, problems).
 
@@ -795,15 +809,13 @@ def _counted(path, frameworks):
                             f"{len(executed)} executed ({seen}). A summary that contradicts its results is not "
                             f"evidence that anything ran")
     for result in executed:
-        parts = [part.lower() for part in re.split(r"[\\/]", storage.get(result.get("testId"), "")) if part]
-        assembly = re.sub(r"\.dll$", "", parts[-1]) if parts else ""
-        under = [part for part in parts[:-1] if part in frameworks]
-        if not assembly or not under:
+        assembly, framework = _placed(storage.get(result.get("testId"), ""), frameworks)
+        if not assembly or not framework:
             problems.append(f"{name}: {result.get('testName')!r} ran, and the file does not say which test "
                             f"assembly or target framework it ran under (storage "
                             f"{storage.get(result.get('testId'), '')!r}), so it cannot count towards the matrix")
         else:
-            pairs.add((assembly, under[-1]))
+            pairs.add((assembly, framework))
     return len(executed), len(leaves) - len(executed), pairs, problems
 
 
@@ -856,22 +868,42 @@ def named_tests(args):
     named test exists or ran, so every one must have an executed result (`EXECUTED` above: a
     failure is the suite's to report, a skip is not a run) in every target framework. Names are
     `Class.Method`; a short class name that resolves to two classes is refused rather than
-    guessed."""
+    guessed.
+
+    "In every target framework" is established by placing each execution in the framework it ran
+    under (#428), from the `storage` the result file records (`_placed`). It used to count result
+    *files* per test name and compare the count with the number of frameworks, so two files for one
+    framework satisfied it while another framework never ran the test. An execution whose file does
+    not say which framework it ran under counts for none of them.
+
+    A class is one (fully qualified name, assembly) pair: the same class built into two test
+    projects is two classes, and a short name that reaches both is ambiguous even when the fully
+    qualified names are identical, which collapsing on the name alone hid.
+    """
     import xml.etree.ElementTree as ET
-    frameworks = max(1, len(target_frameworks()))
-    ran, classes = {}, {}
+    declared = [f.lower() for f in target_frameworks()]
+    frameworks = set(declared)
+    ran, unplaced, classes = {}, set(), {}
     for f in _trx(args.results_dir):
         root = ET.parse(f).getroot()
+        storage = {unit.get("id"): (unit.get("storage") or "") for unit in root.iterfind(".//t:UnitTest", TRX_NS)}
         names = {}
         for unit in root.iterfind(".//t:UnitTest", TRX_NS):
             method = unit.find("t:TestMethod", TRX_NS)
             full = method.get("className")
             short = full.rsplit(".", 1)[-1]
-            classes.setdefault(short, set()).add(full)
+            assembly, _ = _placed(storage.get(unit.get("id"), ""), frameworks)
+            classes.setdefault(short, set()).add((full, assembly))
             names[unit.get("id")] = f"{short}.{method.get('name')}"
-        for name in {names[r.get("testId")] for r in root.iterfind(".//t:UnitTestResult", TRX_NS)
-                     if r.get("outcome") in EXECUTED and r.get("testId") in names}:
-            ran[name] = ran.get(name, 0) + 1
+        for result in root.iterfind(".//t:UnitTestResult", TRX_NS):
+            if result.get("outcome") not in EXECUTED or result.get("testId") not in names:
+                continue
+            name = names[result.get("testId")]
+            _, framework = _placed(storage.get(result.get("testId"), ""), frameworks)
+            if framework:
+                ran.setdefault(name, set()).add(framework)
+            else:
+                unplaced.add(name)
 
     mapped = json.loads(pathlib.Path(args.map).read_text(encoding="utf-8"))
     # Two stated sets: the entries that name a test, whatever their status (every one of those tests
@@ -889,19 +921,27 @@ def named_tests(args):
             test = item.get("test", "") if isinstance(item, dict) else ""
             short = test.rsplit(".", 1)[0] if "." in test else ""
             if len(classes.get(short, ())) > 1:
-                problems.append(f"{entry.get('id')}: {test!r} is ambiguous; class {short} is {sorted(classes[short])}")
-            elif ran.get(test, 0) == 0:
-                problems.append(f"{entry.get('id')}: names {test!r}, which no result file shows running -- "
+                fulls = collections.Counter(full for full, _ in classes[short])
+                shown = sorted(f"{full} ({assembly})" if fulls[full] > 1 else full for full, assembly in classes[short])
+                problems.append(f"{entry.get('id')}: {test!r} is ambiguous; class {short} is {shown}")
+            elif not declared:
+                problems.append(f"{entry.get('id')}: names {test!r}, and Directory.Build.props declares no target "
+                                "framework, so no execution can be placed in one")
+            elif not ran.get(test):
+                why = ("an execution of it is in a result file that does not say which target framework it ran under"
+                       if test in unplaced else "no result file shows running")
+                problems.append(f"{entry.get('id')}: names {test!r}, which {why} -- "
                                 "renamed, deleted, skipped, or never a test")
-            elif ran[test] != frameworks:
-                problems.append(f"{entry.get('id')}: {test!r} ran in {ran[test]} result file(s), expected one per "
-                                f"target framework ({frameworks})")
+            elif not frameworks <= ran[test]:
+                problems.append(f"{entry.get('id')}: {test!r} executed under {', '.join(sorted(ran[test]))} and did "
+                                f"not execute under {', '.join(sorted(frameworks - ran[test]))}; a result file for "
+                                "one target framework does not stand in for another")
     if not problems and named == 0 and implemented == 0:
         print("     no entry is implemented and none names a test, so no named test was required "
               "(nothing here to prove yet)")
         return 0
     return report(problems, f"{named} test(s) named by {naming} entr(ies) ({implemented} implemented), every one "
-                            f"found and executed in all {frameworks} target framework(s)")
+                            f"found and executed in all {len(declared)} target framework(s)")
 
 
 # --- the rails (rules-factory decision 0029) -------------------------------------------------
