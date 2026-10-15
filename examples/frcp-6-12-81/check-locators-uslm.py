@@ -127,7 +127,10 @@ def corpus_index(path):
     pieces = []
 
     def walk(element, owner):
-        here = path_of(element.get("identifier"))
+        # Only an element in the USLM namespace names a unit: the `identifier` of a foreign
+        # element is not this schema's address, whatever it says.
+        here = (path_of(element.get("identifier"))
+                if isinstance(element.tag, str) and element.tag.startswith(NS) else None)
         owner = here if here is not None else owner
         if element.text and element.text.strip():
             pieces.append((normalise(element.text) + " ", owner))

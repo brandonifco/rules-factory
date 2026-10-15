@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "20ea72a0c7bfad44139f8af5053fdde5aba509dc",
+  "measuredAt": "a349d6b6e6df05a2050ee0b0b0dd9869aa0348ec",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,8 +17,8 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 571,
-    "trackedBytes": 24168163
+    "trackedFiles": 568,
+    "trackedBytes": 23420655
   },
   "artifacts": [
     {
@@ -63,10 +63,8 @@
       "path": "examples/blind-mapping-trial/blind-map.json",
       "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1",
       "bytes": 37125,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -163,8 +161,8 @@
     },
     {
       "path": "examples/can-spam/README.md",
-      "sha256": "848d9dce1e4759bb7c6dc7fb8a1de64fca39418ba9ab1e26036da7f3245eab06",
-      "bytes": 9272,
+      "sha256": "2e44ce9fc9aace11cfe4fd001e087e502fa3399c128eedd1088b10103bd6a40f",
+      "bytes": 6764,
       "role": "active",
       "readBy": [
         "links"
@@ -173,11 +171,10 @@
     },
     {
       "path": "examples/can-spam/REFERENCE-CHECK.md",
-      "sha256": "a40c10a7d1cdb2dc6350ab683304f5cc62d4e32d11d9e642f882ad61fb47387a",
-      "bytes": 21699,
+      "sha256": "4474dc246fe1bc9b0ede2a4a58e649c4e51c721f7eaac14ac150042f3d93368b",
+      "bytes": 16823,
       "role": "active",
       "readBy": [
-        "checks",
         "links"
       ],
       "archive": null
@@ -207,26 +204,6 @@
       "archive": null
     },
     {
-      "path": "examples/can-spam/reference-check.py",
-      "sha256": "6df77bd3549dbbde53a10293a640364251e57a3d754c980aa69ea232a3af4f0e",
-      "bytes": 75224,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
-      "archive": null
-    },
-    {
-      "path": "examples/can-spam/reference-differences.json",
-      "sha256": "20e4b6d1bf07f2602fd735f75272bac92e39c6f8c793137ee9fc9156e43884f6",
-      "bytes": 641591,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
-      "archive": null
-    },
-    {
       "path": "examples/can-spam/usc15-ch103.corpus.build.json",
       "sha256": "8669978d76eeda5bcebb6508bd13f0ac36a989a58bbdb3c593d63fc488582aec",
       "bytes": 2566,
@@ -246,8 +223,10 @@
       "path": "examples/can-spam/usc15-ch103.xml",
       "sha256": "be849fb57eb2c2aa914f7369ec5ec3f52091ebbee7ae0e6ef0fc270772449d89",
       "bytes": 141128,
-      "role": "archived",
-      "readBy": [],
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
       "archive": null
     },
     {
@@ -666,8 +645,8 @@
     },
     {
       "path": "examples/frcp-6-12-81/check-locators-uslm.py",
-      "sha256": "e4c108c1e8c220d27d6578f2e23cf92cea039aa2985b919b5924425847b9d23e",
-      "bytes": 28598,
+      "sha256": "d67ce2a9fdf6926bae69feb560658147f15aea931455239a2337fb9e5492b914",
+      "bytes": 28847,
       "role": "active",
       "readBy": [
         "checks"
