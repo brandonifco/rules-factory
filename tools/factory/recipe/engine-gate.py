@@ -81,7 +81,11 @@ def report(problems, success):
 
 def target_frameworks():
     props = (ROOT / "Directory.Build.props").read_text(encoding="utf-8")
-    match = re.search(r"<TargetFrameworks?>([^<]+)</TargetFrameworks?>", props)
+    # The opening tag and the values are read exactly as validate.sh reads them (`MAP_TF`): a shape
+    # one of them parses and the other does not is an engine whose build and gate disagree about
+    # what it targets. Only the closing tag is lenient, because validate.sh never looks at it and
+    # XML allows whitespace before its `>`. Declarations MSBuild evaluates are #673.
+    match = re.search(r"<TargetFrameworks?>([^<]+)</TargetFrameworks?\s*>", props)
     return [f for f in match.group(1).split(";") if f] if match else []
 
 
@@ -757,6 +761,132 @@ def _trx(results_dir):
     return sorted(glob.glob(os.path.join(results_dir, "**", "*.trx"), recursive=True))
 
 
+Placed = collections.namedtuple("Placed", "assembly framework identity")
+Definition = collections.namedtuple("Definition", "test_id execution_id storage class_name method")
+
+
+def _path_parts(storage):
+    """A `storage` path as lower-cased components, with empty and `.` segments dropped and `..`
+    resolved, so `net10.0/./a.dll` and `net10.0/a.dll` are one place."""
+    parts = []
+    for part in re.split(r"[\\/]", storage.lower()):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if parts:
+                parts.pop()
+            continue
+        parts.append(part)
+    return parts
+
+
+def _placed(storage, frameworks):
+    """Where a TRX says a test ran: Placed(assembly, framework, identity), "" for what it does not say.
+
+    `storage` is the built assembly's path, lower-cased by the logger:
+    `.../bin/<configuration>/<framework>[/<rid>]/<assembly>.dll`. It is the only thing in a result
+    file that associates an execution with the framework it ran under, so the matrix (`_counted`)
+    and the named tests (`named_tests`) both read it here, and cannot come to read it differently.
+
+    The framework is the directory **below `bin/<configuration>/`**, nearest the assembly, that is
+    exactly a declared framework. Nothing above that is read: an ancestor called `net10.0` (a
+    checkout under it) is not the framework the tests ran under, and neither is `net10.0-windows`
+    the declared `net10.0` -- either places the execution in no framework, and so in none of them.
+    A runtime-identifier directory beneath the framework (`net10.0/linux-x64/`) is allowed for. A
+    path with no `bin` in it can be read only as `<framework>/<assembly>.dll`.
+
+    `assembly` is the dll's name, which is how a result refers to a test project (`test_projects`).
+    `identity` is what tells two assemblies apart: the normalised path with the framework and
+    anything below it removed, so `tests/A/.../common.tests.dll` and `tests/B/.../common.tests.dll`
+    are two, and one project built for two frameworks is one. It is "" when no framework is placed,
+    because an assembly nobody can place is not evidence of a second one.
+    """
+    parts = _path_parts(storage)
+    if not parts:
+        return Placed("", "", "")
+    assembly = re.sub(r"\.dll$", "", parts[-1])
+    directories = parts[:-1]
+    below = len(directories) - 1  # no `bin/<configuration>`: only the directory that holds the assembly
+    for index in range(len(directories) - 2, -1, -1):
+        if directories[index] == "bin":
+            below = index + 2
+            break
+    for index in range(len(directories) - 1, below - 1, -1):
+        if index >= 0 and directories[index] in frameworks:
+            return Placed(assembly, directories[index], "/".join(directories[:index] + [parts[-1]]))
+    return Placed(assembly, "", "")
+
+
+def _definitions(root):
+    """The test definitions of one TRX: ({test id: [Definition]}, {execution id: [Definition]}).
+
+    A test id is not unique in a result file that holds more than one run of a test, so a result
+    is matched to its definition by `_defined`, never by looking a test id up in a dictionary that
+    keeps the last one.
+    """
+    by_id, by_execution = {}, {}
+    for unit in root.iterfind(".//t:UnitTest", TRX_NS):
+        method = unit.find("t:TestMethod", TRX_NS)
+        execution = unit.find("t:Execution", TRX_NS)
+        found = Definition(unit.get("id"), execution.get("id") if execution is not None else None,
+                           unit.get("storage") or "", (method.get("className") if method is not None else None) or "",
+                           (method.get("name") if method is not None else None) or "")
+        by_id.setdefault(found.test_id, []).append(found)
+        if found.execution_id:
+            by_execution.setdefault(found.execution_id, []).append(found)
+    return by_id, by_execution
+
+
+def _defined(result, definitions):
+    """The one Definition a result belongs to, or None when the file does not say which.
+
+    The execution id a result carries names the definition that was executed. Without one, or with
+    one no definition has, the test id must name a single definition. Anything else -- two
+    definitions behind one id, or an execution id that belongs to another test -- is not placed,
+    and an execution that is not placed counts for nothing.
+    """
+    by_id, by_execution = definitions
+    test_id, execution = result.get("testId"), result.get("executionId")
+    if execution and execution in by_execution:
+        found = [d for d in by_execution[execution] if d.test_id == test_id]
+    else:
+        found = by_id.get(test_id, [])
+    return found[0] if len(found) == 1 else None
+
+
+def _identified(found):
+    """(class, short class, method) of a Definition, all from one canonical string.
+
+    Real dotnet (SDK 10.0.112, xunit 2.9.2, VSTest 17.11.1) usually writes the declaring type in
+    `TestMethod className` and the method in `name`, but VSTest's converter splits the fully
+    qualified name at the *display name* when the display name is a suffix of it: `Shared.Proof.Named`
+    with `[Fact(DisplayName = "Proof.Named")]` is `className="Shared" name="Proof.Named"`. So neither
+    field is the class or the method on its own. The one string `className + "." + name` is the fully
+    qualified name in every case, and it is split once, by `_split_class`: the class a test is stored
+    under and the class a mapped name is looked up under cannot come from different splits.
+    """
+    canonical = f"{found.class_name}.{found.method}" if found.class_name else found.method
+    class_name, method = _split_class(canonical)
+    return class_name, _split_class(class_name)[1], method
+
+
+def _split_class(name):
+    """(namespace and class, member) of a name at its last dot **outside** any (), [] or <>.
+
+    A dot inside an argument list (`Named(value: 1.25)`) or a constructed generic's type arguments
+    (`Proof`1[System.Int32]`) is not a boundary. ("", name) when there is none.
+    """
+    depth, cut = 0, -1
+    for index, char in enumerate(name):
+        if char in "([<":
+            depth += 1
+        elif char in ")]>":
+            depth = max(0, depth - 1)
+        elif char == "." and depth == 0:
+            cut = index
+    return (name[:cut], name[cut + 1:]) if cut >= 0 else ("", name)
+
+
 def _counted(path, frameworks):
     """One TRX read: (executed, not executed, {(assembly, framework) that executed a test}, problems).
 
@@ -771,7 +901,7 @@ def _counted(path, frameworks):
         root = ET.parse(path).getroot()
     except ET.ParseError as error:
         return 0, 0, set(), [f"{name}: is not parseable as XML ({error}), so it shows no test running"]
-    storage = {unit.get("id"): (unit.get("storage") or "") for unit in root.iterfind(".//t:UnitTest", TRX_NS)}
+    definitions = _definitions(root)
     # A result with `InnerResults` is a parent the writer synthesised over the rows beneath it;
     # counting the leaves counts each row once, and is every result for the xunit the factory pins.
     leaves = [r for r in root.iterfind(".//t:UnitTestResult", TRX_NS) if r.find("t:InnerResults", TRX_NS) is None]
@@ -795,15 +925,14 @@ def _counted(path, frameworks):
                             f"{len(executed)} executed ({seen}). A summary that contradicts its results is not "
                             f"evidence that anything ran")
     for result in executed:
-        parts = [part.lower() for part in re.split(r"[\\/]", storage.get(result.get("testId"), "")) if part]
-        assembly = re.sub(r"\.dll$", "", parts[-1]) if parts else ""
-        under = [part for part in parts[:-1] if part in frameworks]
-        if not assembly or not under:
+        defined = _defined(result, definitions)
+        placed = _placed(defined.storage if defined else "", frameworks)
+        if not placed.assembly or not placed.framework:
             problems.append(f"{name}: {result.get('testName')!r} ran, and the file does not say which test "
                             f"assembly or target framework it ran under (storage "
-                            f"{storage.get(result.get('testId'), '')!r}), so it cannot count towards the matrix")
+                            f"{defined.storage if defined else None!r}), so it cannot count towards the matrix")
         else:
-            pairs.add((assembly, under[-1]))
+            pairs.add((placed.assembly, placed.framework))
     return len(executed), len(leaves) - len(executed), pairs, problems
 
 
@@ -856,22 +985,51 @@ def named_tests(args):
     named test exists or ran, so every one must have an executed result (`EXECUTED` above: a
     failure is the suite's to report, a skip is not a run) in every target framework. Names are
     `Class.Method`; a short class name that resolves to two classes is refused rather than
-    guessed."""
+    guessed.
+
+    "In every target framework" is established by placing each execution in the framework it ran
+    under (#428), from the `storage` the result file records (`_placed`). It used to count result
+    *files* per test name and compare the count with the number of frameworks, so two files for one
+    framework satisfied it while another framework never ran the test. An execution whose file does
+    not say which framework it ran under counts for none of them.
+
+    A class is one (fully qualified name, assembly identity) pair, an assembly being told apart by
+    its path with the framework removed (`_placed`), never by its file name: the same class built
+    into two test projects is two classes, and a short name that reaches both is ambiguous even when the fully
+    qualified names are identical, which collapsing on the name alone hid. A definition that names
+    no assembly adds no second one.
+    """
     import xml.etree.ElementTree as ET
-    frameworks = max(1, len(target_frameworks()))
-    ran, classes = {}, {}
+    declared = [f.lower() for f in target_frameworks()]
+    frameworks = set(declared)
+    ran, unplaced, classes = {}, set(), {}
     for f in _trx(args.results_dir):
         root = ET.parse(f).getroot()
+        definitions = _definitions(root)
         names = {}
-        for unit in root.iterfind(".//t:UnitTest", TRX_NS):
-            method = unit.find("t:TestMethod", TRX_NS)
-            full = method.get("className")
-            short = full.rsplit(".", 1)[-1]
-            classes.setdefault(short, set()).add(full)
-            names[unit.get("id")] = f"{short}.{method.get('name')}"
-        for name in {names[r.get("testId")] for r in root.iterfind(".//t:UnitTestResult", TRX_NS)
-                     if r.get("outcome") in EXECUTED and r.get("testId") in names}:
-            ran[name] = ran.get(name, 0) + 1
+        for found in (d for listed in definitions[0].values() for d in listed):
+            class_name, short, method = _identified(found)
+            identity = _placed(found.storage, frameworks).identity
+            # An assembly nobody can place is not a second assembly: it adds the class and no
+            # identity, so a definition with no `storage` cannot make a class ambiguous.
+            classes.setdefault(short, {}).setdefault(class_name, set())
+            if identity:
+                classes[short][class_name].add(identity)
+            names[found] = f"{short}.{method}"
+        # Leaves only, as the matrix counts them (`_counted`): a result with `InnerResults` is a
+        # parent the writer synthesised over the rows beneath it, and its outcome is not an execution.
+        leaves = [r for r in root.iterfind(".//t:UnitTestResult", TRX_NS) if r.find("t:InnerResults", TRX_NS) is None]
+        for result in leaves:
+            if result.get("outcome") not in EXECUTED:
+                continue
+            defined = _defined(result, definitions)
+            if defined is None:
+                continue
+            framework = _placed(defined.storage, frameworks).framework
+            if framework:
+                ran.setdefault(names[defined], set()).add(framework)
+            else:
+                unplaced.add(names[defined])
 
     mapped = json.loads(pathlib.Path(args.map).read_text(encoding="utf-8"))
     # Two stated sets: the entries that name a test, whatever their status (every one of those tests
@@ -887,21 +1045,30 @@ def named_tests(args):
         for item in tests:
             named += 1
             test = item.get("test", "") if isinstance(item, dict) else ""
-            short = test.rsplit(".", 1)[0] if "." in test else ""
-            if len(classes.get(short, ())) > 1:
-                problems.append(f"{entry.get('id')}: {test!r} is ambiguous; class {short} is {sorted(classes[short])}")
-            elif ran.get(test, 0) == 0:
-                problems.append(f"{entry.get('id')}: names {test!r}, which no result file shows running -- "
+            short = _split_class(test)[0]
+            known = classes.get(short, {})
+            if len(known) > 1 or any(len(assemblies) > 1 for assemblies in known.values()):
+                shown = sorted(name for full, assemblies in known.items()
+                               for name in ([f"{full} ({a})" for a in sorted(assemblies)] if len(assemblies) > 1 else [full]))
+                problems.append(f"{entry.get('id')}: {test!r} is ambiguous; class {short} is {shown}")
+            elif not declared:
+                problems.append(f"{entry.get('id')}: names {test!r}, and Directory.Build.props declares no target "
+                                "framework, so no execution can be placed in one")
+            elif not ran.get(test):
+                why = ("an execution of it is in a result file that does not say which target framework it ran under"
+                       if test in unplaced else "no result file shows running")
+                problems.append(f"{entry.get('id')}: names {test!r}, which {why} -- "
                                 "renamed, deleted, skipped, or never a test")
-            elif ran[test] != frameworks:
-                problems.append(f"{entry.get('id')}: {test!r} ran in {ran[test]} result file(s), expected one per "
-                                f"target framework ({frameworks})")
+            elif not frameworks <= ran[test]:
+                problems.append(f"{entry.get('id')}: {test!r} executed under {', '.join(sorted(ran[test]))} and did "
+                                f"not execute under {', '.join(sorted(frameworks - ran[test]))}; a result file for "
+                                "one target framework does not stand in for another")
     if not problems and named == 0 and implemented == 0:
         print("     no entry is implemented and none names a test, so no named test was required "
               "(nothing here to prove yet)")
         return 0
     return report(problems, f"{named} test(s) named by {naming} entr(ies) ({implemented} implemented), every one "
-                            f"found and executed in all {frameworks} target framework(s)")
+                            f"found and executed in all {len(declared)} target framework(s)")
 
 
 # --- the rails (rules-factory decision 0029) -------------------------------------------------
