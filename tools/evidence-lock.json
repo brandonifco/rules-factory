@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "0fd57c909424cdfcb81879bd9679d0160ac3dcba",
+  "measuredAt": "7b7b18d1c4f74dc485d6742eb940b9cd97252584",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,8 +17,8 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 564,
-    "trackedBytes": 23359269
+    "trackedFiles": 568,
+    "trackedBytes": 23403482
   },
   "artifacts": [
     {
@@ -45,10 +45,8 @@
       "path": "examples/acceptance-4-5/check-provenance.sh",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e",
       "bytes": 2248,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -65,8 +63,10 @@
       "path": "examples/blind-mapping-trial/blind-map.json",
       "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1",
       "bytes": 37125,
-      "role": "archived",
-      "readBy": [],
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
       "archive": null
     },
     {
@@ -163,12 +163,46 @@
     },
     {
       "path": "examples/can-spam/README.md",
-      "sha256": "923f282bc55938279fee49002ed4bb7e4f3dea8c1c4c7904c98daef5cf431ffd",
-      "bytes": 4856,
+      "sha256": "2e44ce9fc9aace11cfe4fd001e087e502fa3399c128eedd1088b10103bd6a40f",
+      "bytes": 6764,
       "role": "active",
       "readBy": [
         "links"
       ],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/REFERENCE-CHECK.md",
+      "sha256": "4474dc246fe1bc9b0ede2a4a58e649c4e51c721f7eaac14ac150042f3d93368b",
+      "bytes": 16823,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/part316.corpus.build.json",
+      "sha256": "d85d62d04d369f8482fe11d5ac544e74f6a0ca290de38580ee74a3c8c2ded114",
+      "bytes": 731,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/part316.corpus.expect.json",
+      "sha256": "cb350f41601a38a1e82d0c54c5b6190ab0077e095ab98e68e43044afb3647230",
+      "bytes": 30,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/part316.xml",
+      "sha256": "45bf26b68a06dc81f55388a06eb4e376ceb061a490e3858fb6105143d1d583b0",
+      "bytes": 13487,
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -611,8 +645,8 @@
     },
     {
       "path": "examples/frcp-6-12-81/check-locators-uslm.py",
-      "sha256": "c5bf365152851b042748e6fab3a8f3630fb009d973aa6b9d51b25e6f46e4fdaf",
-      "bytes": 27258,
+      "sha256": "e4c108c1e8c220d27d6578f2e23cf92cea039aa2985b919b5924425847b9d23e",
+      "bytes": 28598,
       "role": "active",
       "readBy": [
         "checks"

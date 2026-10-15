@@ -125,10 +125,10 @@ class TestWhatTheDerivationRefuses(unittest.TestCase):
         self.refused({"usc99.xml": member(), "usc99.css": b"x"})
 
     def test_a_chapter_the_release_does_not_hold(self):
-        self.assertIn("0 elements", self.refused({"usc99.xml": member()}, "/us/usc/t99/ch6"))
+        self.assertIn("0 chapter elements", self.refused({"usc99.xml": member()}, "/us/usc/t99/ch6"))
 
     def test_a_chapter_identified_twice(self):
-        self.assertIn("2 elements", self.refused({"usc99.xml": member(other=CHAPTER)}))
+        self.assertIn("2 chapter elements", self.refused({"usc99.xml": member(other=CHAPTER)}))
 
     def test_a_chapter_that_nests_another(self):
         nested = CHAPTER.replace("</chapter>", OTHER.replace("ch50", "ch51") + "</chapter>")
@@ -137,6 +137,42 @@ class TestWhatTheDerivationRefuses(unittest.TestCase):
     def test_a_carriage_return_inside_the_chapter(self):
         crlf = CHAPTER.replace("\n<section", "\r\n<section")
         self.assertIn("carriage return", self.refused({"usc99.xml": member(chapter=crlf)}))
+
+    # The reviewer's own inputs (#655 review, findings 1 and 4).
+    def test_a_chapter_inside_a_comment_is_not_a_chapter(self):
+        self.refused({"usc99.xml": member(chapter="<!--" + CHAPTER + "-->")})
+
+    def test_a_chapter_inside_cdata_is_not_a_chapter(self):
+        self.refused({"usc99.xml": member(chapter="<![CDATA[" + CHAPTER + "]]>")})
+
+    def test_a_data_identifier_attribute_is_not_an_identifier(self):
+        wrong = CHAPTER.replace('identifier="/us/usc/t99/ch5"', 'data-identifier="/us/usc/t99/ch5"')
+        self.refused({"usc99.xml": member(chapter=wrong)})
+
+    def test_a_second_chapter_with_the_identifier_in_single_quotes_is_a_duplicate(self):
+        single = CHAPTER.replace('identifier="/us/usc/t99/ch5"', "identifier='/us/usc/t99/ch5'")
+        self.assertIn("2 chapter elements", self.refused({"usc99.xml": member(other=single)}))
+
+    def test_a_member_declaring_another_encoding_is_not_relabelled_utf8(self):
+        latin = member(chapter=CHAPTER.replace("Invented", "caf\u00e9"),
+                       head='<?xml version="1.0" encoding="ISO-8859-1"?>\n')
+        self.assertIn("ISO-8859-1", self.refused({"usc99.xml": latin}))
+
+    # Re-review of 5fd3018: a prefixed element is the element it is, by namespace and local name.
+    def test_a_prefixed_chapter_with_the_same_identifier_is_a_duplicate(self):
+        prefixed = ('<u:chapter xmlns:u="http://xml.house.gov/schemas/uslm/1.0" '
+                    'identifier="/us/usc/t99/ch5">B</u:chapter>')
+        self.assertIn("2 chapter elements",
+                      self.refused({"usc99.xml": member(other=prefixed)}))
+
+    def test_a_prefixed_chapter_is_the_chapter_and_a_foreign_one_is_not(self):
+        prefixed = CHAPTER.replace("<chapter ", '<u:chapter xmlns:u="http://xml.house.gov/schemas/uslm/1.0" ', 1)\
+            .replace("</chapter>", "</u:chapter>")
+        foreign = CHAPTER.replace("<chapter ", '<x:chapter xmlns:x="urn:other" ', 1)\
+            .replace("</chapter>", "</x:chapter>")
+        with Release({"usc99.xml": member(chapter=prefixed)}) as release:
+            self.assertIn(b"<u:chapter ", derive.derive(release.path, "/us/usc/t99/ch5"))
+        self.refused({"usc99.xml": member(chapter=foreign)})
 
     def test_an_identifier_that_is_not_a_chapter(self):
         self.assertIn("not a chapter identifier",

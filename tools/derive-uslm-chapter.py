@@ -29,10 +29,16 @@ refuses), and the stylesheet instruction names a CSS file the zip does not hold.
 `<main>` and the chapter is carried either: the title's own heading, table of contents and the
 chapters around this one are not what a corpus of this chapter is held to.
 
-The scan is textual because the output must be the release's own bytes: parsing and
-re-serialising would rewrite entity references, attribute order and whitespace, and a quote
-checked against a re-serialisation is not checked against what the OLRC published. The slice is
-parsed afterwards, only to refuse a result that is not well-formed or holds a carriage return.
+The member is parsed to *locate* the elements and its own byte offsets are what is cut, so
+the output is the release's own bytes: re-serialising would rewrite entity references, attribute
+order and whitespace, and a quote checked against a re-serialisation is not checked against what
+the OLRC published. Locating by parsing, and not by searching the text, is what makes a chapter
+inside a comment or a CDATA section, a `data-identifier` attribute and an identifier in single
+quotes mean what they are; an element is its USLM namespace URI and local name, so a prefixed
+`u:chapter` is a chapter and another namespace's `chapter` is not. The member must be UTF-8 (a declaration of any other encoding, a
+byte-order mark or invalid bytes are refused, because the slice's declaration says UTF-8 and
+would otherwise re-label the bytes) and carry no DOCTYPE. The slice is parsed afterwards, only to
+refuse a result that holds a carriage return.
 
 Usage:
   derive-uslm-chapter.py --from <usc-release.zip> --chapter </us/usc/t15/ch103> --into <slice.xml>
@@ -44,6 +50,7 @@ import argparse
 import re
 import sys
 import xml.etree.ElementTree as ET
+import xml.parsers.expat
 import zipfile
 
 CHAPTER = re.compile(r"^/us/usc/t([0-9]+[A-Za-z]*)/ch([0-9]+[A-Za-z]*)$")
@@ -51,6 +58,9 @@ CHAPTER = re.compile(r"^/us/usc/t([0-9]+[A-Za-z]*)/ch([0-9]+[A-Za-z]*)$")
 #: is some 150 MB of XML; a member far past that is not a release point.
 MAX_MEMBER_BYTES = 256 * 1024 * 1024
 MAX_RATIO = 200
+#: An element is identified by namespace URI and local name, as the parser reports it with the
+#: separator below, never by the prefix a document happens to choose.
+USLM = "http://xml.house.gov/schemas/uslm/1.0 "
 DECLARATION = '<?xml version="1.0" encoding="UTF-8"?>\n'
 
 
@@ -81,16 +91,94 @@ def member_of(archive_path, title):
     return data
 
 
-def one(data, opening, closing, what):
-    """`data[start:end]` for the single `what` element, `opening` through `closing`."""
-    if data.count(opening) != 1:
-        raise Refused(f"the member holds {data.count(opening)} {what} elements opened by "
-                      f"{opening.decode()!r}, not exactly one")
-    start = data.index(opening)
-    end = data.find(closing, start)
-    if end < 0:
-        raise Refused(f"the {what} element is not closed")
-    return data[start:end + len(closing)]
+def elements_of(data, chapter):
+    """(root start tag, meta element, chapter element) as byte strings, located by parsing.
+
+    The scan is by a parser's own byte offsets, not by searching the text for a string: a
+    comment or CDATA section that holds `<chapter identifier="...">`, an attribute named
+    `data-identifier`, or an identifier in single quotes are all text a search finds and a parser
+    does not call a chapter (#655 review). Exactly one `chapter` element must carry the
+    identifier, and the member's one `meta` must be a child of its root.
+    """
+    if data.startswith(b"\xef\xbb\xbf"):
+        raise Refused("the member starts with a byte-order mark; the slice declares UTF-8 without one")
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise Refused(f"the member is not valid UTF-8: {error}")
+    parser = xml.parsers.expat.ParserCreate(namespace_separator=" ")
+    parser.buffer_text = False
+    state = {"stack": [], "root": None, "meta": [], "chapters": [], "open": None}
+
+    def declared(version, encoding, standalone):
+        if encoding is not None and encoding.upper() != "UTF-8":
+            raise Refused(f"the member declares encoding {encoding!r}; this derivation replaces "
+                          f"the declaration with UTF-8's and will not re-label other bytes")
+
+    def doctype(*_):
+        raise Refused("the member has a DOCTYPE; it is refused so no entity is ever expanded")
+
+    def start(name, attributes):
+        at = parser.CurrentByteIndex
+        stack = state["stack"]
+        if not stack:
+            if name != USLM + "uscDoc":
+                raise Refused(f"the member's root is <{name}>, not a USLM uscDoc")
+            quote, end = None, at
+            while True:
+                byte = data[end:end + 1]
+                if quote:
+                    quote = None if byte == quote else quote
+                elif byte in (b'"', b"'"):
+                    quote = byte
+                elif byte == b">":
+                    break
+                end += 1
+            state["root"] = data[at:end + 1]
+        if name == USLM + "meta" and len(stack) == 1:
+            state["meta"].append([at, None])
+        if name == USLM + "chapter":
+            if state["open"] is not None:
+                raise Refused("a chapter element contains another chapter element; its close "
+                              "cannot be told from the inner one's")
+            if attributes.get("identifier") == chapter:
+                state["open"] = [at, None]
+                state["chapters"].append(state["open"])
+        stack.append(name)
+
+    def end(name):
+        at = parser.CurrentByteIndex
+        stack = state["stack"]
+        stack.pop()
+        if data[at:at + 2] != b"</":
+            if name == USLM + "chapter" and state["open"] is not None:
+                raise Refused(f"the chapter {chapter} is an empty element")
+            if name == USLM + "meta" and len(stack) == 1:
+                raise Refused("the member's meta is an empty element")
+            return
+        close = data.index(b">", at) + 1
+        if name == USLM + "meta" and len(stack) == 1:
+            state["meta"][-1][1] = close
+        if name == USLM + "chapter" and state["open"] is not None:
+            state["open"][1] = close
+            state["open"] = None
+
+    parser.XmlDeclHandler = declared
+    parser.StartDoctypeDeclHandler = doctype
+    parser.StartElementHandler = start
+    parser.EndElementHandler = end
+    try:
+        parser.Parse(data, True)
+    except xml.parsers.expat.ExpatError as error:
+        raise Refused(f"the member is not well-formed XML: {error}")
+    if len(state["chapters"]) != 1:
+        raise Refused(f"the release holds {len(state['chapters'])} chapter elements identified "
+                      f"{chapter}, not exactly one")
+    if len(state["meta"]) != 1:
+        raise Refused(f"the member holds {len(state['meta'])} meta elements under its root, "
+                      f"not exactly one")
+    (c0, c1), (m0, m1) = state["chapters"][0], state["meta"][0]
+    return state["root"], data[m0:m1], data[c0:c1]
 
 
 def derive(archive_path, chapter):
@@ -99,26 +187,7 @@ def derive(archive_path, chapter):
     if not named:
         raise Refused(f"{chapter!r} is not a chapter identifier like /us/usc/t15/ch103")
     data = member_of(archive_path, named.group(1))
-    # The chapter: its start tag is the one carrying this identifier. `identifier="..."` quoted
-    # in full, so `/ch10` never matches `/ch103`.
-    needle = f'identifier="{chapter}"'.encode()
-    found = data.count(needle)
-    if found != 1:
-        raise Refused(f"the release holds {found} elements identified {chapter}, not exactly one")
-    anchor = data.index(needle)
-    start = data.rfind(b"<", 0, anchor)
-    if not data.startswith(b"<chapter ", start):
-        raise Refused(f"{chapter} identifies a {data[start:start + 12]!r} element, not a chapter")
-    end = data.find(b"</chapter>", anchor)
-    if end < 0:
-        raise Refused(f"the chapter {chapter} is not closed")
-    element = data[start:end + len(b"</chapter>")]
-    if element.count(b"<chapter") != 1:
-        raise Refused(f"{chapter} contains another chapter element; its close cannot be told "
-                      f"from the inner one's by this scan")
-    root = data[data.index(b"<uscDoc "):]
-    root = root[:root.index(b">") + 1]
-    meta = one(data, b"<meta>", b"</meta>", "meta")
+    root, meta, element = elements_of(data, chapter)
     out = (DECLARATION.encode() + root + b"\n" + meta + b"\n<main>\n" + element
            + b"\n</main>\n</uscDoc>\n")
     if b"\r" in out:
