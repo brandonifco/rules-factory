@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "faa7da8096af627216ace0a4c68813545e9a6355",
+  "measuredAt": "0667e73b3f35b9a9ea9f29d38aba2f44bc676912",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -18,7 +18,7 @@
   },
   "repository": {
     "trackedFiles": 568,
-    "trackedBytes": 23415943
+    "trackedBytes": 23407926
   },
   "artifacts": [
     {
@@ -45,10 +45,8 @@
       "path": "examples/acceptance-4-5/check-provenance.sh",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e",
       "bytes": 2248,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -225,10 +223,8 @@
       "path": "examples/can-spam/usc15-ch103.xml",
       "sha256": "be849fb57eb2c2aa914f7369ec5ec3f52091ebbee7ae0e6ef0fc270772449d89",
       "bytes": 141128,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -647,8 +643,8 @@
     },
     {
       "path": "examples/frcp-6-12-81/check-locators-uslm.py",
-      "sha256": "d67ce2a9fdf6926bae69feb560658147f15aea931455239a2337fb9e5492b914",
-      "bytes": 28847,
+      "sha256": "e4c108c1e8c220d27d6578f2e23cf92cea039aa2985b919b5924425847b9d23e",
+      "bytes": 28598,
       "role": "active",
       "readBy": [
         "checks"

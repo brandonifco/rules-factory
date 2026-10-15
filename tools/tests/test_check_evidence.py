@@ -180,10 +180,16 @@ class TestFetchingVerifiesWhereverTheBytesAre(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.home = pathlib.Path(self.tmp.name)
-        # One real archived artifact, copied out of the tree to stand in for an archive.
-        self.artifact = next(a for a in LOCK["artifacts"] if a["role"] == "archived")
+        # An artifact of its own, whose bytes exist only in the temporary directory. It was "the
+        # first `archived` artifact in the lock", read from the tree: a pick the lock decides, and
+        # reading it is what a measurement counts, so it stopped being `archived` and the next
+        # measurement picked another (#663). What is fetched here is a mechanism, not an artifact.
+        content = b"bytes standing in for an archived artifact\n"
+        self.artifact = {"path": "examples/stand-in-for-an-archived-artifact",
+                         "sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content),
+                         "role": "archived", "readBy": [], "archive": None}
         self.elsewhere = self.home / "archived-bytes"
-        self.elsewhere.write_bytes((pathlib.Path(ROOT) / self.artifact["path"]).read_bytes())
+        self.elsewhere.write_bytes(content)
 
     def lock_with(self, archive):
         lock = {"artifacts": [dict(self.artifact, archive=archive)]}
@@ -311,6 +317,62 @@ class TestTheMeasurementCanSeeAnything(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 evidence._trace(root, [sys.executable, "-c", "raise SystemExit(3)"],
                                 home, "broken")
+
+
+# Run in a child process, under the measurement's own audit hook, with the roles in the lock the
+# module loaded rotated by `sys.argv[1]` places. Everything in the module runs except the class
+# that is running this, which would run itself.
+_OPENS_UNDER_ROLES = """\
+import importlib.util, io, sys, unittest
+spec = importlib.util.spec_from_file_location("under_roles", "tools/tests/test_check_evidence.py")
+module = importlib.util.module_from_spec(spec); sys.modules["under_roles"] = module
+spec.loader.exec_module(module)
+roles = ("active", "release", "archived")
+for artifact in module.LOCK["artifacts"]:
+    artifact["role"] = roles[(roles.index(artifact["role"]) + int(sys.argv[1])) % len(roles)]
+suite = unittest.TestSuite(
+    unittest.defaultTestLoader.loadTestsFromTestCase(case)
+    for case in vars(module).values()
+    if isinstance(case, type) and issubclass(case, unittest.TestCase)
+    and case is not module.TestWhatTheLockSaysDoesNotDecideWhatIsRead)
+ran = unittest.TextTestRunner(stream=io.StringIO()).run(suite).testsRun
+if ran < 20:
+    raise SystemExit("only %d test(s) ran" % ran)
+"""
+
+
+class TestWhatTheLockSaysDoesNotDecideWhatIsRead(unittest.TestCase):
+    """A measurement of one tree is the same measurement every time (#663, #408).
+
+    `--measure` rewrites the lock from what these tests open, and these tests read the lock. A
+    test that picks the artifact it opens by the role the lock gives it -- "the first `archived`
+    one" -- makes the next measurement a function of the last: the pick is read, so it becomes
+    `active`, so the pick is the next `archived` one, and `check-provenance.sh` and `blind-map.json`
+    traded places every time the lock was renewed. The roles are a fact about the checks, so what
+    the checks open must be the same whatever the lock says.
+
+    This runs the module's own tests under the measurement's audit hook with the lock's roles as
+    committed and rotated twice, and holds the evidence they open to the same set each time.
+    """
+
+    def opened_with_roles_moved_by(self, places):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = pathlib.Path(tmp)
+            (home / "sitecustomize.py").write_text(evidence.SITECUSTOMIZE, encoding="utf-8")
+            seen, _ = evidence._trace(
+                pathlib.Path(ROOT),
+                [sys.executable, "-c", _OPENS_UNDER_ROLES, str(places)], home, "roles")
+        return {path for _, path in seen}
+
+    def test_the_evidence_these_tests_open_is_the_same_whatever_the_roles_are(self):
+        as_committed = self.opened_with_roles_moved_by(0)
+        for places in (1, 2):
+            with self.subTest(roles_moved_by=places):
+                moved = self.opened_with_roles_moved_by(places)
+                self.assertEqual(
+                    [], sorted(as_committed ^ moved),
+                    "a test chooses what it opens by the role the lock records, so the roles "
+                    "a measurement records follow the lock it replaces")
 
 
 class TestTheGateRunsIt(unittest.TestCase):
