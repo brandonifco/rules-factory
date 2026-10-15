@@ -290,7 +290,12 @@ class TestTheContextBudget(GuardCase):
                                  ("SendMessage", {"to": "main", "message": "m"}),
                                  ("Bash", {"command": "make test"}), ("Bash", {"command": "git log | head"}),
                                  ("Bash", {"command": "git status\nrm -rf ."}), ("Bash", {"command": "git log > out"}),
-                                 ("Bash", {"command": "git status && rm -r x"})):
+                                 ("Bash", {"command": "git status && rm -r x"}),
+                                 # The word after an operator is itself a git command: only the
+                                 # operator tells these from two allowed commands.
+                                 ("Bash", {"command": "git log | git commit -m x"}),
+                                 ("Bash", {"command": "git log > git"}), ("Bash", {"command": "git log || git gc"}),
+                                 ("Bash", {"command": "git status & git gc"})):
             with self.subTest(tool=tool, tool_input=tool_input):
                 self.assertDenied(at_hard(tool, tool_input), f"{HARD:,}", "git command", "handoff")
         for command in ('git commit -m "Fix it | not > that"',
