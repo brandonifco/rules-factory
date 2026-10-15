@@ -1007,8 +1007,13 @@ if kind == "api":
     ref = query.split("ref=")[-1]
     wanted = route.split("/contents/", 1)[1] if "/contents/" in route else ""
     body = ((fixture.get("contents") or {}).get(ref) or {}).get(wanted)
+    if wanted in (fixture.get("contentsUnreadable") or []):
+        # GitHub is there and the answer is not: not a file that does not exist.
+        sys.stderr.write("gh: HTTP 502: Bad Gateway\\n")
+        sys.exit(1)
     if body is None:
-        sys.stderr.write(f"no {wanted} at {ref}\\n")
+        # What `gh api` says for a path that is not at that ref.
+        sys.stderr.write("gh: Not Found (HTTP 404)\\n")
         sys.exit(1)
     print(base64.b64encode(body.encode("utf-8")).decode("ascii"))
     sys.exit(0)
@@ -2153,6 +2158,9 @@ class TestTheRepairPacket(RailsInAGitEngine):
             "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
                          "state": state, "isDraft": False,
                          "headRefOid": head, "headRefName": branch, "baseRefName": "main",
+                         # What GitHub always gives: the commit the pull request is based on, which is
+                         # where the surface it began on is read from (#612).
+                         "baseRefOid": git(self.out, "rev-parse", "main"),
                          "files": [{"path": "overlay/altitude-limit.json"}],
                          "closingIssuesReferences": [{"number": 27}][:issues]}},
             "issue": {"27": {"number": 27, "title": "Widen the altitude limit", "state": "OPEN",
@@ -2506,6 +2514,30 @@ class TestTheRepairPacket(RailsInAGitEngine):
         text = self.rendered()
         self.assertIn("not required as this pull request stands", text)
         self.assertIn("Your repair can change that", text, "and it says the requirement can come back")
+
+    def test_a_base_nobody_can_read_leaves_a_verdict_owed_whatever_the_policy_lists(self):
+        """#612: the brief took a base policy it could not read for a new one, so a policy that lists no
+        semantic path read as a change owing nothing, where the gate cannot decide it at all.
+
+        mutation: take a base policy that cannot be read for one that was never there
+        """
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["review"]["semanticPaths"] = []
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"] = [{"path": "src/Rules/AltitudeLimit.cs"}]
+        self.fixture(document)
+        # The base is readable and lists the surface: the surface the change began on is the one it is judged by.
+        self.assertIn("a semantic verdict at the new head", self.rendered())
+        document["pr"]["5"]["baseRefOid"] = "c" * 40
+        self.fixture(document)
+        self.assertIn("a semantic verdict at the new head", self.rendered(),
+                      "a base that cannot be read is not a policy the pull request is adding")
 
     def test_the_semantic_verdict_is_judged_in_the_engine_s_terms_when_it_is_embedded(self):
         """GitHub reports `engine/overlay/x.json`; the policy's surface says `overlay/**` (0069, #535).
@@ -4720,7 +4752,9 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         self.gh_with_statuses()
         files = files if files is not None else [{"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}]
         self.fixture({
-            "pr": {"5": {"number": 5, "headRefOid": head, "state": "OPEN",
+            # `baseRefOid` is what GitHub always gives; a pull request without one has no base to read the
+            # surface it began on from, and the gate cannot decide it (#612).
+            "pr": {"5": {"number": 5, "headRefOid": head, "baseRefOid": "d" * 40, "state": "OPEN",
                          "files": files,
                          "changedFiles": len(files) if changed_files is None else changed_files,
                          "closingIssuesReferences": [{"number": 27}]}},
@@ -5122,8 +5156,13 @@ if argv[0] == "api":
         route, _, query = endpoint.split("#", 1)[0].partition("?")
         wanted, ref = urllib.parse.unquote(route.split("/contents/", 1)[1]), query.split("ref=")[-1]
         body = ((fixture.get("contents") or {}).get(ref) or {}).get(wanted)
+        if wanted in (fixture.get("contentsUnreadable") or []):
+            # GitHub is there and the answer is not: not a file that does not exist.
+            sys.stderr.write("gh: HTTP 502: Bad Gateway\\n")
+            sys.exit(1)
         if body is None:
-            sys.stderr.write(f"no {wanted} at {ref}\\n")
+            # What `gh api` says for a path that is not at that ref.
+            sys.stderr.write("gh: Not Found (HTTP 404)\\n")
             sys.exit(1)
         print(base64.b64encode(body.encode("utf-8")).decode("ascii"))
         raise SystemExit(0)

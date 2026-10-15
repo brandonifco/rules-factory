@@ -329,6 +329,72 @@ class TestSemanticImplementation(ClassRails):
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("claims `documentation`, and this diff is `semantic-implementation`", done.stdout)
 
+    def emptied_surface_request(self, unreadable=False, absent=False):
+        """A handler changed under a head policy that lists no semantic path, the base policy's state as asked."""
+        self.engine()
+        policy = json.loads(self.read(".github/agent-policy.json"))
+        before = json.dumps(policy)
+        policy["review"]["semanticPaths"] = []
+        self.write(".github/agent-policy.json", json.dumps(policy))
+        self.write(HANDLER, "int Limit() => 401;\n")
+        contents = {HANDLER: "int Limit() => 400;\n"}
+        if not (unreadable or absent):
+            contents[".github/agent-policy.json"] = before
+        self.pull_request(self.body("- review class: documentation\n- entry id(s): none", evidence=self.NO_TEST),
+                          {HANDLER: "MODIFIED", ".github/agent-policy.json": "MODIFIED"}, contents=contents)
+        if unreadable:
+            document = json.load(open(self.fixture_path, encoding="utf-8"))
+            document["contentsUnreadable"] = [".github/agent-policy.json"]
+            self.fixture(document)
+
+    def test_an_unreadable_base_policy_is_undecidable_and_not_a_new_policy(self):
+        # #612: the base read failed, `None` was also what a policy being added gave, and a head that
+        # emptied `semanticPaths` was judged by no surface: documentation, no verdict owed.
+        # mutation: take a base policy that could not be read for one that was never there
+        self.emptied_surface_request(unreadable=True)
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 2, gate.stdout + gate.stderr)
+        self.assertIn("cannot decide", gate.stderr)
+        self.assertIn("base commit's .github/agent-policy.json could not be read", gate.stderr)
+        self.assertNotIn("no rules verdict required", gate.stdout)
+        done = self.policy()
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("base commit's .github/agent-policy.json could not be read", done.stderr)
+
+    def test_a_packet_is_refused_when_the_base_policy_cannot_be_read(self):
+        # #612, through git rather than the API. mutation: take a base policy git could not read for a new one
+        self.engine()
+        rails.git(self.out, "checkout", "-qb", "issue-27")
+        policy = json.loads(self.read(".github/agent-policy.json"))
+        policy["review"]["semanticPaths"] = []
+        self.write(".github/agent-policy.json", json.dumps(policy))
+        self.write(HANDLER, "int Limit() => 401;\n")
+        rails.git(self.out, "add", "-A")
+        rails.git(self.out, "commit", "-qm", "empty the surface and change a handler")
+        files = {HANDLER: "MODIFIED", ".github/agent-policy.json": "MODIFIED"}
+        body = self.body("- review class: semantic-implementation\n- entry id(s): altitude-limit", evidence=self.NO_TEST)
+        head = rails.git(self.out, "rev-parse", "HEAD")
+        self.pull_request(body, files, head=head, base="c" * 40)
+        done = self.packet("--role", "semantic")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("base commit's .github/agent-policy.json could not be read", done.stderr)
+        # And a base git can read, with no policy in it, is a policy being added: the head's stands alone.
+        rails.git(self.out, "checkout", "-q", "main")
+        rails.git(self.out, "rm", "-q", ".github/agent-policy.json")
+        rails.git(self.out, "commit", "-qm", "a base with no policy")
+        absent = rails.git(self.out, "rev-parse", "HEAD")
+        self.pull_request(body, files, head=head, base=absent)
+        done = self.packet("--role", "semantic")
+        self.assertNotIn("could not be read", done.stderr)
+
+    def test_a_policy_the_base_never_had_is_judged_by_the_head_s_alone(self):
+        # A pull request that adds the policy has no base surface to be held to; that is `absent`, which is
+        # an answer, and the head's stands. mutation: refuse a base policy that is not there
+        self.emptied_surface_request(absent=True)
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 0, gate.stdout + gate.stderr)
+        self.assertIn("no rules verdict required", gate.stdout)
+
     def test_a_handler_renamed_off_the_surface_is_still_a_handler_removed(self):
         # Codex: GitHub lists a rename by its new path alone, so moving a handler to notes/ left the
         # surface with nothing on it. mutation: ignore `previous_filename`

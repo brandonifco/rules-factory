@@ -499,7 +499,10 @@ decline that names why and cites where — that is the engine working, not the e
   cannot be read, a record that cannot be compared, a factory update with a hand-written file in
   it, a handler renamed off the surface (the old path of a rename is read and counts as deleted).
   The surface a diff is judged by is the union of the base's policy and the head's, so a pull
-  request cannot narrow it for its own change. A new decision record is `decision-record-only` and
+  request cannot narrow it for its own change. A base policy that cannot be read is not a new
+  policy: the gate and `tools/pr-policy.py` are undecidable and `tools/review-packet.py` refuses,
+  because the surface the change began on is unknown; only a policy the base commit does not
+  have lets the head's stand alone. A new decision record is `decision-record-only` and
   an edit to an existing one is a `semantic-ruling`, because a tool cannot tell a typo from a
   reversal, and a reviewer can; only line endings and trailing space are cosmetic, since in a
   nested list the indentation is the meaning.

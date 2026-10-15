@@ -91,7 +91,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 30,
+    Row("AGENTS.md", MANAGED, 31,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares, one per package for a "
@@ -159,7 +159,7 @@ TABLE = (
         "the repository root comes from the record too, so an embedded engine re-produces with no "
         "arguments of its own (#517, 0069); an engine made from several corpora is re-produced from "
         "every corpus the record names, the principal first (#531, 0070)"),
-    Row("tools/review-packet.py", MANAGED, 18,
+    Row("tools/review-packet.py", MANAGED, 19,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
@@ -172,13 +172,13 @@ TABLE = (
         "dependencies, a lexical reference graph and recorded fingerprints; the delta packet a bounded "
         "review reads, or the reasons a full one is owed; the self-review skeleton and check; an "
         "attestation's integrity; and review telemetry (0071); `ruling-review` prints and checks the review of a ruling (0076)"),
-    Row("tools/repair-packet.py", MANAGED, 7,
+    Row("tools/repair-packet.py", MANAGED, 8,
         "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
         "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
         "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482); the changed paths are matched against the semantic surface in the engine's own terms, as the gate matches them, so an embedded engine is not told no verdict is owed when the gate will ask for one (#535); the brief says a semantic verdict is owed from the review class the gate reads, and from the surface when it cannot read the base (0076)"),
-    Row("tools/pr-policy.py", MANAGED, 16,
+    Row("tools/pr-policy.py", MANAGED, 17,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
         "marker and overlay transition must identify the same work (#451); a changed path is judged in the "
@@ -191,7 +191,7 @@ TABLE = (
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
         "whose role could carry it, because a structural cut holds no entry evidence at all (#467); every verdict leaves a validated attestation whose digest is in the status, a delta PASS posts a context no gate requires, and a carry posts a comprehensive PASS again only when nothing moved (0071); refuses a semantic verdict on a packet whose review class owes none (0076)"),
-    Row("tools/conformance-gate.py", MANAGED, 6,
+    Row("tools/conformance-gate.py", MANAGED, 7,
         "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
         "file list is undecidable (0029, #193); the semantic surface is read in the engine's own paths, "
         "which for an embedded engine is not what GitHub reports (#507, 0069); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); which verdicts a change needs is its review class's to say, read from the one vendored module; a module it cannot load is an undecidable gate and not a weaker answer (0076)"),
@@ -415,6 +415,7 @@ RECIPE_SHA256 = {
         28: "c764a5a4d78e8cf475847fd7143fbd35c3aac652285908065f22768f3a34c8a8",
         29: "747d6d7c57d43b7caad66e0017c29c4102223ccba62c1787e98f07e25a7c13c5",
         30: "bac17949671c440fa89fe655cd990496cf0debb59fa8ca81b5bd797275594fd0",
+        31: "da7893f6aab867336942602c52b5c377ad74ecf16ec853a42eb4b128eacfeb5d",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -486,6 +487,7 @@ RECIPE_SHA256 = {
         16: "035d4fe896df6573a295f2350ac16739f05a09fa4f4c718972fa1c6f2eddafc3",
         17: "09a783f9e0a7a6e995167389f0c8398da73d3e4f44653fe451e2a8e47cacc291",
         18: "cf48164f9f65042716b1dae08436c3573dc26073fc6f22053dc1899de6e58a85",
+        19: "33bc43a8b3ef504ad47001d5735a48e6a31cfc4983995453de4f7b4e6ef74d4d",
     },
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
@@ -495,6 +497,7 @@ RECIPE_SHA256 = {
         5: "c9c35317247883f7076972c29a19e9ca5ccfc3166882a5b2e218a6108dcddd9f",
         6: "67e36ff58616171e5222ac3449bee618b13bba840f376069ecfcc7d577f8bc9f",
         7: "bb9158eaf9132975677d9be5da5150f652ac422226f666dcfffaa3d9af18a7da",
+        8: "37f11d61aab6a640439715decd1fd646dcf3a12334fdc0227215c39e4622a4ec",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
@@ -513,6 +516,7 @@ RECIPE_SHA256 = {
         14: "a68e3e9603684143232a8badf4e36642ce2762a20a38fbed5e33f7255d2629ac",
         15: "49e4845fb7d07855fe719c353b9493da9802f4bf80be3465a2ae8c991d957938",
         16: "80fda4f86822f5c2b9c8cd4e8a1b23f85b30a2d32b681749e788821d9d78bd07",
+        17: "2b021921816e81379c49533770c41dff5ef982ee82de3b1ed8a278b4b4ce8cad",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -530,6 +534,7 @@ RECIPE_SHA256 = {
         4: "4c0e5daef3375bb4b17d7a751bc5fb5d221925fabbb2b13e38fac519c556574b",
         5: "efa4ebba282b25abe388aea2721633d8565de22faaf591e09361c2ac1759c031",
         6: "3fafa402a1c56bdcdedc7d9411e6d13bec638752ecdc81f11950790d537c44d7",
+        7: "ab783679d4f4779b63455795e7eac95a7d9d78deb74cc954efa7043d8dc40a4d",
     },
     "tools/requeue-gate.py": {
         1: "a4315a5fa76a696ee616e5ef190d6bbec0d023c04e22086082d4031c460aec8d",

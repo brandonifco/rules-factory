@@ -96,16 +96,68 @@ def on_surface(path, patterns):
     return False
 
 
+class _Absent:
+    """The base policy is not there: the pull request adds it. An answer, and not the lack of one."""
+
+    def __repr__(self):
+        return "ABSENT"
+
+
+#: What a rail passes for `base` when it asked for the base commit's policy and was told, in so many words, that
+#: the path is not in that commit. Anything else a rail could not read is `None`, which is not this (#612).
+ABSENT = _Absent()
+
+
+class BasePolicyUnreadable(Exception):
+    """The base commit's policy could not be read, so the surface the diff began on is unknown.
+
+    A rail that meets this cannot say what the diff owes, and says so (the conformance gate and the pull
+    request policy are undecidable; the review packet refuses). It does not fall back to the head's policy
+    alone: the head is the pull request's own file, and a diff that empties `semanticPaths` while the read
+    of the base fails would otherwise judge itself by a surface it removed (#612).
+    """
+
+
+def base_surface(raw):
+    """The `review.semanticPaths` the base commit's policy lists, `ABSENT` where it has none, or it raises.
+
+    `raw` is the policy's bytes at the base commit, `ABSENT` where the rail learned that the path is not
+    in that commit, or `None` where it could not find out (the API failed, the commit is not here, the
+    path could not be listed). A policy that is there but is not JSON, is not an object, has a `review`
+    that is not one, or a `semanticPaths` that is not a list says nothing about its surface that can be
+    trusted, and is unreadable too. A policy with no `semanticPaths` listed an empty surface.
+    """
+    if raw is ABSENT:
+        return ABSENT
+    if raw is None:
+        raise BasePolicyUnreadable("the base commit's policy could not be read")
+    try:
+        document = json.loads(raw.decode("utf-8"))
+    except (AttributeError, UnicodeDecodeError, ValueError):
+        raise BasePolicyUnreadable("the base commit's policy is not JSON")
+    review = document.get("review") if isinstance(document, dict) else None
+    listed = review.get("semanticPaths") if isinstance(review, dict) else None
+    if not isinstance(document, dict) or (review is not None and not isinstance(review, dict)) \
+            or (listed is not None and not isinstance(listed, list)):
+        raise BasePolicyUnreadable("the base commit's policy does not list its semantic surface as a list")
+    return list(listed or [])
+
+
 def surface_patterns(head, base):
     """The semantic surface a diff is judged by: every pattern the head's policy lists and every one the base's did.
 
     The head's policy is the pull request's own file, and a diff that empties `semanticPaths` while it
     changes a handler would otherwise judge itself by a surface it removed. A pattern that was on the
-    surface when the change began stays on it for the change that removes it. `base` is None where the
-    base policy cannot be read (a policy being added), and then the head's stands alone.
+    surface when the change began stays on it for the change that removes it.
+
+    `base` is what `base_surface` returns: the patterns the base policy listed, or `ABSENT` where the pull
+    request adds the policy and the head's stands alone. Anything else, and `None` above all, is a base
+    that could not be read, and raises `BasePolicyUnreadable`: an unreadable policy is not a new one (#612).
     """
+    if base is not ABSENT and not isinstance(base, list):
+        raise BasePolicyUnreadable("the base commit's policy could not be read")
     out = []
-    for patterns in (head, base):
+    for patterns in (head, [] if base is ABSENT else base):
         for pattern in patterns or []:
             if isinstance(pattern, str) and pattern not in out:
                 out.append(pattern)

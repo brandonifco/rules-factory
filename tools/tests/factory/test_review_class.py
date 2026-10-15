@@ -187,11 +187,38 @@ class TestEachClass(unittest.TestCase):
         # mutation: judge by the head's patterns alone
         self.assertEqual(rc.surface_patterns([], ["src/**", "tests/**"]), ["src/**", "tests/**"])
         self.assertEqual(rc.surface_patterns(["src/**", "x/**"], ["src/**", "tests/**"]), ["src/**", "x/**", "tests/**"])
-        self.assertEqual(rc.surface_patterns(["src/**"], None), ["src/**"])
+        self.assertEqual(rc.surface_patterns(["src/**"], rc.ABSENT), ["src/**"])
         repo = Repo({HANDLER: b"int F() => 1;"}, {HANDLER: b"int F() => 2;"})
         self.assertEqual(repo.classify({HANDLER: "MODIFIED"}, patterns=[])["class"], rc.DOCUMENTATION)
         self.assertEqual(repo.classify({HANDLER: "MODIFIED"}, patterns=rc.surface_patterns([], PATTERNS))["class"],
                          rc.SEMANTIC_IMPLEMENTATION)
+
+    def test_an_unreadable_base_policy_is_not_a_new_one(self):
+        # #612: a base read that failed was `None`, which is also what a policy being added gave, so a diff
+        # that emptied `semanticPaths` while the read failed was judged by no surface at all.
+        # mutation: take an unreadable base for an absent one
+        with self.assertRaises(rc.BasePolicyUnreadable):
+            rc.surface_patterns([], None)
+        with self.assertRaises(rc.BasePolicyUnreadable):
+            rc.surface_patterns(["src/**"], "not a list")
+        # A policy that is new is the one thing the head's stands alone for, and it is said, not defaulted.
+        self.assertEqual(rc.surface_patterns([], rc.ABSENT), [])
+        self.assertEqual(rc.surface_patterns(["src/**"], rc.ABSENT), ["src/**"])
+
+    def test_a_base_policy_is_read_from_its_bytes_and_every_failure_to_read_it_is_unreadable(self):
+        # mutation: let a policy that does not parse, or lists its surface as anything but a list, read as empty
+        def policy(review):
+            return json.dumps({"review": review}).encode()
+
+        self.assertEqual(rc.base_surface(policy({"semanticPaths": ["src/**"]})), ["src/**"])
+        self.assertEqual(rc.base_surface(policy({"semanticPaths": []})), [], "a base that listed none had none")
+        self.assertEqual(rc.base_surface(policy({})), [])
+        self.assertIs(rc.base_surface(rc.ABSENT), rc.ABSENT)
+        for unreadable in (None, b"", b"{", b"\xff\xfe", b"[]", b"null", policy("src/**"),
+                           policy({"semanticPaths": "src/**"}), policy({"semanticPaths": {"src": 1}})):
+            with self.subTest(unreadable=unreadable):
+                with self.assertRaises(rc.BasePolicyUnreadable):
+                    rc.base_surface(unreadable)
 
     def test_a_deleted_record_is_a_semantic_ruling(self):
         # mutation: let a deletion pass as an edit with no text to compare

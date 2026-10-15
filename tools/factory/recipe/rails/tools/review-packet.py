@@ -470,6 +470,29 @@ def git_show(commit, path):
     return done.stdout if done.returncode == 0 else None
 
 
+def base_patterns(module, base_sha):
+    """The `review.semanticPaths` the base commit's policy lists, `module.ABSENT` for a policy being added, or Refused.
+
+    Git can tell the three apart where the API cannot be asked to: `ls-tree` succeeds and lists nothing
+    for a path that is not in the commit, and fails for a commit that is not here, so only the first is a
+    policy being added (the head's stands alone). A base that could not be read is not that (#612): a pull
+    request that empties its own `semanticPaths` would be judged by no surface, and this packet would
+    say its handler change owes no semantic review.
+    """
+    where = (engine_path() + "/" if engine_path() else "") + POLICY
+    listed = subprocess.run(["git", "ls-tree", "--name-only", base_sha, "--", where], cwd=ROOT,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    raw = None
+    if listed.returncode == 0:
+        raw = git_show(base_sha, POLICY) if listed.stdout.strip() else module.ABSENT
+    try:
+        return module.base_surface(raw)
+    except module.BasePolicyUnreadable as error:
+        raise Refused(f"the base commit's {where} could not be read ({error}), so the semantic surface this pull "
+                      f"request began on is unknown and what it owes cannot be decided from the head's policy alone. "
+                      f"Fetch the base ({base_sha[:12]}) and regenerate the packet")
+
+
 def review_class(snapshot, record, files, patterns, body, base_sha):
     """`(result, effective, problems, hints, declared, module)`: what the reviewed diff owes (0076).
 
@@ -483,12 +506,7 @@ def review_class(snapshot, record, files, patterns, body, base_sha):
     module = factory_module("reviewclass")
     prefix = engine_path()
     inside = {}
-    try:
-        base_policy = json.loads((git_show(base_sha, POLICY) or b"").decode("utf-8")).get("review") or {}
-        base_listed = base_policy.get("semanticPaths") if isinstance(base_policy, dict) else None
-    except (UnicodeDecodeError, ValueError, AttributeError):
-        base_listed = None
-    patterns = module.surface_patterns(patterns, base_listed if isinstance(base_listed, list) else None)
+    patterns = module.surface_patterns(patterns, base_patterns(module, base_sha))
     for path, change in module.changes_of(files).items():
         relative = engine_relative(path, prefix)
         if relative is not None:

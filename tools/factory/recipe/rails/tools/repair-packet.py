@@ -340,9 +340,11 @@ def owed_review(pull, patterns):
     """`(semantic verdict owed, the review class it comes from)`, decided as the gate decides it (0076).
 
     The brief must not say a change owes something the gate will not ask for (#483), nor the reverse,
-    so this reads the one review class the gate reads. Anything it cannot read -- the module, the
-    base commit, a file -- is the old answer, which is that anything on the surface owes a verdict:
-    a brief that overstates what is owed is the safe direction to be wrong in.
+    so this reads the one review class the gate reads. Anything it cannot read -- the module, a
+    file -- is the old answer, which is that anything on the surface owes a verdict. A base policy it
+    cannot read is stronger: the surface the change began on is unknown, so a verdict is owed
+    whatever the head's policy lists (#612). A brief that overstates what is owed is the safe
+    direction to be wrong in.
     """
     changed = [f["path"] for f in pull.get("files") or []]
     surface = semantic_surface(changed, patterns, engine_path())
@@ -362,14 +364,23 @@ def owed_review(pull, patterns):
         inside = {engine_relative(path, prefix): change
                   for path, change in reviewclass.changes_of(pull.get("files") or []).items()
                   if engine_relative(path, prefix) is not None}
-        base_policy = subprocess.run(["git", "show", f"{pull.get('baseRefOid')}:{where_policy}"], cwd=ROOT,
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Git can tell a policy the base never had (`ls-tree` succeeds and lists nothing) from a base it
+        # cannot read (it fails, or `show` does), and only the first lets the head's surface stand alone (#612).
+        base_oid = pull.get("baseRefOid")
+        raw = None
+        if base_oid:
+            listed = subprocess.run(["git", "ls-tree", "--name-only", base_oid, "--", where_policy], cwd=ROOT,
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if listed.returncode == 0:
+                shown = subprocess.run(["git", "show", f"{base_oid}:{where_policy}"], cwd=ROOT,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE) if listed.stdout.strip() else None
+                raw = reviewclass.ABSENT if shown is None else shown.stdout if shown.returncode == 0 else None
         try:
-            listed = json.loads(base_policy.stdout.decode("utf-8")).get("review", {}).get("semanticPaths") \
-                if base_policy.returncode == 0 else None
-        except (UnicodeDecodeError, ValueError, AttributeError):
-            listed = None
-        patterns = reviewclass.surface_patterns(patterns, listed if isinstance(listed, list) else None)
+            patterns = reviewclass.surface_patterns(patterns, reviewclass.base_surface(raw))
+        except reviewclass.BasePolicyUnreadable:
+            # The brief is advice, and one that overstates what is owed is the safe direction to be wrong in:
+            # with the base unreadable, a head that emptied its own surface must not read as owing nothing.
+            return True, "semantic-implementation"
 
         def read(path, side):
             commit = pull.get("headRefOid") if side == "head" else pull.get("baseRefOid")

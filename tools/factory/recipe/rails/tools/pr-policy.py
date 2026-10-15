@@ -297,15 +297,31 @@ def reviewclass_module():
     return reviewclass
 
 
-def base_patterns(base_oid, prefix):
-    """The `review.semanticPaths` the base commit's policy lists, or None when it cannot be read."""
-    raw = base_bytes(base_oid, f"{prefix}/{POLICY}" if prefix else POLICY) if base_oid else None
+def base_patterns(module, base_oid, prefix):
+    """The `review.semanticPaths` the base commit's policy lists, `module.ABSENT` for a policy being added, or Failed.
+
+    Three answers, and the difference between the last two is the whole of it (#612). GitHub saying
+    the path is not at that commit (`Not Found (HTTP 404)`) is a policy being added: the head's stands
+    alone. Anything else -- a failed call, a base nobody gave, bytes that are not a policy -- is a base
+    that could not be read, and a pull request that empties its own `semanticPaths` while that is so
+    would be judged by no surface at all. That is undecidable, and this check says so rather than guess.
+    """
+    path = f"{prefix}/{POLICY}" if prefix else POLICY
+    raw = None
+    if base_oid:
+        try:
+            raw = base64.b64decode(gh("api", f"repos/{{owner}}/{{repo}}/contents/{urllib.parse.quote(path)}"
+                                      f"?ref={base_oid}", "--jq", ".content"))
+        except Failed as error:
+            raw = module.ABSENT if "Not Found (HTTP 404)" in str(error) else None
+        except (ValueError, binascii.Error):
+            raw = None
     try:
-        review = json.loads(raw.decode("utf-8")).get("review") or {}
-    except (AttributeError, UnicodeDecodeError, ValueError):
-        return None
-    listed = review.get("semanticPaths") if isinstance(review, dict) else None
-    return listed if isinstance(listed, list) else None
+        return module.base_surface(raw)
+    except module.BasePolicyUnreadable as error:
+        raise Failed(f"the base commit's {path} could not be read ({error}), so the semantic surface this pull "
+                     f"request began on is unknown and what it owes cannot be decided from the head's policy alone. "
+                     f"Run the check again; if the read keeps failing, the pull request's base is the thing to look at")
 
 
 def review_class(files, patterns, body, base_oid):
@@ -320,7 +336,7 @@ def review_class(files, patterns, body, base_oid):
     module = reviewclass_module()
     prefix = engine_path()
     inside = {}
-    patterns = module.surface_patterns(patterns, base_patterns(base_oid, prefix))
+    patterns = module.surface_patterns(patterns, base_patterns(module, base_oid, prefix))
     for path, change in module.changes_of(files).items():
         relative = engine_relative(path, prefix)
         if relative is not None:
