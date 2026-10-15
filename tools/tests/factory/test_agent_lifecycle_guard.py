@@ -323,6 +323,54 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
         self.assertAllowed(self.send("implementer"))
         self.assertDenied(self.send("reviewer"), "completed")
 
+    SPELLINGS = ("worker", "WORKER", "Worker", " worker ", "\tworker\n", "ｗｏｒｋｅｒ", "ＷＯＲＫＥＲ",
+                 "\u3000worker\u3000")
+
+    def test_equivalent_spellings_of_a_completed_agents_name_are_refused(self):
+        # Review of #677 at 5ad72d4: the runtime resolves a name case-insensitively, under NFKC and with
+        # whitespace normalised, so `WORKER` reaches the agent `worker` and the guard must say so. One
+        # normaliser (NFKC, casefold, whitespace runs collapsed to one space, trimmed) is applied to both
+        # the launched name and the target, wherever a name is matched.
+        self.launched(WORKER, name="worker")
+        self.stopped(WORKER)
+        for spelling in self.SPELLINGS:
+            with self.subTest(ledger=spelling):
+                self.assertDenied(self.send(spelling), "completed its assignment")
+        lines = launch_lines("toolu_L1", "worker", WORKER) + [notification(WORKER, "completed")]
+        done = self.main_transcript(lines)
+        for spelling in self.SPELLINGS:
+            with self.subTest(transcript=spelling):
+                self.assertDenied(self.send(spelling, transcript=done), "completed its assignment")
+        # The launched name is normalised too, not only the target.
+        shouted = self.main_transcript(launch_lines("toolu_L1", "  WORKER ", WORKER)
+                                       + [notification(WORKER, "completed")])
+        self.assertDenied(self.send("worker", transcript=shouted), "completed its assignment")
+
+    def test_a_ledger_name_in_another_spelling_is_matched_to_the_target(self):
+        self.launched(OTHER, name="Review  Agent")
+        self.stopped(OTHER)
+        self.assertDenied(self.send("review agent"), "completed its assignment")
+        self.assertDenied(self.send("ＲＥＶＩＥＷ AGENT"), "completed its assignment")
+
+    def test_a_running_agent_stays_reachable_under_every_spelling_of_its_name(self):
+        self.launched(WORKER, name="worker")
+        for spelling in self.SPELLINGS:
+            with self.subTest(ledger=spelling):
+                self.assertAllowed(self.send(spelling))
+
+    def test_a_running_agent_known_only_from_the_transcript_stays_reachable_under_every_spelling(self):
+        running = self.main_transcript(launch_lines("toolu_L1", "worker", OTHER))
+        for spelling in self.SPELLINGS:
+            with self.subTest(transcript=spelling):
+                self.assertAllowed(self.send(spelling, transcript=running))
+
+    def test_a_different_name_is_not_a_spelling_of_this_one(self):
+        self.launched(WORKER, name="worker")
+        self.stopped(WORKER)
+        for other in ("workers", "work er", "worker2", "wörker"):
+            with self.subTest(other):
+                self.assertAllowed(self.send(other))
+
     def test_a_name_reused_for_a_fresh_agent_reaches_the_fresh_one(self):
         self.launched(WORKER, name="implementer")
         self.stopped(WORKER)
@@ -385,6 +433,37 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
                 self.assertEqual(done.returncode, 2, done.stdout)
                 self.assertIn("refuses", done.stderr)
                 self.assertNotIn("Traceback", done.stderr)
+
+    def utf8_mode_environment(self):
+        # Python's UTF-8 mode (the C locale turns it on too) reads stdin with `surrogateescape`, which is
+        # the setting under which the review reproduced the fail-open; it does not depend on the machine.
+        env = {key: value for key, value in os.environ.items() if key != "XDG_STATE_HOME"}
+        env.update(RULES_AGENT_LEDGER_DIR=self.ledger, PYTHONUTF8="1")
+        return env
+
+    def test_stdin_that_is_not_utf_8_is_refused_even_inside_a_json_string(self):
+        # Review of #677 at 5ad72d4: Python's text stdin keeps an invalid byte as a surrogate escape, and
+        # `json.loads` accepts the string, so an invalid `agent_id` produced no verdict at all and exit 0.
+        # The bytes are decoded strictly before the JSON is read.
+        good = b'{"tool_name":"Bash","tool_input":{"command":"make test"},"agent_id":"%s"}'
+        for label, stdin in (("the review's payload", good % b"\xff"),
+                             ("in the middle of a string", good % b"ab\xc3(cd"),
+                             ("in a key", b'{"tool_\xffname":"Bash"}'),
+                             ("a truncated sequence at the end of a value", good % b"\xe2\x82"),
+                             ("a byte order mark", b"\xef\xbb\xbf" + good % b"a1")):
+            with self.subTest(label):
+                env = self.utf8_mode_environment()
+                done = subprocess.run([sys.executable, GUARD], input=stdin, capture_output=True, env=env,
+                                      check=False)
+                self.assertEqual(done.returncode, 2, (done.stdout, done.stderr))
+                self.assertEqual(done.stdout, b"")
+                self.assertIn(b"refuses", done.stderr)
+                self.assertNotIn(b"Traceback", done.stderr)
+        # Valid UTF-8 beyond ASCII still reads: the refusal is for bytes that are not text.
+        env = self.utf8_mode_environment()
+        done = subprocess.run([sys.executable, GUARD], input=good % "\u00e9\u20ac".encode("utf-8"),
+                              capture_output=True, env=env, check=False)
+        self.assertEqual(done.returncode, 0, done.stderr)
 
 
 class TestTheLedgerIsNeverInsideARepository(GuardCase):
@@ -1185,6 +1264,69 @@ class TestCheckSettings(GuardCase):
                 done = self.check(settings)
                 self.assertEqual(done.returncode, 1, done.stdout)
                 self.assertIn("matcher", done.stdout)
+
+    def test_a_malformed_neighbouring_hook_leaves_the_guard_not_wired_and_is_named(self):
+        # Review of #677 at 5ad72d4: Claude Code rejects `"timeout": "bad"` on ANY hook of the event as an
+        # unloadable registration, and the checker said the guard was wired. Every group and entry under
+        # every event is held to the runtime's schema, the path of each invalid item named.
+        bad_entries = {
+            "timeout": ({"type": "command", "command": "true", "timeout": "bad"}, "'timeout'", "positive number"),
+            "timeout bool": ({"type": "command", "command": "true", "timeout": True}, "'timeout'", "positive number"),
+            "timeout zero": ({"type": "command", "command": "true", "timeout": 0}, "'timeout'", "positive number"),
+            "type": ({"type": "prompt", "command": "true"}, "'type'", "'command'"),
+            "no type": ({"command": "true"}, "'type'", "'command'"),
+            "command": ({"type": "command", "command": ["true"]}, "'command'", "not a string"),
+            "no command": ({"type": "command"}, "'command'", "not a string"),
+            "async": ({"type": "command", "command": "true", "async": "yes"}, "'async'", "boolean"),
+            "once": ({"type": "command", "command": "true", "once": 1}, "'once'", "boolean"),
+            "if": ({"type": "command", "command": "true", "if": 5}, "'if'", "string"),
+        }
+        for event in ("PreToolUse", "PostToolUse", "SessionStart", "Stop"):
+            for label, (entry, *needles) in bad_entries.items():
+                with self.subTest(event=event, entry=label):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"].setdefault(event, []).append({"matcher": "Bash", "hooks": [entry]})
+                    index = len(settings["hooks"][event]) - 1
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(f"hooks.{event}[{index}].hooks[0]", done.stdout)
+                    for needle in needles:
+                        self.assertIn(needle, done.stdout)
+                    self.assertNotIn("wires", done.stdout)
+        # A bad entry beside a good one in the same group is named by its position.
+        settings = self.load(RAILS_SETTINGS)
+        settings["hooks"]["Stop"] = [{"hooks": [{"type": "command", "command": "true"},
+                                                {"type": "command", "command": "true", "timeout": "bad"}]}]
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("hooks.Stop[0].hooks[1]", done.stdout)
+        self.assertNotIn("hooks.Stop[0].hooks[0]", done.stdout)
+        # Every invalid item is named, not the first only.
+        settings["hooks"]["Stop"].append({"matcher": 3, "hooks": []})
+        done = self.check(settings)
+        for path in ("hooks.Stop[0].hooks[1]", "hooks.Stop[1].matcher", "hooks.Stop[1].hooks"):
+            self.assertIn(path, done.stdout)
+
+    def test_a_group_with_a_key_the_runtime_does_not_read_is_named_wherever_it_is(self):
+        settings = self.load(RAILS_SETTINGS)
+        settings["hooks"]["Stop"] = [{"hooks": [{"type": "command", "command": "true"}], "description": "x"}]
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("hooks.Stop[0]", done.stdout)
+        self.assertIn("'description' on the hook group", done.stdout)
+
+    def test_valid_neighbouring_hooks_leave_the_guard_wired_whatever_runtime_keys_they_use(self):
+        # The shipped primary-checkout guard sits beside the lifecycle guard; other hooks may use `if`,
+        # `once`, `async` and keys this file does not know. Their types are checked, their keys are not refused.
+        settings = self.load(RAILS_SETTINGS)
+        self.assertEqual(self.check(settings).returncode, 0)
+        settings["hooks"]["PreToolUse"].append({"matcher": "Bash", "hooks": [
+            {"type": "command", "command": "true", "timeout": 5, "if": "Bash(git *)", "once": True,
+             "async": False, "asyncRewake": False, "statusMessage": "x", "shell": "bash"}]})
+        settings["hooks"]["Stop"] = [{"hooks": [{"type": "command", "command": "true", "async": True}]}]
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("wires", done.stdout)
 
     def test_a_sendmessage_only_pretooluse_does_not_satisfy_the_every_tool_bound(self):
         settings = self.load(RAILS_SETTINGS)

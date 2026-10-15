@@ -143,7 +143,8 @@ TABLE = (
         "that fullmatches a strict grammar, with no shell syntax: a fixed git subcommand list with short option "
         "lists and no `-c`, and `handoff` of this very file); its `handoff` "
         "is a brief from committed state; `check-settings` and `measure` are the wiring check, which "
-        "refuses any key that changes how the hook runs, and the telemetry"),
+        "types every hook under every event and refuses any key on the guard's own entry that changes how "
+        "it runs, and the telemetry; names are compared under one normaliser and stdin is decoded as strict UTF-8"),
     Row(".claude/settings.json", MANAGED, 2,
         "which tools the guards run before and after (0029); the lifecycle guard is wired on every tool "
         "before and after, in the foreground, and not on SubagentStop, which another stop hook can veto (#676, 0083)"),
@@ -402,7 +403,7 @@ RECIPE_SHA256 = {
         3: "2f15d7192c5328376c1cd1836229c699d1d48f90ef35b451e48fa79b7fbef238",
     },
     ".claude/hooks/agent-lifecycle-guard.py": {
-        1: "1797e460a70be6f45cee9a415a2a7e087be308476e4d530df9d70a3c793631b6",
+        1: "2bffaccc776f4a12467bf2ae3b97a8688d195b715c34280a8312a3f7c38d8907",
     },
     ".claude/settings.json": {
         1: "4d410acd10ba5b6ed2d3c6a016cc2cfde1cf8e621da54424755376a80da30aa0",

@@ -7102,6 +7102,22 @@ class TestTheDoctor(TestAProducedEngine):
         self.assertIn("WRONG", row)
         self.assertIn(label, row)
 
+    def test_a_malformed_neighbouring_hook_makes_the_lifecycle_guard_not_wired(self):
+        # Review of #677 at 5ad72d4: Claude Code rejects a hook with `"timeout": "bad"` as an unloadable
+        # registration of its event, so the guard beside it is not running either.
+        self.produced()
+        path = os.path.join(self.out, ".claude", "settings.json")
+        with open(path, encoding="utf-8") as handle:
+            settings = json.load(handle)
+        settings["hooks"]["PreToolUse"].append(
+            {"matcher": "Bash", "hooks": [{"type": "command", "command": "true", "timeout": "bad"}]})
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(settings, handle)
+        done = self.doctor("--local")
+        row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+        self.assertIn("WRONG", row)
+        self.assertIn("hooks.PreToolUse[2].hooks[0]", row)
+
     def test_a_lifecycle_guard_registered_async_is_reported(self):
         # An asynchronous hook cannot enforce a decision (#676, review of #677).
         self.reported_after("async", lambda hook: hook.update({"async": True}))
