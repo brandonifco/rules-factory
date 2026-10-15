@@ -254,6 +254,115 @@ class TestDecisionRecordOnly(ClassRails):
         self.assertEqual(self.gate().returncode, 1, "and the gate still wants the verdict")
 
 
+class TestTheRecorderOwesWhatReviewclassOwes(ClassRails):
+    """#615: `record-verdict.py` decides whether a semantic verdict is owed from `reviewclass`, as the gate does.
+
+    It kept a set of class names of its own, and a packet identity whose `reviewClass.effective` was
+    absent or not a class passed its check, so a semantic verdict could be posted on an identity the
+    gate has no class for.
+    """
+
+    def identity(self):
+        """A whole packet's identity, written by `review-packet.py` for a change that owes no semantic review."""
+        self.engine()
+        rails.git(self.out, "checkout", "-qb", "issue-27")
+        self.write(DECISION, RECORD_TEXT)
+        rails.git(self.out, "add", "-A")
+        rails.git(self.out, "commit", "-qm", "record the rulings")
+        head = rails.git(self.out, "rev-parse", "HEAD")
+        self.pull_request(self.body("- review class: decision-record-only\n- entry id(s): none", evidence=self.NO_TEST,
+                                    documentation=f"- [x] `{DECISION}` — updated: new"),
+                          {DECISION: "ADDED"}, head=head, base=rails.git(self.out, "rev-parse", "main"),
+                          labels=("state:ready", "risk:independent-review"))
+        out = os.path.join(self.tmp, "whole-packet")
+        done = self.packet("--out", out)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        return os.path.join(out, f"pr-5-{head[:12]}.review.json")
+
+    def with_class(self, path, *, reviewClass="unchanged", **fields):  # noqa: N803
+        """The identity at `path`, rewritten with its `reviewClass` as given (`None` removes it). Returns `path`."""
+        document = json.load(open(path, encoding="utf-8"))
+        if reviewClass != "unchanged":
+            if reviewClass is None:
+                document["reviewContext"].pop("reviewClass", None)
+            else:
+                document["reviewContext"]["reviewClass"] = reviewClass
+        if fields:
+            document["reviewContext"].setdefault("reviewClass", {}).update(fields)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2)
+        return path
+
+    def record(self, path, reviewer="semantic"):
+        return self.run_tool("record-verdict.py", "--pr", "5", "--reviewer", reviewer, "--verdict", "pass",
+                             "--packet", path, "--dry-run")
+
+    def vendored(self):
+        """The engine's own `scripts/factory/reviewclass.py`, loaded: the table the gate and the recorder both read."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("engine_reviewclass",
+                                                      os.path.join(self.out, "scripts", "factory", "reviewclass.py"))
+        module = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, os.path.join(self.out, "scripts", "factory"))
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.path.remove(os.path.join(self.out, "scripts", "factory"))
+        return module
+
+    def test_an_identity_that_names_no_class_cannot_post_a_semantic_verdict(self):
+        # #615. mutation: skip the check when `reviewClass` is absent, or when `effective` is not a class
+        path = self.identity()
+        original = json.load(open(path, encoding="utf-8"))["reviewContext"]["reviewClass"]
+        for label, change in (
+                ("no reviewClass at all", {"reviewClass": None}),
+                ("a reviewClass that is not an object", {"reviewClass": "semantic-implementation"}),
+                ("a reviewClass with no effective", {"reviewClass": {"computed": original["computed"]}}),
+                ("an effective that is null", {"reviewClass": {**original, "effective": None}}),
+                ("an effective that is empty", {"reviewClass": {**original, "effective": ""}}),
+                ("an effective that is not a class", {"reviewClass": {**original, "effective": "semantic-novelty"}}),
+                ("an effective that is not a string", {"reviewClass": {**original, "effective": ["documentation"]}}),
+                ("a class spelled in capitals", {"reviewClass": {**original, "effective": "SEMANTIC-IMPLEMENTATION"}})):
+            with self.subTest(label):
+                self.with_class(path, **change)
+                done = self.record(path)
+                self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+                self.assertIn("recorder cannot tell whether a semantic verdict is owed", done.stderr)
+                self.assertEqual(done.stdout, "", "nothing is recorded")
+        # Nothing here stops a reviewer who is not the semantic one: the rule is about the semantic verdict.
+        self.with_class(path, reviewClass=None)
+        self.assertEqual(self.record(path, "codex").returncode, 0)
+
+    def test_the_recorder_and_the_gate_cannot_disagree_about_a_class(self):
+        # #615. mutation: give the recorder a set of its own again, or write `SEMANTIC` out by hand
+        path = self.identity()
+        module = self.vendored()
+        for effective in module.CLASSES:
+            with self.subTest(effective):
+                self.with_class(path, effective=effective)
+                done = self.record(path)
+                gate_asks = effective in module.SEMANTIC
+                self.assertEqual(done.returncode, 0 if gate_asks else 1, done.stdout + done.stderr)
+                if not gate_asks:
+                    self.assertIn("owes no semantic review", done.stderr)
+
+    def test_a_change_to_the_one_table_moves_the_recorder_with_it(self):
+        # #615: the engine's vendored table is edited to oblige a verdict of `documentation`, and the recorder,
+        # which keeps no list of its own, follows it. mutation: a recorder that names the classes itself
+        path = self.identity()
+        self.with_class(path, effective="documentation")
+        self.assertEqual(self.record(path).returncode, 1, "as the table stands, documentation owes no verdict")
+        table = os.path.join(self.out, "scripts", "factory", "reviewclass.py")
+        text = open(table, encoding="utf-8").read()
+        before = ('    DOCUMENTATION: {"entries": False, "self_review": False, "ruling_review": False,\n'
+                  '                    "packet": False, "verdict": False},')
+        self.assertIn(before, text)
+        with open(table, "w", encoding="utf-8") as handle:
+            handle.write(text.replace(before, before.replace('"verdict": False', '"verdict": True')))
+        done = self.record(path)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+
 class TestSemanticImplementation(ClassRails):
     """Reykholt #77: handlers, tests and overlay rows. Nothing about it got cheaper."""
 
@@ -677,6 +786,39 @@ class TestDocumentation(ClassRails):
         gate = self.gate()
         self.assertEqual(gate.returncode, 0, gate.stdout + gate.stderr)
         self.assertIn("no rules verdict required", gate.stdout)
+
+    def readme_request(self):
+        self.engine()
+        self.write("README.md", "# the engine\n")
+        self.pull_request(self.body("N/A", evidence=self.NO_TEST,
+                                    documentation="- [x] `README.md` — updated: the engine's own README"),
+                          {"README.md": "ADDED"})
+
+    def record_status(self, context, state):
+        with open(self.statuses, "w", encoding="utf-8") as handle:
+            json.dump({"a" * 40: {context: state}}, handle)
+
+    def test_the_gate_asks_for_no_verdict_a_change_that_owes_none_so_a_recorded_pass_is_not_what_clears_it(self):
+        # #615: the gate decides the class from the diff and never from a status, so a semantic status posted
+        # for a change that owes none changes nothing it asks. mutation: let a recorded success stand in for the diff
+        self.readme_request()
+        for state in ("success", None):
+            with self.subTest(recorded=state):
+                if state:
+                    self.record_status("rules-verdict/semantic", state)
+                gate = self.gate()
+                self.assertEqual(gate.returncode, 0, gate.stdout + gate.stderr)
+                self.assertIn("no rules verdict required", gate.stdout)
+
+    def test_a_semantic_failure_recorded_on_a_change_that_owes_none_still_blocks(self):
+        # #615: what a verdict posted for such a change can do. The recorder no longer posts one, and the gate
+        # reads a recorded failure at any configured context as blocking whatever the class.
+        # mutation: let the gate ignore a recorded failure when the class owes no verdict
+        self.readme_request()
+        self.record_status("rules-verdict/semantic", "failure")
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 1, gate.stdout + gate.stderr)
+        self.assertIn("is recorded as a failure", gate.stdout)
 
     def test_a_comment_only_change_to_a_handler_is_documentation_when_it_is_claimed(self):
         # mutation: let comment_only return True for any C# file
