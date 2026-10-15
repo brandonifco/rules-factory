@@ -6789,6 +6789,12 @@ plan = json.loads(pathlib.Path(os.environ["DOTNET_PLAN"]).read_text())
 state = pathlib.Path(os.environ["DOTNET_CALLS"])
 calls = json.loads(state.read_text()) if state.exists() else []
 step = plan[min(len(calls), len(plan) - 1)]
+if step.get("build"):
+    # A build that fails, as `dotnet build` and `dotnet test` both say it: its diagnostics, exit 1.
+    print(step["build"])
+    sys.exit(1)
+if sys.argv[1] == "build":
+    sys.exit(0)
 names = os.environ["DOTNET_WATCH"].split(os.pathsep)
 watched = pathlib.Path(names[0])
 calls.append({"argv": sys.argv[1:], "watched": watched.read_text() if watched.exists() else None,
@@ -6807,9 +6813,41 @@ if step.get("terminate"):
     import signal, time
     os.kill(os.getppid(), getattr(signal, step["terminate"]) if isinstance(step["terminate"], str) else signal.SIGTERM)
     time.sleep(30)
+if "--results-directory" in sys.argv:
+    # What the TRX logger writes: one file per test project, a project the filter matched nothing in
+    # included (its file holds no results). `results` is one project's {test: outcome} or a list of
+    # them, an outcome is a string or a list of them (a theory's rows), and "*" is the test the
+    # filter names, in the namespace Ns.
+    import uuid
+    from xml.sax.saxutils import quoteattr
+    wanted = sys.argv[sys.argv.index("--filter") + 1].split("~", 1)[1].replace("\\\\", "") if "--filter" in sys.argv else ""
+    projects = step.get("results", {})
+    if step.get("raw"):
+        pathlib.Path(sys.argv[sys.argv.index("--results-directory") + 1], "broken.trx").write_text(step["raw"])
+    for number, project in enumerate(projects if isinstance(projects, list) else [projects]):
+        defined, ran = [], []
+        for name, outcomes in project.items():
+            name = "Ns." + wanted if name == "*" else name
+            klass, _, method = name.rpartition(".")
+            test_id = str(uuid.uuid4())
+            defined.append(f'<UnitTest name={quoteattr(name)} id="{test_id}"><Execution id="{uuid.uuid4()}" />'
+                           f'<TestMethod className={quoteattr(klass)} name={quoteattr(method)} /></UnitTest>')
+            for outcome in ([outcomes] if isinstance(outcomes, str) else outcomes):
+                ran.append(f'<UnitTestResult executionId="{uuid.uuid4()}" testId="{test_id}" testName={quoteattr(name)} '
+                           f'outcome="{outcome}" />')
+        pathlib.Path(sys.argv[sys.argv.index("--results-directory") + 1], f"project{number}.trx").write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\\n'
+            '<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">'
+            f'<Results>{"".join(ran)}</Results><TestDefinitions>{"".join(defined)}</TestDefinitions></TestRun>')
 print(step["say"])
 sys.exit(step.get("code", 0))
 '''
+
+# What the stub's `dotnet test` can say. The console lines are real `dotnet test` summaries; the
+# runner is not allowed to read them, and these steps carry the TRX results it must read instead.
+GREEN = {"say": "Passed!  - Failed:     0, Passed:     1", "results": {"*": "Passed"}}
+RED = {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1, "results": {"*": "Failed"}}
+NONE = {"say": "No test matches the given testcase filter", "results": {}}
 
 PROBE = "probe.txt"
 ORIGINAL = "alpha\nbeta\ngamma\n"
@@ -6846,7 +6884,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
 
     def plan(self, *steps):
         with open(self.plan_path, "w", encoding="utf-8") as handle:
-            json.dump(list(steps) or [{"say": "Passed!  - Failed:     0, Passed:     1"}], handle)
+            json.dump(list(steps) or [GREEN], handle)
 
     def calls(self):
         if not os.path.isfile(self.calls_path):
@@ -6879,8 +6917,8 @@ class TestTheMutationRunner(RailsInAGitEngine):
 
     def test_the_source_is_mutated_for_the_run_and_restored_after_it(self):
         self.engine_with_a_probe()
-        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
-                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1})
+        self.plan(GREEN,
+                  RED)
         done = self.mutate(self.spec())
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("RED", done.stdout)
@@ -6892,8 +6930,8 @@ class TestTheMutationRunner(RailsInAGitEngine):
 
     def test_only_the_named_test_is_run(self):
         self.engine_with_a_probe()
-        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
-                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1})
+        self.plan(GREEN,
+                  RED)
         self.mutate(self.spec(test="ProbeTests.One"))
         for call in self.calls():
             self.assertIn("--filter", call["argv"])
@@ -6965,7 +7003,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
 
     def test_a_mutation_that_leaves_its_test_green_is_reported_and_exits_non_zero(self):
         self.engine_with_a_probe()
-        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"})
+        self.plan(GREEN)
         done = self.mutate(self.spec())
         self.assertEqual(done.returncode, 1)
         self.assertIn("GREEN", done.stdout)
@@ -6974,24 +7012,193 @@ class TestTheMutationRunner(RailsInAGitEngine):
 
     def test_a_mutation_that_does_not_compile_is_not_a_red_test(self):
         self.engine_with_a_probe()
-        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
-                  {"say": "Rules.cs(9,5): error CS1002: ; expected", "code": 1})
+        self.plan(GREEN, {"build": "Rules.cs(9,5): error CS1002: ; expected"})
         done = self.mutate(self.spec())
         self.assertEqual(done.returncode, 1)
         self.assertIn("DID NOT COMPILE", done.stdout)
 
     def test_a_filter_that_matches_no_test_is_not_a_red_test(self):
         self.engine_with_a_probe()
-        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
-                  {"say": "Passed!  - Failed:     0, Passed:     0"})
+        self.plan(GREEN, NONE)
         done = self.mutate(self.spec())
         self.assertEqual(done.returncode, 1)
         self.assertIn("NO TEST MATCHED", done.stdout)
 
+    # -- the verdict is the named test's own result (#625, #662) -----------------------------------
+
+    def test_a_sibling_whose_name_contains_the_test_s_is_not_credited_with_its_red(self):
+        """`FullyQualifiedName~Probe.One` also runs `Probe.OneMore`; only `Probe.One` may decide."""
+        self.engine_with_a_probe()
+        both = {"Ns.ProbeTests.One": "Passed", "Ns.ProbeTests.OneMore": "Passed"}
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     2", "results": both},
+                  {"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": {**both, "Ns.ProbeTests.OneMore": "Failed"}})
+        done = self.mutate(self.spec(test="ProbeTests.One"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("GREEN", done.stdout)
+        self.assertNotIn("RED", done.stdout)
+        self.assertEqual(self.on_disk(), ORIGINAL)
+
+    def test_the_named_test_failing_beside_a_passing_sibling_is_red(self):
+        self.engine_with_a_probe()
+        both = {"Ns.ProbeTests.One": "Passed", "Ns.ProbeTests.OneMore": "Passed"}
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     2", "results": both},
+                  {"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": {**both, "Ns.ProbeTests.One": "Failed"}})
+        done = self.mutate(self.spec(test="ProbeTests.One"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("Ns.ProbeTests.One: Failed 1", done.stdout)
+
+    def test_a_failed_line_that_a_passing_test_printed_decides_nothing(self):
+        """The first line starting `Failed!` was the verdict, wherever it came from."""
+        self.engine_with_a_probe()
+        self.plan(GREEN, {**GREEN, "say": "Failed!  - Failed:     1, Passed:     0\nPassed!  - Failed:     0, Passed:     1"})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("GREEN", done.stdout)
+
+    def test_the_exit_status_of_the_test_run_decides_nothing_either(self):
+        """A non-zero exit says something failed, not that the named test did."""
+        self.engine_with_a_probe()
+        self.plan(GREEN, {**GREEN, "code": 1})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("GREEN", done.stdout)
+
+    def test_filter_operators_in_the_test_name_are_text_and_select_nothing_more(self):
+        self.engine_with_a_probe()
+        self.plan(GREEN)
+        self.mutate(self.spec(test="ProbeTests.One|ProbeTests.Two&(ProbeTests.Three!=x)~y\\z"))
+        argv = self.calls()[0]["argv"]
+        self.assertEqual(argv[argv.index("--filter") + 1],
+                         "FullyQualifiedName~ProbeTests.One\\|ProbeTests.Two\\&\\(ProbeTests.Three\\!\\=x\\)\\~y\\\\z")
+
+    def test_a_name_holding_an_operator_does_not_take_the_result_of_the_tests_it_lists(self):
+        """Were `|` an operator, `One|Two` would run both and a red `One` would decide the verdict."""
+        self.engine_with_a_probe()
+        both = {"Ns.ProbeTests.One": "Passed", "Ns.ProbeTests.Two": "Passed"}
+        self.plan({"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": {**both, "Ns.ProbeTests.One": "Failed"}})
+        done = self.mutate(self.spec(test="ProbeTests.One|ProbeTests.Two"), "--no-baseline")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("NO TEST MATCHED", done.stdout)
+        self.assertNotIn("RED", done.stdout)
+
+    def test_a_name_two_namespaces_share_is_more_than_one_test_and_is_not_mutated(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     2",
+                   "results": {"A.ProbeTests.One": "Passed", "B.ProbeTests.One": "Passed"}})
+        done = self.mutate(self.spec(test="ProbeTests.One"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("BASELINE MORE THAN ONE TEST MATCHED", done.stdout)
+        self.assertIn("A.ProbeTests.One", done.stdout)
+        self.assertIn("B.ProbeTests.One", done.stdout)
+        self.assertEqual(len(self.calls()), 1, "it mutated a spec that names two tests")
+
+    def test_a_fully_qualified_name_picks_one_of_two_namespaces(self):
+        self.engine_with_a_probe()
+        both = {"A.ProbeTests.One": "Passed", "B.ProbeTests.One": "Passed"}
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     2", "results": both},
+                  {"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": {**both, "B.ProbeTests.One": "Failed"}})
+        done = self.mutate(self.spec(test="B.ProbeTests.One"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_the_rows_of_one_theory_are_one_test_and_any_failed_row_is_red(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     2",
+                   "results": {"Ns.ProbeTests.Rows": ["Passed", "Passed"]}},
+                  {"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": {"Ns.ProbeTests.Rows": ["Passed", "Failed"]}})
+        done = self.mutate(self.spec(test="ProbeTests.Rows"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("Failed 1, Passed 1", done.stdout)
+
+    def test_a_test_that_was_skipped_is_not_a_green_one(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Skipped!", "results": {"*": "NotExecuted"}})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("BASELINE NO TEST MATCHED", done.stdout)
+        self.assertIn("NotExecuted", done.stdout)
+
+    def test_a_results_file_that_cannot_be_read_is_not_a_verdict(self):
+        self.engine_with_a_probe()
+        self.plan({**GREEN, "raw": "<TestRun"})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("broken.trx cannot be read", done.stdout)
+
+    def test_the_tests_run_on_the_build_they_were_told_about_and_leave_no_results_behind(self):
+        self.engine_with_a_probe()
+        self.plan(GREEN, RED)
+        self.mutate(self.spec())
+        argv = self.calls()[0]["argv"]
+        self.assertIn("--no-build", argv)
+        self.assertEqual(argv[argv.index("--logger") + 1], "trx")
+        results = argv[argv.index("--results-directory") + 1]
+        self.assertFalse(os.path.exists(results), f"the results directory {results} was left behind")
+        self.assertFalse(results.startswith(self.out), "the results were written into the checkout")
+
+    # -- a solution with several test projects (#662) ----------------------------------------------
+
+    def test_a_project_that_matches_nothing_does_not_hide_the_project_that_ran_the_test(self):
+        """`Tabletop.Dice.Tests` printing "No test matches" made every run in the solution NO TEST."""
+        self.engine_with_a_probe()
+        said = "No test matches the given testcase filter `FullyQualifiedName~ProbeTests.Beta_is_beta` in Dice.Tests.dll"
+        self.plan({"say": f"{said}\nPassed!  - Failed:     0, Passed:     1", "results": [{}, {"*": "Passed"}]},
+                  {"say": f"{said}\nFailed!  - Failed:     1, Passed:     0", "code": 1,
+                   "results": [{}, {"*": "Failed"}]})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("RED", done.stdout)
+        self.assertNotIn("NO TEST MATCHED", done.stdout)
+
+    def test_no_project_running_the_test_in_a_solution_of_several_is_no_test(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "No test matches the given testcase filter", "results": [{}, {}]})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("NO TEST MATCHED", done.stdout)
+
+    # -- a build failure is the build's exit status, of any class (#625) ---------------------------
+
+    def test_a_build_that_fails_with_any_class_of_error_did_not_compile(self):
+        self.engine_with_a_probe()
+        for diagnostic in ("/src/Rules.csproj : error NETSDK1045: The current .NET SDK does not support targeting .NET 99.0.",
+                           "MSBUILD : error MSB1009: Project file does not exist.",
+                           "/src/Rules.csproj : error NU1101: Unable to find package Nope.",
+                           "Rules.cs(9,5): error CS1002: ; expected"):
+            with self.subTest(diagnostic=diagnostic):
+                if os.path.exists(self.calls_path):
+                    os.remove(self.calls_path)
+                self.plan(GREEN, {"build": f"Build started\n{diagnostic}\nBuild FAILED."})
+                done = self.mutate(self.spec())
+                self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+                self.assertIn(f"DID NOT COMPILE: {diagnostic}", done.stdout)
+                self.assertEqual(self.on_disk(), ORIGINAL)
+
+    def test_a_build_that_fails_without_a_diagnostic_says_how_it_ended(self):
+        self.engine_with_a_probe()
+        self.plan(GREEN, {"build": "Build FAILED."})
+        done = self.mutate(self.spec())
+        self.assertIn("DID NOT COMPILE: Build FAILED.", done.stdout)
+
+    def test_error_codes_in_test_output_are_not_a_compile_failure(self):
+        """A passing or failing test may print anything; only the build's own exit status is a build."""
+        self.engine_with_a_probe()
+        noise = "  Standard Output Messages: error CS0103 and error MSB4018 and error NETSDK1045, quoted by a test"
+        self.plan({**GREEN, "say": f"{noise}\nPassed!  - Failed:     0, Passed:     1"},
+                  {**RED, "say": f"{noise}\nFailed!  - Failed:     1, Passed:     0"})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("RED", done.stdout)
+        self.assertNotIn("DID NOT COMPILE", done.stdout)
+
     def test_a_test_that_was_already_red_is_not_evidence_and_is_not_mutated(self):
         """A baseline that is not green means the mutation would prove nothing, so it is not run."""
         self.engine_with_a_probe()
-        self.plan({"say": "Failed!  - Failed:     1, Passed:     0", "code": 1})
+        self.plan(RED)
         done = self.mutate(self.spec())
         self.assertEqual(done.returncode, 1)
         self.assertIn("BASELINE RED", done.stdout)
@@ -7000,7 +7207,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
 
     def test_no_baseline_skips_the_unmutated_run(self):
         self.engine_with_a_probe()
-        self.plan({"say": "Failed!  - Failed:     1, Passed:     0", "code": 1})
+        self.plan(RED)
         done = self.mutate(self.spec(), "--no-baseline")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual(len(self.calls()), 1, "the baseline ran despite --no-baseline")
@@ -7009,9 +7216,9 @@ class TestTheMutationRunner(RailsInAGitEngine):
 
     def test_several_specs_run_in_one_invocation_and_the_summary_counts_them(self):
         self.engine_with_a_probe()
-        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
-                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1},
-                  {"say": "Passed!  - Failed:     0, Passed:     1"})
+        self.plan(GREEN,
+                  RED,
+                  GREEN)
         done = self.mutate([self.spec(test="ProbeTests.One"), self.spec(old="gamma", new="GAMMA",
                                                                        test="ProbeTests.Two")])
         self.assertIn("2 mutation(s): 1 red, 1 not red", done.stdout)
@@ -7027,8 +7234,8 @@ class TestTheMutationRunner(RailsInAGitEngine):
 
     # -- several edits in one spec: each is applied to what the earlier ones produced (#623) -------
 
-    GREEN_THEN_RED = ({"say": "Passed!  - Failed:     0, Passed:     1"},
-                      {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1})
+    GREEN_THEN_RED = (GREEN,
+                      RED)
 
     def edit(self, old, new, file=PROBE, **more):
         return {"file": file, "old": old, "new": new, **more}
@@ -7355,7 +7562,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
     def test_a_terminated_run_puts_the_source_back_and_exits_non_zero(self):
         """No handler: SIGTERM ended the process with no `finally`, and the source stayed mutated."""
         self.engine_with_a_probe()
-        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"}, {"say": "never printed", "terminate": True})
+        self.plan(GREEN, {"say": "never printed", "terminate": True})
         done = self.mutate(self.spec())
         calls = self.calls()
         self.assertEqual(len(calls), 2, done.stdout + done.stderr)
@@ -7367,7 +7574,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
     def test_a_hung_up_run_puts_the_source_back_and_exits_non_zero(self):
         """Only SIGTERM was handled; a closed terminal's SIGHUP ended the process with the source mutated."""
         self.engine_with_a_probe()
-        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
+        self.plan(GREEN,
                   {"say": "never printed", "terminate": "SIGHUP"})
         done = self.mutate(self.spec())
         calls = self.calls()
@@ -7417,8 +7624,8 @@ class TestTheMutationRunner(RailsInAGitEngine):
             os.link(first, os.path.join(self.out, "b.txt"))
         except (OSError, AttributeError) as error:
             self.skipTest(f"this filesystem will not hard-link: {error}")
-        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
-                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1, "replace": "a.txt"})
+        self.plan(GREEN,
+                  {**RED, "replace": "a.txt"})
         done = self.mutate({"test": "ProbeTests.Linked", "edits": [
             self.edit("a", "A", file="a.txt"), self.edit("c", "C", file="b.txt")]},
             watch=("a.txt", "b.txt"))
