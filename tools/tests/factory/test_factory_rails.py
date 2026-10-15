@@ -29,6 +29,7 @@ Asserted here, about the bytes the factory emits rather than about a GitHub repo
 
 Run: python3 -m pytest tools/tests/factory/test_factory_rails.py
 """
+import contextlib
 import hashlib
 import importlib.util
 import io
@@ -7495,51 +7496,124 @@ class TestTheMutationRunner(RailsInAGitEngine):
         results = argv[argv.index("--results-directory") + 1]
         self.assertFalse(os.path.exists(results), f"the results directory {results} was left behind")
 
-    def test_a_termination_just_after_the_results_directory_is_made_still_removes_it(self):
-        """The window between `mkdir` succeeding and the removal `try` starting: nothing owned the directory yet."""
-        self.engine_with_a_probe()
-        self.plan(GREEN)
-        module = self.runner()
+    # The results directory is housekeeping the run owes: a SIGTERM must neither orphan the directory it made nor
+    # remove one it did not. Each window below delivers a real SIGTERM (through the module's own handler) at the
+    # point named, from inside a patched call. Where the signal is deferred it arrives once the directory is owned
+    # or removed; where it is not, it arrives inside the window.
+
+    def run_test_with_a_signal(self, module, **patches):
+        """`module.run_test` in this process, with the stub `dotnet` and the module's SIGTERM handler installed."""
         names = {"PATH": self.bin + os.pathsep + os.environ["PATH"], "DOTNET_PLAN": self.plan_path,
                  "DOTNET_CALLS": self.calls_path, "DOTNET_WATCH": os.path.join(self.out, PROBE)}
-        real, made = os.mkdir, []
+        saved = signal.signal(signal.SIGTERM, module._terminated)
+        try:
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(unittest.mock.patch.dict(os.environ, names))
+                for target, replacement in patches.items():
+                    stack.enter_context(unittest.mock.patch(target, replacement))
+                module.run_test(pathlib.Path(self.out) / "Probe.slnx", "ProbeTests.Beta_is_beta", "Debug")
+        finally:
+            signal.signal(signal.SIGTERM, saved)
 
-        def made_then_interrupted(path, *args, **kwargs):
+    @staticmethod
+    def mask():
+        return signal.pthread_sigmask(signal.SIG_BLOCK, [])
+
+    def need_masks(self):
+        if not hasattr(signal, "pthread_sigmask"):
+            self.skipTest("signals cannot be deferred on this platform")
+
+    def test_a_termination_just_after_the_results_directory_is_made_still_removes_it(self):
+        self.need_masks()
+        self.engine_with_a_probe()
+        self.plan(GREEN)
+        module, real, made = self.runner(), os.mkdir, []
+
+        def made_then_signalled(path, *args, **kwargs):
             real(path, *args, **kwargs)
             if os.path.basename(str(path)).startswith("mutate-") and not made:
                 made.append(str(path))
-                raise KeyboardInterrupt("terminated by signal 15")    # the signal, as `mkdir` returns
+                os.kill(os.getpid(), signal.SIGTERM)
 
         try:
-            with unittest.mock.patch.dict(os.environ, names), unittest.mock.patch("os.mkdir", made_then_interrupted):
-                with self.assertRaises(KeyboardInterrupt):
-                    module.run_test(pathlib.Path(self.out) / "Probe.slnx", "ProbeTests.Beta_is_beta", "Debug")
-            self.assertTrue(made, "no results directory was made, so the interrupt never fell after `mkdir`")
+            with self.assertRaises(KeyboardInterrupt):
+                self.run_test_with_a_signal(module, **{"os.mkdir": made_then_signalled})
+            self.assertTrue(made, "no results directory was made, so the signal never fell after `mkdir`")
             self.assertFalse(os.path.exists(made[0]), f"the results directory {made[0]} was left behind")
             self.assertEqual(module.NOT_REMOVED, [])
+            self.assertNotIn(signal.SIGTERM, self.mask(), "SIGTERM was left blocked")
         finally:
             for left in made:
                 if os.path.exists(left):
                     shutil.rmtree(left)
 
-    def test_a_results_directory_that_already_exists_is_not_ours_to_remove(self):
-        """The name is chosen before the directory is made, so a collision must not delete what was there."""
+    def test_a_termination_just_before_the_results_directory_is_made_never_removes_another_directory(self):
+        """Choosing the name first made a directory that already had it the run's to remove."""
+        self.need_masks()
         self.engine_with_a_probe()
         self.plan(GREEN)
-        module = self.runner()
-        names = {"PATH": self.bin + os.pathsep + os.environ["PATH"], "DOTNET_PLAN": self.plan_path,
-                 "DOTNET_CALLS": self.calls_path, "DOTNET_WATCH": os.path.join(self.out, PROBE)}
+        module, real, made = self.runner(), os.mkdir, []
         taken = os.path.join(tempfile.gettempdir(), "mutate-" + "ab" * 8)
         os.mkdir(taken)
+
+        def signalled_then_made(path, *args, **kwargs):
+            if os.path.basename(str(path)).startswith("mutate-") and not made:
+                made.append(str(path))
+                os.kill(os.getpid(), signal.SIGTERM)
+            return real(path, *args, **kwargs)
+
         try:
             with open(os.path.join(taken, "keep.txt"), "w", encoding="utf-8") as handle:
                 handle.write("not the runner's")
-            with unittest.mock.patch.dict(os.environ, names), unittest.mock.patch("os.urandom", lambda count: b"\xab" * count):
-                with self.assertRaises(FileExistsError):
-                    module.run_test(pathlib.Path(self.out) / "Probe.slnx", "ProbeTests.Beta_is_beta", "Debug")
+            with unittest.mock.patch("os.urandom", lambda count: b"\xab" * count):    # the name the old code chose
+                with self.assertRaises(KeyboardInterrupt):
+                    self.run_test_with_a_signal(module, **{"os.mkdir": signalled_then_made})
+            self.assertTrue(made)
             self.assertTrue(os.path.exists(os.path.join(taken, "keep.txt")), "it removed a directory it did not make")
+            self.assertFalse(made[0] != taken and os.path.exists(made[0]), f"its own directory {made[0]} was left behind")
+            self.assertNotIn(signal.SIGTERM, self.mask(), "SIGTERM was left blocked")
         finally:
-            shutil.rmtree(taken)
+            shutil.rmtree(taken, ignore_errors=True)
+            for left in made:
+                if left != taken and os.path.exists(left):
+                    shutil.rmtree(left)
+
+    def test_a_termination_just_before_the_removal_does_not_skip_it(self):
+        """The `finally` was entered and the signal fell before `_remove` did anything: nothing removed, nothing recorded."""
+        self.need_masks()
+        self.engine_with_a_probe()
+        self.plan(GREEN)
+        module, seen = self.runner(), []
+        real = module._remove
+
+        def signalled_then_removed(directory):
+            seen.append(directory)
+            os.kill(os.getpid(), signal.SIGTERM)
+            return real(directory)
+
+        try:
+            with unittest.mock.patch.object(module, "_remove", signalled_then_removed):
+                with self.assertRaises(KeyboardInterrupt):
+                    self.run_test_with_a_signal(module)
+            self.assertTrue(seen, "the removal never ran")
+            self.assertFalse(os.path.exists(seen[0]), f"the results directory {seen[0]} was left behind")
+            self.assertEqual(module.NOT_REMOVED, [])
+            self.assertNotIn(signal.SIGTERM, self.mask(), "SIGTERM was left blocked")
+        finally:
+            for left in seen:
+                if os.path.exists(left):
+                    shutil.rmtree(left)
+
+    def test_without_a_way_to_defer_signals_the_run_still_runs(self):
+        """Where `pthread_sigmask` is missing (Windows) the signals are not deferred, and nothing else changes."""
+        self.engine_with_a_probe()
+        self.plan(GREEN)
+        module = self.runner()
+        with unittest.mock.patch.object(signal, "pthread_sigmask", None):
+            self.run_test_with_a_signal(module)
+        argv = self.calls()[0]["argv"]
+        results = argv[argv.index("--results-directory") + 1]
+        self.assertFalse(os.path.exists(results), f"the results directory {results} was left behind")
 
     def test_the_rows_of_one_theory_are_one_test_and_any_failed_row_is_red(self):
         self.engine_with_a_probe()
