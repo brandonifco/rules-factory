@@ -707,17 +707,19 @@ def write_raw_trx(path, definitions, results, total, executed):
     """A TRX written result by result, for the shapes `write_trx` cannot say: a definition with no
     `storage`, a storage path of any shape, a result with `InnerResults`.
 
-    `definitions` is [(test id, class name, method, storage or None)]; `results` is a list of
-    (test id, outcome, inner outcomes) -- the inner outcomes, when given, are rows the writer
-    synthesised beneath a parent result of that test id.
+    `definitions` is [(test id, class name, method, storage or None[, execution id])]; `results`
+    is a list of (test id, outcome, inner outcomes[, execution id]) -- the inner outcomes, when
+    given, are rows the writer synthesised beneath a parent result of that test id.
     """
     units, rows = [], []
-    for test_id, class_name, method, storage in definitions:
+    for test_id, class_name, method, storage, *execution in definitions:
         place = f' storage="{storage}"' if storage is not None else ""
-        units.append(f'    <UnitTest name="{class_name}.{method}"{place} id="{test_id}">\n'
+        bound = f'      <Execution id="{execution[0]}" />\n' if execution else ""
+        units.append(f'    <UnitTest name="{class_name}.{method}"{place} id="{test_id}">\n{bound}'
                      f'      <TestMethod className="{class_name}" name="{method}" />\n    </UnitTest>')
-    for test_id, outcome, inner in results:
-        opened = f'    <UnitTestResult testId="{test_id}" testName="t" outcome="{outcome}"'
+    for test_id, outcome, inner, *execution in results:
+        bound = f' executionId="{execution[0]}"' if execution else ""
+        opened = f'    <UnitTestResult testId="{test_id}"{bound} testName="t" outcome="{outcome}"'
         if inner:
             rows.append(opened + ">\n      <InnerResults>\n" + "\n".join(
                 f'        <UnitTestResult testId="{test_id}" testName="t" outcome="{row}" />' for row in inner)
@@ -1101,8 +1103,9 @@ class TestImplementedNamesItsTests(GateCase):
                       assembly=assembly, framework=framework, class_name="Shared.Proof")
         code, output = self.named(engine, self.implement(engine, "Proof.first_bullet"), results)
         self.assertEqual(code, 1, output)
-        self.assertIn("'Proof.first_bullet' is ambiguous; class Proof is ['Shared.Proof (a.tests)', "
-                      "'Shared.Proof (b.tests)']", output)
+        self.assertIn("'Proof.first_bullet' is ambiguous; class Proof is "
+                      "['Shared.Proof (engine/tests/a.tests/bin/debug/a.tests.dll)', "
+                      "'Shared.Proof (engine/tests/b.tests/bin/debug/b.tests.dll)']", output)
 
     def test_one_class_in_one_assembly_across_frameworks_is_not_ambiguous(self):
         engine = self.engine()
@@ -1191,9 +1194,148 @@ class TestImplementedNamesItsTests(GateCase):
         self.assertIn("<TargetFrameworks>net8.0;net10.0</TargetFrameworks>", props)
         with open(path, "w", encoding="utf-8") as handle:
             handle.write(props.replace("<TargetFrameworks>net8.0;net10.0</TargetFrameworks>",
-                                       "<TargetFrameworks >net8.0; net10.0</TargetFrameworks >"))
+                                       "<TargetFrameworks>net8.0;net10.0</TargetFrameworks >"))
         code, output = self.script(engine, "engine-gate.py", "expected-results")
         self.assertEqual((code, output.strip()), (0, "2"), output)
+
+    def test_the_gate_and_validate_sh_read_a_target_framework_declaration_alike(self):
+        """validate.sh reads the first framework with its own regex. The gate must accept exactly the
+        shapes that one does, and name the same first framework: a shape only one of them parses is
+        an engine whose build and whose gate disagree about what it targets. (MSBuild-evaluated
+        declarations shared by both are #673.)"""
+        here = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(here, "..", "..", "factory", "recipe", "validate.sh"), encoding="utf-8") as handle:
+            shell = re.search(r'MAP_TF="\$\(python3 -c \'import re;print\(re\.search\(r"([^"]+)"', handle.read()).group(1)
+        engine = self.engine()
+        path = os.path.join(engine, "Directory.Build.props")
+        for declared in ("<TargetFrameworks>net8.0;net10.0</TargetFrameworks>",
+                         "<TargetFrameworks>net8.0;net10.0</TargetFrameworks >",
+                         "<TargetFrameworks >net8.0;net10.0</TargetFrameworks >",
+                         "<TargetFrameworks>net8.0; net10.0</TargetFrameworks>",
+                         "<TargetFramework>net8.0</TargetFramework>"):
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(f"<Project><PropertyGroup>{declared}</PropertyGroup></Project>")
+            read = re.search(shell, declared)
+            code, output = self.script(engine, "engine-gate.py", "expected-results")
+            self.assertEqual(code, 0, output)
+            # one test project: the count is the number of frameworks the gate read, or 1 when none
+            gate = int(output.strip())
+            if read is None:
+                self.assertEqual(gate, 1, f"{declared}: validate.sh reads nothing, so the gate must read nothing")
+            else:
+                self.assertEqual(read.group(1), "net8.0", declared)
+                self.assertEqual(gate, 1 if "<TargetFramework>" in declared else 2, declared)
+
+    def test_a_result_is_placed_by_the_definition_its_execution_id_names(self):
+        """Codex review 2 of #664: two definitions sharing a `testId` collapsed to the last one, so a
+        result for the net8.0 execution was placed in net10.0 -- and counted for both."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "duplicate-ids")
+        write_trx(os.path.join(results, "net8.0.trx"), [("first_bullet", "Passed")], framework="net8.0",
+                  class_name="Shared.Proof")
+        write_raw_trx(os.path.join(results, "dup.trx"),
+                      [("dup", "Shared.Proof", "first_bullet", "/engine/tests/faapart107.tests/bin/debug/net8.0/faapart107.tests.dll", "e8"),
+                       ("dup", "Shared.Proof", "first_bullet", "/engine/tests/faapart107.tests/bin/debug/net10.0/faapart107.tests.dll", "e10")],
+                      [("dup", "Passed", None, "e8")], total=2, executed=1)
+        code, output = self.named(engine, self.implement(engine, "Proof.first_bullet"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("'Proof.first_bullet' executed under net8.0 and did not execute under net10.0", output)
+
+    def test_the_matrix_places_a_result_by_its_execution_id_too(self):
+        engine = self.engine()
+        results = os.path.join(self.tmp, "duplicate-ids-matrix")
+        write_trx(os.path.join(results, "net8.0.trx"), [("t", "Passed")], framework="net8.0")
+        storage = f"/engine/tests/{NAME.lower()}.tests/bin/debug/{{}}/{NAME.lower()}.tests.dll"
+        write_raw_trx(os.path.join(results, "dup.trx"),
+                      [("dup", "C", "t", storage.format("net8.0"), "e8"), ("dup", "C", "t", storage.format("net10.0"), "e10")],
+                      [("dup", "Passed", None, "e8")], total=2, executed=1)
+        code, output = self.script(engine, "engine-gate.py", "tests-ran", results, "2")
+        self.assertEqual(code, 1, output)
+        self.assertIn("no test executed for tests/FaaPart107.Tests/FaaPart107.Tests.csproj under net10.0", output)
+
+    def test_a_dot_inside_a_parameter_list_does_not_move_the_class_boundary(self):
+        """Codex review 2 of #664: `Proof.Named(value: 1.25)` was split at the dot in `1.25`, the
+        class lookup found nothing, and two different `Proof` classes covered one mapped name."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "dotted-parameter")
+        for namespace, framework in (("One", "net8.0"), ("Two", "net10.0")):
+            write_trx(os.path.join(results, f"{framework}.trx"), [("Named(value: 1.25)", "Passed")],
+                      framework=framework, class_name=f"{namespace}.Proof")
+        code, output = self.named(engine, self.implement(engine, "Proof.Named(value: 1.25)"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("is ambiguous; class Proof is ['One.Proof', 'Two.Proof']", output)
+
+    def test_a_dot_inside_a_parameter_list_is_still_one_test_when_it_is_one_class(self):
+        engine = self.engine()
+        results = os.path.join(self.tmp, "dotted-parameter-one-class")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"), [("Named(value: 1.25)", "Passed")],
+                      framework=framework, class_name="One.Proof")
+        code, output = self.named(engine, self.implement(engine, "Proof.Named(value: 1.25)"), results)
+        self.assertEqual(code, 0, output)
+
+    def test_a_constructed_generic_class_keeps_its_type_arguments(self):
+        """Codex review 2 of #664: `Ns.Proof`1[System.Int32]` was cut at the dot inside its type
+        argument, so the test could never be found."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "generic")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"), [("Named", "Passed")], framework=framework,
+                      class_name="Ns.Proof`1[System.Int32]")
+        code, output = self.named(engine, self.implement(engine, "Proof`1[System.Int32].Named"), results)
+        self.assertEqual(code, 0, output)
+
+    def test_a_runtime_identifier_directory_does_not_unplace_an_execution(self):
+        """Codex review 2 of #664: with the framework read only from the directory holding the dll,
+        `bin/Debug/net10.0/linux-x64/a.dll` -- the layout of a RID-specific build -- placed nothing,
+        and a good engine was refused. A `.` segment is the same directory."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "rid")
+        for framework, tail in (("net8.0", "linux-x64"), ("net10.0", ".")):
+            write_raw_trx(os.path.join(results, f"{framework}.trx"),
+                          [("named", "Shared.Proof", "Named", f"/repo/tests/bin/debug/{framework}/{tail}/a.tests.dll")],
+                          [("named", "Passed", None)], total=1, executed=1)
+        code, output = self.named(engine, self.implement(engine, "Proof.Named"), results)
+        self.assertEqual(code, 0, output)
+
+    def test_a_framework_is_not_taken_from_above_the_configuration_directory(self):
+        """The RID allowance does not reopen the ancestor hole: below `bin/<Configuration>/` only."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "rid-ancestor")
+        for run, framework in (("one", "net8.0"), ("two", "net10.0-windows")):
+            write_raw_trx(os.path.join(results, f"{run}.trx"),
+                          [("named", "Shared.Proof", "Named", f"/repo/net10.0/bin/debug/{framework}/linux-x64/a.tests.dll")],
+                          [("named", "Passed", None)], total=1, executed=1)
+        code, output = self.named(engine, self.implement(engine, "Proof.Named"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("did not execute under net10.0", output)
+
+    def test_dot_dot_segments_are_resolved_before_the_framework_is_read(self):
+        """`bin/debug/net10.0/../net10.0-windows/a.dll` is `net10.0-windows`: read as written, the
+        `net10.0` it walks back out of would be taken for the framework."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "dot-dot")
+        for run, framework in (("one", "net8.0/./"), ("two", "net10.0/../net10.0-windows/")):
+            write_raw_trx(os.path.join(results, f"{run}.trx"),
+                          [("named", "Shared.Proof", "Named", f"/repo/bin/debug/{framework}a.tests.dll")],
+                          [("named", "Passed", None)], total=1, executed=1)
+        code, output = self.named(engine, self.implement(engine, "Proof.Named"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("'Proof.Named' executed under net8.0 and did not execute under net10.0", output)
+
+    def test_two_assemblies_with_one_file_name_are_two_assemblies(self):
+        """Codex review 2 of #664: identity was the dll's file name, so `tests/A/.../common.tests.dll`
+        and `tests/B/.../common.tests.dll` were one assembly and one class covered two."""
+        engine = self.engine()
+        results = os.path.join(self.tmp, "same-file-name")
+        for project, framework in (("A", "net8.0"), ("B", "net10.0")):
+            write_raw_trx(os.path.join(results, f"{project}.trx"),
+                          [("named", "Shared.Proof", "Named", f"/engine/tests/{project}/bin/debug/{framework}/common.tests.dll")],
+                          [("named", "Passed", None)], total=1, executed=1)
+        code, output = self.named(engine, self.implement(engine, "Proof.Named"), results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("is ambiguous; class Proof is ['Shared.Proof (engine/tests/a/bin/debug/common.tests.dll)', "
+                      "'Shared.Proof (engine/tests/b/bin/debug/common.tests.dll)']", output)
 
     def test_tests_ran_fails_on_no_result_files(self):
         engine = self.engine()
