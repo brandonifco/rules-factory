@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "7b7b18d1c4f74dc485d6742eb940b9cd97252584",
+  "measuredAt": "20ea72a0c7bfad44139f8af5053fdde5aba509dc",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,8 +17,8 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 579,
-    "trackedBytes": 24434600
+    "trackedFiles": 571,
+    "trackedBytes": 24163093
   },
   "artifacts": [
     {
