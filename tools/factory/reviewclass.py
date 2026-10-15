@@ -196,6 +196,14 @@ def base_basis(blobs, head_path, files):
                           f"commit, on the way to the policy, so where the policy was is not what the listing shows")
     held = [path for _, path in blobs if path == POLICY_PATH or path.endswith("/" + POLICY_PATH)]
     if not held:
+        # No policy of the literal name is a new engine only when nothing in the listing could be hiding one: a
+        # link or submodule anywhere (`.github -> config` at the root, the policy at `config/agent-policy.json`) is
+        # not on the head's path and not named as a policy, and the head would stand alone against a surface it
+        # emptied. Any is owed review; it is rare, and more review is the safe error.
+        for mode, path in blobs:
+            if mode in (SYMLINK_MODE, GITLINK_MODE):
+                return None, (f"`{path}` is {'a symbolic link' if mode == SYMLINK_MODE else 'a submodule'} at the base "
+                              f"commit and the base holds no policy of the usual name, so a policy may be behind it")
         return None, None
     if held == [head_path]:
         return head_path, None

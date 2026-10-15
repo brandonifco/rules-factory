@@ -147,6 +147,8 @@ MUTATIONS = (
      [("    if not held:\n        return None, None\n", "    if not held:\n        return None, None\n    if len(held) == 1:\n        return held[0], None\n")]),
     ("a link is looked for at the policy file only",
      [("        if mode in (SYMLINK_MODE, GITLINK_MODE) and path in way:", "        if mode in (SYMLINK_MODE, GITLINK_MODE) and path == head_path:")]),
+    ("a link off the head's path is nothing in a base with no policy",
+     [("            if mode in (SYMLINK_MODE, GITLINK_MODE):\n", "            if False:\n")]),
     ("a submodule is not a link",
      [("        if mode in (SYMLINK_MODE, GITLINK_MODE) and path in way:", "        if mode == SYMLINK_MODE and path in way:")]),
     ("a rename across the engine's directory is judged by the paths inside it",

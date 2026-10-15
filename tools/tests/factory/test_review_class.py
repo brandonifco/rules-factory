@@ -286,6 +286,25 @@ class TestEachClass(unittest.TestCase):
         with self.assertRaises(rc.BasePolicyUnreadable):
             self.basis(None)
 
+    def test_a_link_or_submodule_anywhere_in_a_base_with_no_policy_owes_review(self):
+        # #612 (review, 3rd): `.github -> config` at the repository root, the policy at `config/agent-policy.json`, and
+        # the pull request adding `engine/.github/agent-policy.json` with `[]`. The link is not on the head's path and the
+        # policy is not named `.github/agent-policy.json`, so the base "held no policy" and the head stood alone.
+        # A base with no policy is a new engine only when nothing in it could be hiding one.
+        # mutation: look for a link along the head's path only
+        head = f"engine/{self.POLICY}"
+        hidden = [("120000", ".github"), ("100644", "config/agent-policy.json"), ("100644", "engine/src/H.cs")]
+        path, owed = self.basis(hidden)
+        self.assertIsNone(path)
+        self.assertTrue(owed, "a base that holds a link and no policy of the literal name owes review")
+        self.assertIn("`.github`", owed)
+        for label, mode in (("a link elsewhere", "120000"), ("a submodule elsewhere", "160000")):
+            with self.subTest(label):
+                self.assertTrue(self.basis([(mode, "vendor/x"), ("100644", "engine/src/H.cs")])[1])
+        self.assertEqual(self.basis([("100644", "engine/src/H.cs")]), (None, None), "no link, no policy: a new engine")
+        self.assertEqual(self.basis([("120000", "elsewhere"), ("100644", head)]), (head, None),
+                         "a policy at the head's path is read, whatever links lie elsewhere")
+
     def test_a_rename_across_the_engine_s_directory_owes_review(self):
         # #612 (review): `old/src/H.cs` renamed to `new/lib/H.cs` carried a handler out of one engine and into another
         # that no longer listed it. mutation: judge only the paths inside the engine

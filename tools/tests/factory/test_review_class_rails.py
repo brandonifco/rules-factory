@@ -1071,6 +1071,31 @@ class TestAnEmbeddedEngineIsClassifiedInItsOwnTerms(ClassRails):
                 self.assertIn("`semantic-implementation`, which owes a semantic verdict", gate.stdout)
                 self.assertIn("across the engine's directory", gate.stdout)
 
+    def test_a_link_off_the_engine_s_path_in_a_base_with_no_policy_owes_a_semantic_verdict(self):
+        # The third review's reproduction: `.github -> config` at the repository root (not on the embedded engine's
+        # path), the base's policy at `config/agent-policy.json`, and a pull request that modifies a handler and adds
+        # `engine/.github/agent-policy.json` listing nothing. mutation: look for a link along the head's path only
+        self.write(f"src/{NAME}/Rules/AltitudeLimit.cs", "int Limit() => 401;\n")
+        policy = json.loads(self.read(".github/agent-policy.json"))
+        policy["review"]["semanticPaths"] = []
+        self.write(".github/agent-policy.json", json.dumps(policy))
+        self.pull_request(self.body("- review class: documentation\n- entry id(s): none", evidence=self.NO_TEST),
+                          {f"engine/src/{NAME}/Rules/AltitudeLimit.cs": "MODIFIED",
+                           "engine/.github/agent-policy.json": "ADDED"},
+                          contents={".github": "config",
+                                    "config/agent-policy.json": '{"review": {"semanticPaths": ["engine/src/**"]}}',
+                                    f"engine/src/{NAME}/Rules/AltitudeLimit.cs": "int Limit() => 400;\n"})
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["contentsSymlinks"] = [".github"]
+        self.fixture(document)
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 1, gate.stdout + gate.stderr)
+        self.assertIn("`semantic-implementation`, which owes a semantic verdict", gate.stdout)
+        self.assertIn("`.github` is a symbolic link at the base commit", gate.stdout)
+        done = self.policy()
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("claims `documentation`, and this diff is `semantic-implementation`", done.stdout)
+
     def test_a_rename_inside_the_engine_and_a_change_beside_it_owe_nothing_for_that(self):
         # mutation: treat every rename as crossing
         self.write("notes/H.md", "# a note\n")
