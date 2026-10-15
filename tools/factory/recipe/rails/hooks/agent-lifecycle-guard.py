@@ -121,7 +121,9 @@ USAGE
                                                     registration is a hook group with only `matcher`
                                                     and `hooks`, holding a hook with only `type`
                                                     ("command"), `command` and `timeout` (a positive
-                                                    number), and that
+                                                    number); a `matcher` that is present is a string,
+                                                    `hooks` a non-empty list of objects, anywhere under
+                                                    the event; and that
                                                     command is exactly `python3 "$CLAUDE_PROJECT_DIR/REL"`
                                                     (REL default .claude/hooks/agent-lifecycle-guard.py)
   agent-lifecycle-guard.py measure [--projects-dir DIR] [--match REGEX] [--ledger-dir DIR] [--events]
@@ -169,8 +171,9 @@ REQUIRED_HOOKS = (
     ("PreToolUse", ALL_TOOLS, "enforce the context hard bound in every tool"),
     ("PostToolUse", ALL_TOOLS, "record launches and completions, detect a resume, issue the checkpoint note"),
 )
-# The matchers that mean every tool, whatever tools exist: absent, empty, `*`. A matcher that lists
-# tools covers those and nothing else, however long the list, so it is not on this list.
+# The matchers that mean every tool, whatever tools exist: absent (None here: an explicit null is not a
+# string, and `registration_defects` refuses it), empty, `*`. A matcher that lists tools covers those
+# and nothing else, however long the list, so it is not on this list.
 UNRESTRICTED_MATCHERS = (None, "", "*")
 # Where the guard sits in an engine; this repository's own settings name another path (--guard-path).
 DEFAULT_GUARD_PATH = ".claude/hooks/agent-lifecycle-guard.py"
@@ -286,6 +289,24 @@ def ledger_append(session_id: object, record: dict) -> bool:
         return False
 
 
+UNDECODABLE = object()
+
+
+def decode_json(data: str | bytes):
+    """The one place this guard decodes JSON: the value, or UNDECODABLE when anything at all goes wrong.
+
+    ValueError is not the only way a decoder fails: 10,000 nested arrays raise RecursionError, a huge
+    number MemoryError, a bad type TypeError. Every such failure means the same thing, that this item is
+    not a record. Callers skip the item and go on to the rest, because one poisoned line or text block
+    must not discard definitive evidence beside it (a resume, a completed agent). Stdin the hook cannot
+    decode is the exception to going on: `hook` refuses it (exit 2).
+    """
+    try:
+        return json.loads(data)
+    except Exception:  # noqa: BLE001 -- see above: every failure is one answer
+        return UNDECODABLE
+
+
 def ledger_records(path: Path | None) -> list[dict]:
     if path is None:
         return []
@@ -295,10 +316,7 @@ def ledger_records(path: Path | None) -> list[dict]:
         return []
     records = []
     for line in text.splitlines():
-        try:
-            record = json.loads(line)
-        except ValueError:
-            continue
+        record = decode_json(line)
         if isinstance(record, dict):
             records.append(record)
     return records
@@ -364,10 +382,8 @@ def find_key(value: object, key: str, depth: int = 0) -> str | None:
     if isinstance(value, str):
         stripped = value.strip()
         if stripped[:1] in "{[":
-            try:
-                return find_key(json.loads(stripped), key, depth + 1)
-            except ValueError:
-                return None
+            decoded = decode_json(stripped)
+            return None if decoded is UNDECODABLE else find_key(decoded, key, depth + 1)
         return None
     if isinstance(value, dict):
         found = value.get(key)
@@ -431,10 +447,9 @@ def resumed_agent(value: object, depth: int = 0) -> str | None:
     if isinstance(value, str):
         stripped = value.strip()
         if stripped[:1] in "{[":
-            try:
-                return resumed_agent(json.loads(stripped), depth + 1)
-            except ValueError:
-                pass
+            decoded = decode_json(stripped)
+            if decoded is not UNDECODABLE:
+                return resumed_agent(decoded, depth + 1)
         return resume_in_text(value)
     if isinstance(value, dict):
         direct = value.get("resumedAgentId")
@@ -484,10 +499,7 @@ def transcript_lines(path: Path, needles: tuple[bytes, ...]):
             for raw in handle:
                 if not any(needle in raw for needle in needles):
                     continue
-                try:
-                    parsed = json.loads(raw)
-                except Exception:  # noqa: BLE001 -- ValueError, RecursionError, MemoryError: the line is undecodable
-                    continue
+                parsed = decode_json(raw)
                 if isinstance(parsed, dict):
                     yield raw, parsed
     except (OSError, ValueError):
@@ -624,10 +636,8 @@ def latest_context(path: Path) -> int | None:
             for raw in reversed(lines):
                 if b'"usage"' not in raw:
                     continue
-                try:
-                    found = turn_context(json.loads(raw))
-                except Exception:  # noqa: BLE001 -- ValueError, RecursionError, MemoryError: one undecodable line
-                    continue
+                decoded = decode_json(raw)
+                found = None if decoded is UNDECODABLE else turn_context(decoded)
                 if found is not None:
                     return found
             if start == 0 or window >= TAIL_MAX:
@@ -789,9 +799,9 @@ def post_tool_use(payload: dict) -> int:
 
 def hook() -> int:
     try:
-        payload = json.load(sys.stdin)
-    except Exception:  # noqa: BLE001 -- ValueError, RecursionError, MemoryError, a read error: all one refusal
-        payload = None
+        payload = decode_json(sys.stdin.read())
+    except Exception:  # noqa: BLE001 -- a read error or bytes that are not text: the same refusal
+        payload = UNDECODABLE
     if not isinstance(payload, dict):
         print(f"{GUARD_NAME}: stdin is not a JSON object, so this guard cannot tell what it was asked "
               f"and refuses (a guard that guesses is not one).", file=sys.stderr)
@@ -936,6 +946,36 @@ def unsupported_keys(group: dict, hook_: dict) -> list[str]:
     return found
 
 
+def registration_defects(event: str, value: object) -> list[str]:
+    """What is wrong with the types of everything registered under `hooks.<event>`, one line each, with its path.
+
+    Verified in Claude Code 2.1.287: the settings schema reads the event's value as a list of groups, a
+    group as an object with an optional string `matcher` and a `hooks` list, and `hooks` as a non-empty
+    list of objects. A value of another type (an explicit `matcher: null` is one; absent is not) fails
+    validation, and the loader drops or rejects the registration, so a command that looks right in it
+    never runs. Any defect anywhere under the event, in a group that is not this guard's too, leaves the
+    event not wired: the runtime's verdict on a registration is not this file's to second-guess.
+    """
+    where = f"hooks.{event}"
+    if not isinstance(value, list):
+        return [f"{where} is {type(value).__name__}, not a list of hook groups"]
+    defects = []
+    for index, group in enumerate(value):
+        path = f"{where}[{index}]"
+        if not isinstance(group, dict):
+            defects.append(f"{path} is {type(group).__name__}, not an object")
+            continue
+        if "matcher" in group and not isinstance(group["matcher"], str):
+            defects.append(f"{path}.matcher is {group['matcher']!r}, not a string (leave it out to match every tool)")
+        entries = group.get("hooks")
+        if not isinstance(entries, list) or not entries:
+            defects.append(f"{path}.hooks is {entries!r}, not a non-empty list of objects")
+            continue
+        defects.extend(f"{path}.hooks[{position}] is {type(entry).__name__}, not an object"
+                       for position, entry in enumerate(entries) if not isinstance(entry, dict))
+    return defects
+
+
 def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) -> list[str]:
     """One line per registration `REQUIRED_HOOKS` asks for that `settings` does not carry.
 
@@ -944,7 +984,9 @@ def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) ->
     that decide whether the variable expands), and nothing else about it changes how Claude Code runs
     it: the hook group has only `matcher` and `hooks`, the hook only `type` (`command`), `command` and
     `timeout`. Any other key (`args`, `if`, `once`, `async`, `shell`, ...) leaves it not wired and is
-    named. A background hook is among them: Claude Code does not wait for its decisions.
+    named. A background hook is among them: Claude Code does not wait for its decisions. The types are
+    checked too (`registration_defects`): one wrongly typed group or hook anywhere under an event leaves
+    the event not wired, naming the path and what it holds.
     """
     if not isinstance(settings, dict):
         return ["the settings are not a JSON object"]
@@ -953,7 +995,16 @@ def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) ->
     if settings.get("disableAllHooks") is True:
         problems.append("`disableAllHooks` is true, so no hook runs, this guard included")
     hooks = settings.get("hooks") if isinstance(settings.get("hooks"), dict) else {}
+    reported: set[str] = set()
     for event, scope, why in REQUIRED_HOOKS:
+        defects = registration_defects(event, hooks[event]) if event in hooks else []
+        if defects:
+            if event not in reported:
+                reported.add(event)
+                problems.append(f"not wired: {event} has registrations Claude Code may drop or reject, so "
+                                f"{GUARD_NAME} may not run: {'; '.join(defects)} (a group has an optional "
+                                f"string matcher and a non-empty list of hook objects)")
+            continue
         found = False
         refused: list[str] = []
         entries = hooks.get(event) if isinstance(hooks.get(event), list) else []
@@ -986,9 +1037,13 @@ def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) ->
 
 def cmd_check_settings(args: argparse.Namespace) -> int:
     try:
-        settings = json.loads(Path(args.path).read_text(encoding="utf-8"))
+        text = Path(args.path).read_text(encoding="utf-8")
     except (OSError, ValueError) as error:
-        print(f"{args.path}: cannot be read as JSON settings ({error})", file=sys.stderr)
+        print(f"{args.path}: cannot be read ({error})", file=sys.stderr)
+        return 1
+    settings = decode_json(text)
+    if settings is UNDECODABLE:
+        print(f"{args.path}: cannot be read as JSON settings", file=sys.stderr)
         return 1
     problems = settings_problems(settings, args.guard_path)
     if problems:
@@ -1023,10 +1078,7 @@ def read_jsonl(path: Path, needles: tuple[bytes, ...]):
         with open(path, "rb") as handle:
             for raw in handle:
                 if any(needle in raw for needle in needles):
-                    try:
-                        parsed = json.loads(raw)
-                    except Exception:  # noqa: BLE001 -- ValueError, RecursionError, MemoryError: the line is undecodable
-                        continue
+                    parsed = decode_json(raw)
                     if isinstance(parsed, dict):
                         yield parsed
     except OSError:

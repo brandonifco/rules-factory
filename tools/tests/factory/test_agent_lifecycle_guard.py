@@ -163,6 +163,20 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
         self.assertDenied(self.send("implementer"), "completed its assignment", "single-use", "repair-packet.py")
         self.assertDenied(self.send(WORKER), "completed its assignment")
 
+    def test_a_ledger_line_that_cannot_be_decoded_does_not_hide_a_completed_agent(self):
+        # `launched` and `stopped` records followed by a line the decoder dies on (RecursionError): the
+        # line is not a record, and the records before and after it still decide.
+        self.launched(WORKER, name="implementer")
+        self.stopped(WORKER)
+        (name,) = os.listdir(self.ledger)
+        with open(os.path.join(self.ledger, name), "a", encoding="utf-8") as handle:
+            handle.write("[" * 10_000 + "\n" + "{" * 10_000 + "\n")
+        self.assertDenied(self.send("implementer"), "completed its assignment")
+        self.assertDenied(self.send(WORKER), "completed its assignment")
+        self.launched(OTHER, name="reviewer")
+        self.stopped(OTHER)
+        self.assertDenied(self.send(OTHER), "completed its assignment")
+
     def test_the_refusal_is_recorded_for_the_telemetry(self):
         self.launched(WORKER, name="implementer")
         self.stopped(WORKER)
@@ -497,6 +511,22 @@ class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
                          [{"type": "text", "text": f"Resuming agent {WORKER}"}], f"Resuming agent {WORKER}"):
             with self.subTest(response=response):
                 self.assertBlocked(self.resumed(response))
+
+    def test_a_block_that_cannot_be_decoded_is_not_a_record_and_the_rest_is_still_read(self):
+        # 10,000 nested arrays exhaust the JSON decoder's recursion (RecursionError, not ValueError). One
+        # undecodable block must not discard the genuine resume evidence beside it, whichever the order.
+        poisoned = {"type": "text", "text": "[" * 10_000}
+        genuine = {"type": "text", "text": json.dumps({"resumedAgentId": WORKER})}
+        for response in ([poisoned, genuine], [genuine, poisoned], [poisoned, poisoned, genuine],
+                         [{"type": "text", "text": "{" * 10_000}, genuine]):
+            with self.subTest(blocks=[block["text"][:12] for block in response]):
+                self.assertBlocked(self.resumed(response))
+
+    def test_a_launch_result_with_an_undecodable_block_still_records_the_agent_id(self):
+        poisoned = {"type": "text", "text": "[" * 10_000}
+        genuine = {"type": "text", "text": json.dumps({"agentId": WORKER, "status": "completed"})}
+        self.launched(WORKER, name="implementer", response=[poisoned, genuine])
+        self.assertEqual([r["event"] for r in self.ledger_records()], ["launched", "stopped"])
 
     def assertBlockedNaming(self, result, name):
         """A resume the response does not name by id is still a violation; the correction names the target."""
@@ -1101,6 +1131,60 @@ class TestCheckSettings(GuardCase):
                     else:
                         settings["hooks"][event][-1]["matcher"] = matcher
                 self.assertEqual(self.check(settings).returncode, 0)
+
+    def test_a_registration_the_runtime_would_reject_is_not_wired_whatever_it_runs(self):
+        # Claude Code 2.1.287 reads `matcher` as an optional string: null, a number, a list or an object
+        # fails validation, and the loader drops or rejects the registration. Absent is not null.
+        for bad in (None, 5, 1.5, True, ["SendMessage"], {"tool": "Bash"}):
+            for event in ("PreToolUse", "PostToolUse"):
+                with self.subTest(matcher=bad, event=event):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"][event][-1]["matcher"] = bad
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(f"hooks.{event}[{len(settings['hooks'][event]) - 1}].matcher", done.stdout)
+                    self.assertIn("not a string", done.stdout)
+        settings = self.load(RAILS_SETTINGS)
+        for event in ("PreToolUse", "PostToolUse"):
+            for entry in settings["hooks"][event]:
+                entry["matcher"] = None
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertNotIn("wires", done.stdout)
+
+    def test_hooks_that_are_not_a_non_empty_list_of_objects_are_not_wired(self):
+        for bad in (None, "x", {}, 3, [], ["python3 guard"], [None], [[{"type": "command"}]]):
+            for event in ("PreToolUse", "PostToolUse"):
+                with self.subTest(hooks=bad, event=event):
+                    settings = self.load(RAILS_SETTINGS)
+                    index = len(settings["hooks"][event]) - 1
+                    settings["hooks"][event][index]["hooks"] = bad
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(f"hooks.{event}[{index}].hooks", done.stdout)
+
+    def test_an_invalid_group_or_event_value_anywhere_under_a_lifecycle_event_is_not_wired(self):
+        for event in ("PreToolUse", "PostToolUse"):
+            for bad, path in (("a group", f"hooks.{event}[0]"), (None, f"hooks.{event}[0]"),
+                              ([{"hooks": [{"type": "command", "command": "true"}]}], f"hooks.{event}[0]")):
+                with self.subTest(group=bad, event=event):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"][event].insert(0, bad)
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(path, done.stdout)
+            with self.subTest(event_value="not a list", event=event):
+                settings = self.load(RAILS_SETTINGS)
+                settings["hooks"][event] = {"matcher": "*"}
+                done = self.check(settings)
+                self.assertEqual(done.returncode, 1, done.stdout)
+                self.assertIn(f"hooks.{event}", done.stdout)
+            with self.subTest(unrelated_group_with_a_bad_matcher=event):
+                settings = self.load(RAILS_SETTINGS)
+                settings["hooks"][event].append({"matcher": 7, "hooks": [{"type": "command", "command": "true"}]})
+                done = self.check(settings)
+                self.assertEqual(done.returncode, 1, done.stdout)
+                self.assertIn("matcher", done.stdout)
 
     def test_a_sendmessage_only_pretooluse_does_not_satisfy_the_every_tool_bound(self):
         settings = self.load(RAILS_SETTINGS)
