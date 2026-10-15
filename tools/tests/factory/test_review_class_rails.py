@@ -362,43 +362,83 @@ class TestSemanticImplementation(ClassRails):
         self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
         self.assertIn("base commit's .github/agent-policy.json could not be read", done.stderr)
 
-    def moved_policy_request(self, base_files=None, **fixture):
-        """The handler changed, the head's policy emptied, and the base's policy kept at `old/`, not where the head has it."""
+    POLICY = ".github/agent-policy.json"
+
+    def policy_request(self, base_at=POLICY, files=None, extra=None, **fixture):
+        """The handler changed, the head's policy emptied, and the base's policy kept at `base_at` (None: nowhere)."""
         self.engine()
-        policy = json.loads(self.read(".github/agent-policy.json"))
+        policy = json.loads(self.read(self.POLICY))
         before = json.dumps(policy)
         policy["review"]["semanticPaths"] = []
-        self.write(".github/agent-policy.json", json.dumps(policy))
+        self.write(self.POLICY, json.dumps(policy))
         self.write(HANDLER, "int Limit() => 401;\n")
-        contents = {HANDLER: "int Limit() => 400;\n", "old/.github/agent-policy.json": before}
-        contents.update(base_files or {})
+        contents = {HANDLER: "int Limit() => 400;\n"}
+        if base_at:
+            contents[base_at] = before
+        contents.update(extra or {})
         self.pull_request(self.body("- review class: documentation\n- entry id(s): none", evidence=self.NO_TEST),
-                          {HANDLER: "MODIFIED", ".github/agent-policy.json": "MODIFIED"}, contents=contents)
+                          files or {HANDLER: "MODIFIED", self.POLICY: "MODIFIED"}, contents=contents)
         if fixture:
             document = json.load(open(self.fixture_path, encoding="utf-8"))
             document.update(fixture)
             self.fixture(document)
 
-    def test_a_policy_the_base_kept_elsewhere_still_contributes_its_surface(self):
-        # #612 (review): the base policy was read at the head's engine path, so an engine moved by the pull request
-        # found no policy at the base, which read as a new one. mutation: look for the base policy at the head's path only
-        self.moved_policy_request()
+    def assert_owed(self, label="", reason=None):
         gate = self.gate()
-        self.assertEqual(gate.returncode, 1, gate.stdout + gate.stderr)
+        self.assertEqual(gate.returncode, 1, label + gate.stdout + gate.stderr)
         self.assertIn("`semantic-implementation`, which owes a semantic verdict", gate.stdout)
+        if reason:
+            self.assertIn(reason, gate.stdout)
         done = self.policy()
-        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertEqual(done.returncode, 1, label + done.stdout + done.stderr)
         self.assertIn("claims `documentation`, and this diff is `semantic-implementation`", done.stdout)
 
-    def test_a_base_policy_that_cannot_be_listed_or_read_whole_is_undecidable(self):
-        # #612 (review): the base's files are listed before any is read, and a listing that failed, is not whole,
-        # or names a policy that cannot be read is no listing. mutation: take a failed listing for an empty one
-        self.moved_policy_request()
+    def test_a_policy_that_moved_owes_a_semantic_verdict(self):
+        # #612 (review): the base policy was read at the head's engine path, so an engine a pull request moved found
+        # none there and read as new; then a surface was carried across the move, which kept opening cases. The base's
+        # surface is used in the ordinary case only, and relocation always owes a verdict.
+        # mutation: read the base's policy wherever it is
+        self.policy_request(base_at="old/.github/agent-policy.json")
+        self.assert_owed(reason="the engine moved, or there is more than one")
+        # A change that touches nothing on any surface still owes it: that is what a relocation costs.
+        self.write("README.md", "# the engine\n")
+        self.pull_request(self.body("- review class: documentation\n- entry id(s): none", evidence=self.NO_TEST,
+                                    documentation="- [x] `README.md` — updated: the engine's own README"),
+                          {"README.md": "MODIFIED", self.POLICY: "MODIFIED"},
+                          contents={"old/.github/agent-policy.json": "{}"})
+        self.assert_owed()
+
+    def test_a_destination_policy_that_lists_nothing_cannot_suppress_the_moved_engine_s_surface(self):
+        # The reviewer's second reproduction: `new/.github/agent-policy.json` with `[]`, the base's at `old/` with
+        # `["src/**"]`. mutation: judge the moved engine by the head's policy where the base's is elsewhere
+        self.policy_request(base_at="old/.github/agent-policy.json", files={HANDLER: "MODIFIED", self.POLICY: "ADDED"})
+        self.assert_owed()
+
+    def test_a_base_that_held_several_policies_owes_a_semantic_verdict(self):
+        # mutation: use the base's policy at the head's path whenever there is one
+        self.policy_request(extra={"other/.github/agent-policy.json": "{}"})
+        self.assert_owed(reason="the base commit held 2 policies")
+
+    def test_a_link_on_the_way_to_the_base_policy_owes_a_semantic_verdict(self):
+        # The reviewer's third reproduction: `.github` a link to `config`, so the listing holds no policy and read as
+        # a new engine. mutation: look for a link at the policy file only
+        self.policy_request(base_at=None, extra={".github": "config", "config/agent-policy.json": "{}"},
+                            contentsSymlinks=[".github"])
+        self.assert_owed(reason="`.github` is a symbolic link at the base commit")
+
+    def test_a_base_policy_that_is_itself_a_link_owes_a_semantic_verdict(self):
+        # mutation: read the link as the policy
+        self.policy_request(base_at=None, extra={self.POLICY: "x"}, contentsSymlinks=[self.POLICY])
+        self.assert_owed(reason="is a symbolic link at the base commit")
+
+    def test_a_base_policy_that_cannot_be_listed_or_read_is_undecidable(self):
+        # #612 (review): the base's files are listed before any is read, and a listing that failed or is not whole, or
+        # a policy that cannot be read, is not a policy being added. mutation: take a failed listing for an empty one
+        self.policy_request()
         whole = json.load(open(self.fixture_path, encoding="utf-8"))
         for label, fixture in (("the listing fails", {"contentsUnreadable": ["tree"]}),
                                ("the listing is truncated", {"treeTruncated": True}),
-                               ("the policy it names is a link", {"contentsSymlinks": ["old/.github/agent-policy.json"]}),
-                               ("the policy it names cannot be read", {"contentsUnreadable": ["old/.github/agent-policy.json"]})):
+                               ("the policy cannot be read", {"contentsUnreadable": [self.POLICY]})):
             with self.subTest(label):
                 self.fixture({**whole, **fixture})
                 gate = self.gate()
@@ -408,9 +448,9 @@ class TestSemanticImplementation(ClassRails):
                 self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
 
     def test_a_base_commit_github_does_not_know_is_undecidable_through_both_callers(self):
-        # #612 (review): `gh: No commit found for the ref <sha> (HTTP 404)` says something other than a missing
-        # path's `Not Found (HTTP 404)`, and neither is a policy being added. mutation: take any 404 for "not there"
-        self.moved_policy_request(base_files={".github/agent-policy.json": "{}"}, unknownRefs=[BASE])
+        # #612 (review): `gh: No commit found for the ref <sha> (HTTP 404)` is not a policy being added either.
+        # mutation: take a listing that failed for an empty one, in either caller
+        self.policy_request(unknownRefs=[BASE])
         gate = self.gate()
         self.assertEqual(gate.returncode, 2, gate.stdout + gate.stderr)
         self.assertIn("could not be read", gate.stderr)
@@ -873,6 +913,31 @@ class TestAnEmbeddedEngineIsClassifiedInItsOwnTerms(ClassRails):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("review class: `decision-record-only`", done.stdout)
         self.assertEqual(self.gate().returncode, 0)
+
+    def test_a_rename_across_the_engine_s_directory_owes_a_semantic_verdict(self):
+        # The reviewer's first reproduction, in the form this fixture has: a file renamed into the engine from beside
+        # it (or out of it) is judged by two policies, one of which is not the engine's. mutation: judge only the
+        # paths inside the engine
+        for label, files in (("in", {"engine/notes/H.md": ("RENAMED", "legacy/H.cs")}),
+                             ("out", {"legacy/H.cs": ("RENAMED", "engine/notes/H.md")})):
+            with self.subTest(label):
+                self.write("notes/H.md", "# a note\n")
+                self.pull_request(self.body("- review class: documentation\n- entry id(s): none", evidence=self.NO_TEST,
+                                            documentation="- [x] `notes/H.md` — updated: moved"), files, contents={})
+                gate = self.gate()
+                self.assertEqual(gate.returncode, 1, gate.stdout + gate.stderr)
+                self.assertIn("`semantic-implementation`, which owes a semantic verdict", gate.stdout)
+                self.assertIn("across the engine's directory", gate.stdout)
+
+    def test_a_rename_inside_the_engine_and_a_change_beside_it_owe_nothing_for_that(self):
+        # mutation: treat every rename as crossing
+        self.write("notes/H.md", "# a note\n")
+        self.pull_request(self.body("N/A", evidence=self.NO_TEST,
+                                    documentation="- [x] `notes/H.md` — updated: moved"),
+                          {"engine/notes/H.md": ("RENAMED", "engine/docs/H.md"), "legacy/B.md": ("RENAMED", "legacy/A.md")},
+                          contents={})
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 0, gate.stdout + gate.stderr)
 
     def test_a_host_files_change_is_not_the_engines_surface_and_is_documentation(self):
         self.write("README.md", "# the engine\n")

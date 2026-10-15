@@ -136,62 +136,69 @@ def base_surface(raw):
         document = json.loads(raw.decode("utf-8"))
     except (AttributeError, UnicodeDecodeError, ValueError):
         raise BasePolicyUnreadable("the base commit's policy is not JSON")
-    review = document.get("review") if isinstance(document, dict) else None
-    listed = review.get("semanticPaths") if isinstance(review, dict) else None
-    if not isinstance(document, dict) or (review is not None and not isinstance(review, dict)) \
-            or (listed is not None and not isinstance(listed, list)):
+    # A field that is not there lists nothing. One that is there and is not what it should be (a null included)
+    # says nothing that can be trusted: reading it as empty is how a surface is dropped without anyone removing it.
+    if not isinstance(document, dict):
+        raise BasePolicyUnreadable("the base commit's policy is not an object")
+    review = document.get("review", {})
+    if not isinstance(review, dict):
+        raise BasePolicyUnreadable("the base commit's policy has a `review` that is not an object")
+    listed = review.get("semanticPaths", [])
+    if not isinstance(listed, list):
         raise BasePolicyUnreadable("the base commit's policy does not list its semantic surface as a list")
-    if any(not isinstance(entry, str) or not entry for entry in listed or []):
+    if any(not isinstance(entry, str) or not entry for entry in listed):
         raise BasePolicyUnreadable("the base commit's policy lists a semantic path that is not a pattern")
-    return list(listed or [])
+    return list(listed)
 
 
 #: Where a policy lives in an engine, relative to the engine.
 POLICY_PATH = ".github/agent-policy.json"
 SYMLINK_MODE = "120000"
+GITLINK_MODE = "160000"
 
 
-def base_policy_paths(blobs, head_path):
-    """The paths of the base commit's policy for the engine the head holds at `head_path`, or it raises.
+def base_basis(blobs, head_path, files):
+    """`(the base policy to read or None, why the change owes a semantic review or None)`; or it raises.
 
-    `blobs` is every file of the base commit as `(mode, repository-relative path)`; a listing that could
-    not be had, or was not whole, is `None`. The rails used to ask for the policy at the head's engine path
-    alone, so a pull request that moved the engine found nothing there and read as the engine's first
-    policy; the base's own location is the base's to say (#612). Where the base had a policy at the head's
-    path that is it. Where it did not, every policy the base held stands, each in its own directory: more
-    patterns than the engine had can only ask for more review, and a surface the move would have dropped
-    is the one thing this must not allow. Empty means the base commit holds no policy: a new engine.
+    The base commit's surface is used in one case, the ordinary one, and every other case is owed a
+    semantic review (#612). Carrying a surface across a relocation kept opening cases: a handler renamed out of
+    the old engine, a destination policy that is empty, a link that hides the policy so that the listing held
+    none. More review is the safe error, and a relocation is rare.
 
-    A policy that is a symbolic link is refused. The head's policy is read through the link, but at the base
-    the bytes git or the API gives for one are the link's target and not the policy, and which file the
-    link led to is a fact about a tree no rail has checked out.
+    `blobs` is every file of the base commit as `(mode, repository-relative path)`, or None where it could
+    not be listed whole; `head_path` is where the head holds the policy; `files` is GitHub's list of the
+    changed files, a rename carrying the path it came from. The ordinary case is all of:
+      * the base held exactly one policy, at `head_path` (none at all is a new engine: the head's stands alone);
+      * nothing on the way to it is a symbolic link or a submodule, at any directory above it as well as the file;
+      * no rename or copy crosses the engine's directory, in or out.
     """
     if blobs is None:
         raise BasePolicyUnreadable("the base commit's files could not be listed")
-    found = [(mode, path) for mode, path in blobs
-             if path == POLICY_PATH or path.endswith("/" + POLICY_PATH)]
-    chosen = [item for item in found if item[1] == head_path] or found
-    for mode, path in chosen:
-        if mode == SYMLINK_MODE:
-            raise BasePolicyUnreadable(f"the base commit's {path} is a symbolic link")
-    return [path for _, path in chosen]
+    engine = head_path[:-len(POLICY_PATH)].rstrip("/") if head_path.endswith(POLICY_PATH) else ""
 
+    def inside(path):
+        return not engine or path == engine or path.startswith(engine + "/")
 
-def base_surfaces(raws):
-    """The union of the surfaces of every base policy read, `ABSENT` where there were none, or it raises.
-
-    `raws` is the bytes of each file `base_policy_paths` named, in order, with `None` for one that could
-    not be read. One unreadable policy makes the whole base unreadable: the surface it would have added
-    is unknown.
-    """
-    if not raws:
-        return ABSENT
-    out = []
-    for raw in raws:
-        for pattern in base_surface(raw):
-            if pattern not in out:
-                out.append(pattern)
-    return out
+    for item in files or []:
+        before = item.get("previous")
+        if before and item.get("changeType") in ("RENAMED", "COPIED") and inside(item["path"]) != inside(before):
+            return None, (f"`{before}` was {'renamed' if item['changeType'] == 'RENAMED' else 'copied'} to "
+                          f"`{item['path']}`, across the engine's directory: what it was and what it became are "
+                          f"judged by two different policies")
+    parts = head_path.split("/")
+    way = {"/".join(parts[:i + 1]) for i in range(len(parts))}
+    for mode, path in blobs:
+        if mode in (SYMLINK_MODE, GITLINK_MODE) and path in way:
+            return None, (f"`{path}` is {'a symbolic link' if mode == SYMLINK_MODE else 'a submodule'} at the base "
+                          f"commit, on the way to the policy, so where the policy was is not what the listing shows")
+    held = [path for _, path in blobs if path == POLICY_PATH or path.endswith("/" + POLICY_PATH)]
+    if not held:
+        return None, None
+    if held == [head_path]:
+        return head_path, None
+    where = ", ".join(f"`{p}`" for p in held)
+    return None, (f"the base commit held {len(held)} polic{'y' if len(held) == 1 else 'ies'} ({where}) and the head holds "
+                  f"one at `{head_path}`: the engine moved, or there is more than one")
 
 
 def surface_patterns(head, base):
@@ -550,7 +557,7 @@ def regeneration(changed, read, fclass):
 # --- the class of a diff -----------------------------------------------------------------------
 
 
-def classify(changed, patterns, *, read, fclass):
+def classify(changed, patterns, *, read, fclass, owed=None):
     """The review class of a diff, computed. `changed` maps engine-relative path -> change type.
 
     `read(path, side)` returns the bytes at `"base"` or `"head"`, or None; `fclass` is
@@ -559,6 +566,9 @@ def classify(changed, patterns, *, read, fclass):
     the class of every `paths`, the `decisionRecords` among them (what a ruling review is owed on if
     the diff is, or is claimed to be, a ruling), the `reasons`,
     and the `regeneration` facts when that is what made it inert.
+
+    `owed` is a reason the change owes a semantic review whatever its paths are (a relocation, #612): then
+    every changed path is on the surface, the class is `semantic-implementation`, and the reason leads.
     """
     paths, reasons, compared = {}, [], [0]
     for path in sorted(changed):
@@ -595,6 +605,9 @@ def classify(changed, patterns, *, read, fclass):
             reasons.append(f"`{path}` ({cls}): {why}")
     if regen:
         reasons.extend(regen)
+    if owed:
+        computed, surface = SEMANTIC_IMPLEMENTATION, sorted(changed)
+        reasons.insert(0, owed)
     return {"class": computed, "onSurface": surface,
             "semanticFiles": surface if computed in SEMANTIC else [],
             "paths": {p: cls if cls != DERIVED else GENERATED_OR_PROVENANCE for p, (cls, _) in paths.items()},

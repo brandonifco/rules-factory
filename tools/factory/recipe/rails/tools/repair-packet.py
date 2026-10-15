@@ -364,10 +364,11 @@ def owed_review(pull, patterns):
         inside = {engine_relative(path, prefix): change
                   for path, change in reviewclass.changes_of(pull.get("files") or []).items()
                   if engine_relative(path, prefix) is not None}
-        # The policy is looked for where the base kept it, and only a whole listing that holds none lets the head's
-        # surface stand alone (#612). Any failure to read the base at all -- git that will not start included --
-        # leaves a verdict owed: the brief is advice, and one that overstates what is owed is the safe direction
-        # to be wrong in, where a head that emptied its own surface must not read as owing nothing.
+        # The base's surface is used in the ordinary case only (one policy, at the head's path, no link on the way,
+        # no rename across the engine's directory); anything else is owed a verdict, as is any failure to read the
+        # base at all -- git that will not start included (#612). The brief is advice, and one that overstates what
+        # is owed is the safe direction to be wrong in: a head that emptied its own surface must not read as owing
+        # nothing.
         try:
             base_oid = pull.get("baseRefOid")
             blobs = None
@@ -381,14 +382,18 @@ def owed_review(pull, patterns):
                         if item and (len(meta.split()) != 3 or not path):
                             blobs = None
                             break
-                        if item and meta.split()[1] == "blob":
+                        if item and meta.split()[1] != "tree":
                             blobs.append((meta.split()[0], path))
-            raws = []
-            for path in reviewclass.base_policy_paths(blobs, where_policy):
+            path, owed = reviewclass.base_basis(blobs, where_policy, pull.get("files") or [])
+            if owed:
+                return True, "semantic-implementation"
+            if path is None:
+                base_surface = reviewclass.ABSENT
+            else:
                 shown = subprocess.run(["git", "show", f"{base_oid}:{path}"], cwd=ROOT,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                raws.append(shown.stdout if shown.returncode == 0 else None)
-            patterns = reviewclass.surface_patterns(patterns, reviewclass.base_surfaces(raws))
+                base_surface = reviewclass.base_surface(shown.stdout if shown.returncode == 0 else None)
+            patterns = reviewclass.surface_patterns(patterns, base_surface)
         except Exception:  # noqa: BLE001  (a base that cannot be read is not a base that lists nothing)
             return True, "semantic-implementation"
 

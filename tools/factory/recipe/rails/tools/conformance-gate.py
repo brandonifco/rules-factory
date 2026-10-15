@@ -195,15 +195,16 @@ def base_bytes(base_oid, path):
         return None
 
 
-def base_patterns(reviewclass, base_oid, prefix):
-    """The `review.semanticPaths` the base commit's policy lists, `reviewclass.ABSENT` for an engine with none, or Undecidable.
+def base_patterns(reviewclass, base_oid, prefix, files):
+    """`(the base's surface, why the change is owed a semantic review or None)`; Undecidable where the base cannot be read.
 
-    The base's files are listed first and the policy is looked for where the base kept it, which is not always
-    where the head has it: a pull request that moves the engine would otherwise find nothing at the new path
-    and read as the engine's first policy (#612). `ABSENT` is only ever a listing that was whole and held no
-    policy. A listing that failed or is truncated, a base nobody gave or GitHub has never heard of, a policy
-    that is a link or cannot be read: none of those is a policy being added, and a pull request that empties its
-    own `semanticPaths` while one of them is so would be judged by no surface at all. An undecidable gate fails.
+    The base's files are listed first. The base commit's surface is used in the ordinary case only: it held exactly
+    one policy, at the path the head holds one, with no link on the way to it, and no rename crosses the engine's
+    directory. Every other case is owed a semantic review, whatever its paths are (a moved engine, several policies,
+    a rename in or out): carrying a surface across a relocation kept opening cases, and more review is the safe
+    error (#612). A base that holds no policy at all is a new engine, and the head's stands alone. A listing that
+    failed or is truncated, a base nobody gave or GitHub has never heard of, a policy that cannot be read: none of
+    those is a policy being added, and none can be decided. An undecidable gate fails.
     """
     where = f"{prefix}/{POLICY}" if prefix else POLICY
     try:
@@ -211,20 +212,23 @@ def base_patterns(reviewclass, base_oid, prefix):
         if base_oid:
             try:
                 listing = gh("api", f"repos/{{owner}}/{{repo}}/git/trees/{base_oid}?recursive=1", "--jq",
-                             '.truncated, (.tree[] | select(.type == "blob") | [.mode, .path] | @tsv)').splitlines()
+                             '.truncated, (.tree[] | select(.type != "tree") | [.mode, .path] | @tsv)').splitlines()
             except Undecidable:
                 listing = []
             rows = [line.split("\t", 1) for line in listing[1:]]
             if listing and listing[0] == "false" and all(len(row) == 2 for row in rows):
                 blobs = rows
-        raws = []
-        for path in reviewclass.base_policy_paths(blobs, where):
-            try:
-                raws.append(base64.b64decode(gh("api", f"repos/{{owner}}/{{repo}}/contents/{urllib.parse.quote(path)}"
-                                                f"?ref={base_oid}", "--jq", ".content")))
-            except (Undecidable, ValueError, binascii.Error):
-                raws.append(None)
-        return reviewclass.base_surfaces(raws)
+        path, owed = reviewclass.base_basis(blobs, where, files)
+        if owed:
+            return [], owed
+        if path is None:
+            return reviewclass.ABSENT, None
+        try:
+            raw = base64.b64decode(gh("api", f"repos/{{owner}}/{{repo}}/contents/{urllib.parse.quote(path)}"
+                                      f"?ref={base_oid}", "--jq", ".content"))
+        except (Undecidable, ValueError, binascii.Error):
+            raw = None
+        return reviewclass.base_surface(raw), None
     except reviewclass.BasePolicyUnreadable as error:
         raise Undecidable(f"the base commit's {where} could not be read ({error}), so the semantic surface this pull "
                   f"request began on is unknown. A diff that empties its own policy would be judged by none. Run the gate again; if the read keeps failing, the pull request's base is the thing to look at")
@@ -240,7 +244,8 @@ def review_class(files, patterns, prefix, body, base_oid):
     """
     reviewclass = factory_module("reviewclass")
     inside = {}
-    patterns = reviewclass.surface_patterns(patterns, base_patterns(reviewclass, base_oid, prefix))
+    base_surface, owed = base_patterns(reviewclass, base_oid, prefix, files)
+    patterns = reviewclass.surface_patterns(patterns, base_surface)
     for path, change in reviewclass.changes_of(files).items():
         relative = engine_relative(path, prefix)
         if relative is not None:
@@ -260,7 +265,7 @@ def review_class(files, patterns, prefix, body, base_oid):
                 return None
         return base_bytes(base_oid, f"{prefix}/{path}" if prefix else path) if base_oid else None
 
-    result = reviewclass.classify(inside, patterns, read=read, fclass=fclass)
+    result = reviewclass.classify(inside, patterns, read=read, fclass=fclass, owed=owed)
     declared = reviewclass.declared_class(body)
     effective, problems, hints = reviewclass.judge(result, declared)
     return result, effective, problems, hints, declared, reviewclass

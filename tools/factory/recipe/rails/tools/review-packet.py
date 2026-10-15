@@ -476,7 +476,7 @@ def base_blobs(base_sha):
     `--full-tree` lists from the repository root whatever directory git runs in. An engine embedded under a
     repository root runs git in its own directory, where a path relative to the repository names a directory
     that is not there: `ls-tree engine/.github/...` from `engine/` searches `engine/engine/` and succeeds with
-    nothing, which is a policy the base never had (#612).
+    nothing, which is a policy the base never had (#612). A link or a submodule is listed with its mode.
     """
     try:
         done = subprocess.run(["git", "ls-tree", "-r", "-z", "--full-tree", base_sha], cwd=ROOT,
@@ -493,31 +493,33 @@ def base_blobs(base_sha):
         parts = meta.split()
         if len(parts) != 3 or not path:
             return None
-        if parts[1] == "blob":
+        if parts[1] != "tree":
             blobs.append((parts[0], path))
     return blobs
 
 
-def base_patterns(module, base_sha):
-    """The `review.semanticPaths` the base commit's policy lists, `module.ABSENT` for an engine with none, or Refused.
+def base_patterns(module, base_sha, files):
+    """`(the base's surface, why the change is owed a semantic review or None)`; Refused where the base cannot be read.
 
-    The policy is looked for where the base kept it, which is not always where the head has it (a pull request
-    may move the engine), and `ABSENT` is only a listing that was whole and held no policy. A base that cannot
-    be listed or read, or whose policy is a link, is not a policy being added (#612): a pull request that
-    empties its own `semanticPaths` would be judged by no surface, and this packet would say its handler change
-    owes no semantic review.
+    The base commit's surface is used in the ordinary case only: it held exactly one policy, at the path the head
+    holds one, with no link on the way to it, and no rename crosses the engine's directory. Every other case is
+    owed a semantic review, whatever its paths are, because carrying a surface across a relocation kept opening
+    cases (#612). A base that holds no policy at all is a new engine. A base that cannot be listed or read is not a
+    policy being added: a pull request that empties its own `semanticPaths` would be judged by no surface.
     """
     where = (engine_path() + "/" if engine_path() else "") + POLICY
     try:
-        raws = []
-        for path in module.base_policy_paths(base_blobs(base_sha), where):
-            try:
-                shown = subprocess.run(["git", "show", f"{base_sha}:{path}"], cwd=ROOT,
-                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            except OSError:
-                shown = None
-            raws.append(shown.stdout if shown is not None and shown.returncode == 0 else None)
-        return module.base_surfaces(raws)
+        path, owed = module.base_basis(base_blobs(base_sha), where, files)
+        if owed:
+            return [], owed
+        if path is None:
+            return module.ABSENT, None
+        try:
+            shown = subprocess.run(["git", "show", f"{base_sha}:{path}"], cwd=ROOT,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except OSError:
+            shown = None
+        return module.base_surface(shown.stdout if shown is not None and shown.returncode == 0 else None), None
     except module.BasePolicyUnreadable as error:
         raise Refused(f"the base commit's {where} could not be read ({error}), so the semantic surface this pull "
                       f"request began on is unknown and what it owes cannot be decided from the head's policy alone. "
@@ -537,7 +539,8 @@ def review_class(snapshot, record, files, patterns, body, base_sha):
     module = factory_module("reviewclass")
     prefix = engine_path()
     inside = {}
-    patterns = module.surface_patterns(patterns, base_patterns(module, base_sha))
+    base_surface, owed = base_patterns(module, base_sha, files)
+    patterns = module.surface_patterns(patterns, base_surface)
     for path, change in module.changes_of(files).items():
         relative = engine_relative(path, prefix)
         if relative is not None:
@@ -560,7 +563,7 @@ def review_class(snapshot, record, files, patterns, body, base_sha):
                 return None
         return git_show(base_sha, path)
 
-    result = module.classify(inside, patterns, read=read, fclass=fclass)
+    result = module.classify(inside, patterns, read=read, fclass=fclass, owed=owed)
     declared = module.declared_class(body)
     effective, problems, hints = module.judge(result, declared)
     return result, effective, problems, hints, declared, module
@@ -793,7 +796,13 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
     if not head:
         raise Refused(f"PR #{number} has no head commit")
     base_oid = pull.get("baseRefOid")
-    base_sha = base_oid or git("rev-parse", f"{base}^{{commit}}").strip()
+    if not base_oid:
+        # The local `origin/<base>` was once substituted here, and it is whatever this checkout last fetched: not
+        # the commit the pull request is based on, and so not the surface it began on (#612).
+        raise Refused(f"PR #{number} names no base commit, so the surface it began on cannot be read. A packet is "
+                      f"cut against the commit GitHub says the pull request is based on, and never against a local "
+                      f"branch that merely shares a name with it")
+    base_sha = base_oid
     package_maps = [str(pathlib.Path(path).expanduser().resolve()) for path in package_maps or []]
 
     issues = pull.get("closingIssuesReferences") or []
@@ -1273,7 +1282,7 @@ def main(argv=None):
                              "(default: it asks MSBuild in the reviewed snapshot); repeat once per "
                              "package for a composed engine")
     parser.add_argument("--base", default="origin/main",
-                        help="fallback local base ref when GitHub supplies no base SHA (default: origin/main)")
+                        help="accepted and ignored: a packet is cut against the base commit GitHub names, and a pull request it gives no base commit for is refused")
     parser.add_argument("--role", choices=ROLES,
                         help="cut the packet for one reviewer: structural (no entry packets, and no "
                              "restored map package needed), semantic (the entry packets first, and not "
