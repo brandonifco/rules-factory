@@ -15,10 +15,14 @@ Claude-specific adapters, which say how a role is invoked rather than what it ma
 | `.claude/agents/repo-steward.md` | the structural reviewer's charter (read-only) |
 | `.claude/agents/rules-conformance.md` | the semantic reviewer's charter (read-only) |
 | `.claude/hooks/primary-checkout-guard.py` | the `PreToolUse` guard that keeps implementation work out of the primary checkout |
-| `.claude/settings.json` | which tools the guard runs before |
+| `.claude/hooks/agent-lifecycle-guard.py` | the `PreToolUse`, `PostToolUse` and `SubagentStop` guard behind `AGENTS.md` §4's "one agent, one attempt": it refuses a message to a completed agent, holds a subagent to a context budget, and prints the handoff brief |
+| `.claude/settings.json` | which tools the guards run before and after |
 
 The guard's escape hatch is `RULES_ENGINE_ALLOW_PRIMARY_MUTATION=1`, documented in `AGENTS.md`
 §4, and its name is configuration in `.github/agent-policy.json`.
+
+The lifecycle guard's policy, thresholds and limits are in `AGENTS.md` §4, and `tools/agent-doctor.py`
+reports whether it is wired.
 
 This file is managed by rules-factory: `factory produce` updates it when its recipe changes and
 refuses to overwrite a hand edit.

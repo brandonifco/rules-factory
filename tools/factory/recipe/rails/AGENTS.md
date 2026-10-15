@@ -192,6 +192,32 @@ it leaves out is deliberate — the previous attempt's transcript, the earlier r
 orchestration around them — and a repair attempt handed the argument it is repairing is anchored
 by it.
 
+**What enforces this, and what does not.** The rule used to rest on the orchestrator's word, and
+orchestrators broke it: on one measurement of 502 subagents, 96 were resumed after their final
+result (169 times), and 29.2% of every token those agents processed was spent in the turns after a
+resume. `.claude/hooks/agent-lifecycle-guard.py`, wired by `.claude/settings.json`, now holds it for
+Claude agents:
+
+- a message to an agent that has **completed** is refused before it is sent, and so is one to an
+  agent id this session never launched, because that cannot be shown to be running; a message to a
+  running agent (a continuation of its assignment) and to `main` goes through;
+- if the runtime reports that it resumed an agent anyway, the guard records it and tells the model to
+  stop that agent and dispatch a fresh one;
+- **a subagent has a context budget.** At 210,000 tokens (where three in four first assignments have
+  finished) it is told once to commit and, if the remaining work is separable, to return a handoff; at
+  350,000 it may only commit and return: every tool but a `git` command and `handoff` is refused;
+- a handoff is a brief from committed state, never a transcript:
+  `python3 .claude/hooks/agent-lifecycle-guard.py handoff` prints the branch, the head, the commits and
+  files since `origin/main` and the upstream state, and refuses a worktree with uncommitted work. The
+  next agent reads the repository, not the last one's conversation.
+
+Advisory, because no hook can see it: that an orchestrator does not copy a transcript into the next
+brief, and the checkpoint note itself. Not covered: hooks the user disables, user-level settings, the
+orchestrator's own context, and a message to a name the session never saw launched, which is allowed
+and caught only after the fact. `tools/agent-doctor.py` reports a guard that is missing, stale or not
+wired; `python3 .claude/hooks/agent-lifecycle-guard.py measure` reports resumes and the context
+percentiles from the transcripts, so the numbers can be checked.
+
 Nothing else changes. The branch still closes exactly one issue with one `Closes #<n>`; the
 repair commit still moves the head and still ends every verdict recorded before it (§7); the new
 head is reviewed from a new packet, by a new reviewer. What the repair does not end is the

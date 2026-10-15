@@ -263,11 +263,17 @@ class TestTheEmittedRails(unittest.TestCase):
     def test_the_settings_run_the_guard_without_an_executable_bit(self):
         # `produce` writes with the default mode, so a hook invoked by path alone would not run.
         settings = json.loads(self.emitted[".claude/settings.json"])
-        (entry,) = settings["hooks"]["PreToolUse"]
-        self.assertEqual(entry["matcher"], "Bash|Edit|Write|NotebookEdit")
-        (hook,) = entry["hooks"]
+        checkout, lifecycle = settings["hooks"]["PreToolUse"]
+        self.assertEqual(checkout["matcher"], "Bash|Edit|Write|NotebookEdit")
+        (hook,) = checkout["hooks"]
         self.assertTrue(hook["command"].startswith("python3 "), hook["command"])
         self.assertIn(".claude/hooks/primary-checkout-guard.py", hook["command"])
+        # The lifecycle guard (#676) is wired on every tool, before and after, and on SubagentStop,
+        # and by the same `python3` invocation: its own `check-settings` is the judge of the rest.
+        self.assertEqual(lifecycle["matcher"], "*")
+        for event in ("PreToolUse", "PostToolUse", "SubagentStop"):
+            commands = [h["command"] for entry in settings["hooks"][event] for h in entry["hooks"]]
+            self.assertIn('python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/agent-lifecycle-guard.py"', commands, event)
 
 
 class TestBytecodeStaysOutOfTheCheckout(unittest.TestCase):
@@ -7062,6 +7068,36 @@ class TestTheDoctor(TestAProducedEngine):
             json.dump({"hooks": {}}, handle)
         done = self.doctor("--local")
         self.assertIn("not wired into .claude/settings.json", done.stdout)
+
+    def test_a_lifecycle_guard_the_settings_do_not_wire_is_reported(self):
+        # The previous recipe of .claude/settings.json wired only the checkout guard (#676): the
+        # guard file is there, the rail bytes are not at issue, and nothing would invoke it.
+        self.produced()
+        path = os.path.join(self.out, ".claude", "settings.json")
+        with open(path, encoding="utf-8") as handle:
+            settings = json.load(handle)
+        del settings["hooks"]["SubagentStop"]
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(settings, handle)
+        done = self.doctor("--local")
+        row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+        self.assertIn("WRONG", row)
+        self.assertIn("SubagentStop", row)
+        self.assertIn("does not wire the agent lifecycle guard", done.stdout)
+
+    def test_a_wired_lifecycle_guard_is_ok(self):
+        self.produced()
+        done = self.doctor("--local")
+        row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+        self.assertIn("OK", row)
+
+    def test_a_missing_lifecycle_guard_is_reported_by_the_bytes_and_by_the_wiring(self):
+        self.produced()
+        os.remove(os.path.join(self.out, ".claude", "hooks", "agent-lifecycle-guard.py"))
+        done = self.doctor("--local")
+        self.assertIn(".claude/hooks/agent-lifecycle-guard.py (absent)", done.stdout)
+        row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+        self.assertIn("WRONG", row)
 
     def test_a_missing_rail_is_reported(self):
         self.produced()
