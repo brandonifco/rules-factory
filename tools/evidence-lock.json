@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "7b7b18d1c4f74dc485d6742eb940b9cd97252584",
+  "measuredAt": "0667e73b3f35b9a9ea9f29d38aba2f44bc676912",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -18,7 +18,7 @@
   },
   "repository": {
     "trackedFiles": 568,
-    "trackedBytes": 23403482
+    "trackedBytes": 23407926
   },
   "artifacts": [
     {
@@ -63,10 +63,8 @@
       "path": "examples/blind-mapping-trial/blind-map.json",
       "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1",
       "bytes": 37125,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
