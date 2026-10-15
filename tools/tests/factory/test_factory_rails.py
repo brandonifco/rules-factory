@@ -6828,9 +6828,15 @@ if "--results-directory" in sys.argv:
         defined, ran = [], []
         for name, outcomes in project.items():
             name = "Ns." + wanted if name == "*" else name
-            klass, _, method = name.rpartition(".")
+            if "::" in name:
+                # "Ns.Probe<System.Int32>::One": a class name with dots of its own (a closed generic).
+                klass, _, method = name.partition("::")
+                name = f"{klass}.{method}"
+            else:
+                klass, _, method = name.rpartition(".")
             test_id = str(uuid.uuid4())
-            defined.append(f'<UnitTest name={quoteattr(name)} storage="/src/bin/debug/net10.0/project{number}.dll" '
+            storage = step.get("assemblies", [])[number:number + 1] or [f"/src/bin/debug/net10.0/project{number}.dll"]
+            defined.append(f'<UnitTest name={quoteattr(name)} storage={quoteattr(storage[0])} '
                            f'id="{test_id}"><Execution id="{uuid.uuid4()}" />'
                            f'<TestMethod className={quoteattr(klass)} name={quoteattr(method)} /></UnitTest>')
             for outcome in ([outcomes] if isinstance(outcomes, str) else outcomes):
@@ -7057,7 +7063,7 @@ class TestTheMutationRunner(RailsInAGitEngine):
                    "results": {**both, "Ns.ProbeTests.One": "Failed"}})
         done = self.mutate(self.spec(test="ProbeTests.One"))
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("RED: Ns.ProbeTests.One (project0): Failed 1", done.stdout,
+        self.assertIn("RED: Ns.ProbeTests.One (/src/bin/debug/project0.dll): Failed 1", done.stdout,
                       "the record names the test it resolved to, and the assembly it ran in")
 
     def test_a_failed_line_that_a_passing_test_printed_decides_nothing(self):
@@ -7165,6 +7171,83 @@ class TestTheMutationRunner(RailsInAGitEngine):
         done = self.mutate(self.spec(test="ProbeTests.One"))
         self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
         self.assertIn("BASELINE MORE THAN ONE TEST MATCHED", done.stdout)
+
+    # -- second review of #665: identity, the baseline's test, names that are not plain, signals -----
+
+    def test_two_projects_whose_assemblies_share_a_file_name_are_two_tests(self):
+        """The file name alone said `tests.dll`; `/a/bin/.../tests.dll` and `/b/bin/.../tests.dll` are two projects."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": [{"Ns.ProbeTests.One": "Passed"}, {"Ns.ProbeTests.One": "Failed"}],
+                   "assemblies": ["/a/bin/Debug/net10.0/tests.dll", "/b/bin/Debug/net10.0/tests.dll"]})
+        done = self.mutate(self.spec(test="ProbeTests.One"), "--no-baseline")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("MORE THAN ONE TEST MATCHED", done.stdout)
+        self.assertNotIn("RED", done.stdout)
+
+    def test_one_project_built_for_two_target_frameworks_is_one_test(self):
+        """Its two outputs differ by the target-framework directory, case and separator only."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": [{"Ns.ProbeTests.One": "Passed"}, {"Ns.ProbeTests.One": "Failed"}],
+                   "assemblies": ["\\a\\bin\\Debug\\net8.0\\Tests.dll", "/A/bin/Debug/NET10.0-windows/tests.dll"]})
+        done = self.mutate(self.spec(test="ProbeTests.One"), "--no-baseline")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("Failed 1, Passed 1", done.stdout)
+
+    def test_a_test_that_resolves_to_another_after_the_mutation_is_not_red(self):
+        """The baseline watched `A.ProbeTests.One`; an edit that leaves only a failing `B.` one proves nothing of A."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1", "results": {"A.ProbeTests.One": "Passed"}},
+                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1, "results": {"B.ProbeTests.One": "Failed"}})
+        done = self.mutate(self.spec(test="ProbeTests.One"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("A DIFFERENT TEST MATCHED", done.stdout)
+        self.assertIn("A.ProbeTests.One", done.stdout)
+        self.assertIn("B.ProbeTests.One", done.stdout)
+        self.assertNotIn("RED", done.stdout)
+        self.assertEqual(self.on_disk(), ORIGINAL)
+
+    def test_a_closed_generic_class_keeps_its_arguments_in_its_name(self):
+        """The namespace ends at the last dot outside the brackets, not at the dot inside `System.Int32`."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1", "results": {"Ns.ProbeTests<System.Int32>::One": "Passed"}},
+                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1,
+                   "results": {"Ns.ProbeTests<System.Int32>::One": "Failed"}})
+        done = self.mutate(self.spec(test="ProbeTests<System.Int32>.One"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("Ns.ProbeTests<System.Int32>.One", done.stdout)
+
+    def test_a_nested_class_is_named_with_its_outer_class(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1", "results": {"Ns.Outer+Inner::One": "Passed"}},
+                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1, "results": {"Ns.Outer+Inner::One": "Failed"}})
+        done = self.mutate(self.spec(test="Outer+Inner.One"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_a_parameterised_name_is_not_a_method_and_matches_nothing(self):
+        """The xUnit the factory pins reports a theory's method name; `Rows(1)` as a method is another framework's."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Failed!  - Failed:     1, Passed:     1", "code": 1,
+                   "results": {"Ns.ProbeTests.Rows(1)": "Passed", "Ns.ProbeTests.Rows(2)": "Failed"}})
+        done = self.mutate(self.spec(test="ProbeTests.Rows"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("BASELINE NO TEST MATCHED", done.stdout)
+        self.assertNotIn("GREEN", done.stdout)
+        self.assertEqual(len(self.calls()), 1, "it mutated a test whose rows it could not read")
+
+    def test_a_termination_during_the_baseline_leaves_no_results_directory_behind(self):
+        """The handlers were installed after the baseline, so SIGTERM there ended the process with its `finally` unrun."""
+        self.engine_with_a_probe()
+        self.plan({"say": "never printed", "terminate": True})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("INTERRUPTED", done.stderr)
+        self.assertIn("nothing had been mutated", done.stderr)
+        argv = self.calls()[0]["argv"]
+        results = argv[argv.index("--results-directory") + 1]
+        self.assertFalse(os.path.exists(results), f"the results directory {results} was left behind")
+        self.assertEqual(self.on_disk(), ORIGINAL)
 
     def test_the_rows_of_one_theory_are_one_test_and_any_failed_row_is_red(self):
         self.engine_with_a_probe()
