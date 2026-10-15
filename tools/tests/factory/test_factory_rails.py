@@ -7522,6 +7522,25 @@ class TestTheMutationRunner(RailsInAGitEngine):
                 if os.path.exists(left):
                     shutil.rmtree(left)
 
+    def test_a_results_directory_that_already_exists_is_not_ours_to_remove(self):
+        """The name is chosen before the directory is made, so a collision must not delete what was there."""
+        self.engine_with_a_probe()
+        self.plan(GREEN)
+        module = self.runner()
+        names = {"PATH": self.bin + os.pathsep + os.environ["PATH"], "DOTNET_PLAN": self.plan_path,
+                 "DOTNET_CALLS": self.calls_path, "DOTNET_WATCH": os.path.join(self.out, PROBE)}
+        taken = os.path.join(tempfile.gettempdir(), "mutate-" + "ab" * 8)
+        os.mkdir(taken)
+        try:
+            with open(os.path.join(taken, "keep.txt"), "w", encoding="utf-8") as handle:
+                handle.write("not the runner's")
+            with unittest.mock.patch.dict(os.environ, names), unittest.mock.patch("os.urandom", lambda count: b"\xab" * count):
+                with self.assertRaises(FileExistsError):
+                    module.run_test(pathlib.Path(self.out) / "Probe.slnx", "ProbeTests.Beta_is_beta", "Debug")
+            self.assertTrue(os.path.exists(os.path.join(taken, "keep.txt")), "it removed a directory it did not make")
+        finally:
+            shutil.rmtree(taken)
+
     def test_the_rows_of_one_theory_are_one_test_and_any_failed_row_is_red(self):
         self.engine_with_a_probe()
         self.plan({"say": "Passed!  - Failed:     0, Passed:     2",

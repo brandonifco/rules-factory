@@ -420,8 +420,16 @@ def run_test(solution, test, configuration, expected=None):
     if built.returncode != 0:
         return NO_BUILD, _diagnostic(f"{built.stdout}\n{built.stderr}", f"dotnet build exited {built.returncode}"), None
 
-    results = tempfile.mkdtemp(prefix="mutate-")
+    # The name is chosen before the directory exists, and the `try` that removes it is entered
+    # before it is made: an interrupt as `mkdir` returns, or at any later point, finds an owner.
+    # (`mkdtemp` makes it and then returns it, and an interrupt between the two orphans it.)
+    results = os.path.join(tempfile.gettempdir(), "mutate-" + os.urandom(8).hex())
     try:
+        try:
+            os.mkdir(results, 0o700)
+        except FileExistsError:
+            results = None      # not ours to remove
+            raise
         ran = subprocess.run(
             ["dotnet", "test", str(solution.name), "-c", configuration, "--nologo", "--no-build",
              "--filter", f"FullyQualifiedName~{_escaped(test)}",
@@ -429,7 +437,8 @@ def run_test(solution, test, configuration, expected=None):
             cwd=ROOT, capture_output=True, text=True)
         outcomes, problems = _results_of(test, results)
     finally:
-        _remove(results)
+        if results is not None:
+            _remove(results)
     if problems:
         return NO_TEST, problems[0], None
     if len(outcomes) > 1:
