@@ -370,15 +370,13 @@ def check_semantic_verdict_is_owed(identity):
     class, is refused rather than allowed through: the gate has no answer for it, so a verdict recorded
     on it would be one nothing can say was owed.
 
-    A delta or carry identity is written by `tools/review-scope.py`, which classifies nothing: it follows a
-    prior semantic attestation that this recorder already holds to its chain (0071), and so is held to the
-    table only where it does say a class.
+    Every review type is held to it, `delta` and `carry` included: `tools/review-scope.py` writes the class
+    of the pull request it bounds a review of, as `tools/review-packet.py` does. The type is the identity's
+    own word and is no reason to excuse it, and an explicit `null` is no more a class than a missing one.
     """
     classes = review_classes()
     review_class = (identity["document"].get("reviewContext") or {}).get("reviewClass")
     effective = review_class.get("effective") if isinstance(review_class, dict) else None
-    if review_class is None and identity["reviewType"] in ("delta", "carry"):
-        return
     if not isinstance(effective, str) or effective not in classes.CLASSES:
         raise Refused(f"this packet identity says its change was judged {effective!r}, which is not one of "
                       f"{', '.join(classes.CLASSES)}, so the recorder cannot tell whether a semantic verdict is "

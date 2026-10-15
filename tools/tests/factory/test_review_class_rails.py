@@ -787,6 +787,39 @@ class TestDocumentation(ClassRails):
         self.assertEqual(gate.returncode, 0, gate.stdout + gate.stderr)
         self.assertIn("no rules verdict required", gate.stdout)
 
+    def readme_request(self):
+        self.engine()
+        self.write("README.md", "# the engine\n")
+        self.pull_request(self.body("N/A", evidence=self.NO_TEST,
+                                    documentation="- [x] `README.md` — updated: the engine's own README"),
+                          {"README.md": "ADDED"})
+
+    def record_status(self, context, state):
+        with open(self.statuses, "w", encoding="utf-8") as handle:
+            json.dump({"a" * 40: {context: state}}, handle)
+
+    def test_the_gate_asks_for_no_verdict_a_change_that_owes_none_so_a_recorded_pass_is_not_what_clears_it(self):
+        # #615: the gate decides the class from the diff and never from a status, so a semantic status posted
+        # for a change that owes none changes nothing it asks. mutation: let a recorded success stand in for the diff
+        self.readme_request()
+        for state in ("success", None):
+            with self.subTest(recorded=state):
+                if state:
+                    self.record_status("rules-verdict/semantic", state)
+                gate = self.gate()
+                self.assertEqual(gate.returncode, 0, gate.stdout + gate.stderr)
+                self.assertIn("no rules verdict required", gate.stdout)
+
+    def test_a_semantic_failure_recorded_on_a_change_that_owes_none_still_blocks(self):
+        # #615: what a verdict posted for such a change can do. The recorder no longer posts one, and the gate
+        # reads a recorded failure at any configured context as blocking whatever the class.
+        # mutation: let the gate ignore a recorded failure when the class owes no verdict
+        self.readme_request()
+        self.record_status("rules-verdict/semantic", "failure")
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 1, gate.stdout + gate.stderr)
+        self.assertIn("is recorded as a failure", gate.stdout)
+
     def test_a_comment_only_change_to_a_handler_is_documentation_when_it_is_claimed(self):
         # mutation: let comment_only return True for any C# file
         self.engine()
