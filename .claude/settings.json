@@ -32,16 +32,6 @@
           }
         ]
       }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py\""
-          }
-        ]
-      }
     ]
   }
 }

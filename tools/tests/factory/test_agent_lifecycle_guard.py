@@ -57,7 +57,7 @@ class GuardCase(unittest.TestCase):
 
     def hook(self, payload):
         """(exit code, parsed stdout or None, stderr) of one hook invocation."""
-        done = run_guard(stdin=json.dumps(payload), RULES_AGENT_LEDGER_DIR=self.ledger)
+        done = run_guard(stdin=json.dumps(payload), RULES_AGENT_LEDGER_DIR=self.ledger, CLAUDE_PROJECT_DIR=REPO)
         out = json.loads(done.stdout) if done.stdout.strip() else None
         return done.returncode, out, done.stderr
 
@@ -66,14 +66,28 @@ class GuardCase(unittest.TestCase):
                   "tool_response": response or {"agentId": agent_id, "status": "async_launched"}}
         self.assertEqual(self.hook(self.event("PostToolUse", **fields))[:2], (0, None))
 
-    def stopped(self, agent_id):
-        payload = self.event("SubagentStop", agent_id=agent_id, agent_type="general-purpose",
-                             agent_transcript_path="/nonexistent/agent.jsonl", last_assistant_message="done")
-        self.assertEqual(self.hook(payload)[:2], (0, None))
+    def stopped(self, agent_id, name=None):
+        """The one completion the hooks see for certain: a foreground Agent call that returned (a)."""
+        self.launched(agent_id, name=name, response={"agentId": agent_id, "status": "completed"})
 
-    def send(self, to, **extra):
+    def subagent_stop_event(self, agent_id):
+        """What Claude Code delivers when a subagent tries to stop; another stop hook may veto it."""
+        return self.event("SubagentStop", agent_id=agent_id, agent_type="general-purpose",
+                          agent_transcript_path="/nonexistent/agent.jsonl", last_assistant_message="done")
+
+    def send(self, to, transcript=None, **extra):
+        fields = {"transcript_path": transcript} if transcript else {}
         return self.hook(self.event("PreToolUse", tool_name="SendMessage", tool_use_id="toolu_1",
-                                    tool_input={"to": to, "message": "fix the finding", **extra}))
+                                    tool_input={"to": to, "message": "fix the finding", **extra}, **fields))
+
+    def main_transcript(self, lines):
+        """The session's MAIN transcript, with `lines` (dicts, or raw strings) in order; its path."""
+        path = os.path.join(self.tmp, "projects", "-work-rules-x", f"{SESSION}.jsonl")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            for line in lines:
+                handle.write((line if isinstance(line, str) else json.dumps(line)) + "\n")
+        return path
 
     def assertDenied(self, result, *needles):
         code, out, _ = result
@@ -116,6 +130,26 @@ class GuardCase(unittest.TestCase):
                           tool_name=tool, tool_input=tool_input, tool_use_id="toolu_2", **extra)
 
 
+def notification(agent_id, status, shape="queue-operation"):
+    """A task notification as Claude Code 2.1.287 writes it into the main transcript."""
+    text = (f"<task-notification>\n<task-id>{agent_id}</task-id>\n<tool-use-id>toolu_01N</tool-use-id>\n"
+            f"<output-file>/tmp/x/tasks/{agent_id}.output</output-file>\n<status>{status}</status>\n"
+            f"<summary>Agent \"x\" finished</summary>\n<result>done</result>\n</task-notification>")
+    if shape == "queue-operation":
+        return {"type": "queue-operation", "operation": "enqueue", "content": text}
+    return {"type": "user", "message": {"role": "user", "content": text}}
+
+
+def launch_lines(tool_use_id, name, agent_id, tool="Agent"):
+    """The Agent tool_use that launched `name` and the tool_result that carried back its agent id."""
+    return [{"type": "assistant", "message": {"role": "assistant", "content": [
+                {"type": "tool_use", "id": tool_use_id, "name": tool,
+                 "input": {"description": "d", "prompt": "p", "name": name}}]}},
+            {"type": "user", "message": {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": tool_use_id, "content": "Async agent launched"}]},
+             "toolUseResult": {"isAsync": True, "status": "async_launched", "agentId": agent_id}}]
+
+
 def assistant_line(message_id, context, output, stamp="2026-10-15T10:00:00.000Z"):
     # Spread the context over the three fields the runtime reports, as a real turn is.
     return {"type": "assistant", "timestamp": stamp,
@@ -138,11 +172,86 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
         denied = [r for r in self.ledger_records() if r["event"] == "denied"]
         self.assertEqual([(r["reason"], r["agent_id"]) for r in denied], [("completed-agent", WORKER)])
 
-    def test_a_foreground_agent_that_stopped_before_its_id_was_returned_is_still_completed(self):
-        # SubagentStop fires while the Agent tool is still running; its PostToolUse comes after.
-        self.stopped(WORKER)
+    def test_a_foreground_agent_that_returned_is_completed(self):
+        # (a) PostToolUse of Agent with a "completed" status: the call returned the agent's final result.
         self.launched(WORKER, name="reviewer", response={"agentId": WORKER, "status": "completed"})
+        self.assertEqual([r["event"] for r in self.ledger_records()], ["launched", "stopped"])
         self.assertDenied(self.send("reviewer"), "completed its assignment")
+        self.assertDenied(self.send(WORKER), "completed its assignment")
+
+    def test_a_subagentstop_event_alone_is_not_completion_because_another_stop_hook_can_veto_it(self):
+        self.launched(WORKER, name="implementer")
+        self.assertEqual(self.hook(self.subagent_stop_event(WORKER))[:2], (0, None))
+        self.assertAllowed(self.send("implementer"))
+        self.assertAllowed(self.send(WORKER))
+        self.assertEqual([r["event"] for r in self.ledger_records()], ["launched"])
+
+    def test_an_async_launch_result_is_not_completion(self):
+        for status in ("async_launched", "running", "queued"):
+            with self.subTest(status=status):
+                self.launched(WORKER, name="implementer", response={"agentId": WORKER, "status": status})
+                self.assertAllowed(self.send("implementer"))
+
+    def test_a_task_notification_in_the_main_transcript_means_the_agent_stopped(self):
+        # (b) Any status but "running", in either record shape Claude Code writes it in.
+        for shape in ("queue-operation", "user"):
+            for status in ("completed", "failed", "killed", "stopped"):
+                with self.subTest(shape=shape, status=status):
+                    transcript = self.main_transcript([notification(WORKER, status, shape)])
+                    shutil.rmtree(self.ledger, ignore_errors=True)
+                    self.launched(WORKER, name="implementer")
+                    self.assertDenied(self.send("implementer", transcript=transcript), "completed its assignment")
+                    self.assertDenied(self.send(WORKER, transcript=transcript), "completed its assignment")
+
+    def test_a_running_notification_a_notification_for_another_agent_and_no_transcript_leave_it_running(self):
+        self.launched(WORKER, name="implementer")
+        self.launched(OTHER, name="reviewer")
+        transcript = self.main_transcript([notification(WORKER, "running"), notification(OTHER, "completed"),
+                                           {"type": "user", "message": {"role": "user",
+                                                                        "content": f"mentions {WORKER} in passing"}}])
+        self.assertAllowed(self.send("implementer", transcript=transcript))
+        self.assertAllowed(self.send(WORKER, transcript=transcript))
+        self.assertDenied(self.send("reviewer", transcript=transcript), "completed")
+        self.assertAllowed(self.send("implementer", transcript=os.path.join(self.tmp, "nowhere.jsonl")))
+
+    def test_a_notification_is_read_past_unparseable_lines_in_a_large_transcript(self):
+        self.launched(WORKER, name="implementer")
+        noise = [{"type": "user", "message": {"role": "user", "content": "x" * 5000}} for _ in range(400)]
+        transcript = self.main_transcript(noise + ["{not json " + WORKER, notification(WORKER, "completed")] + noise)
+        self.assertDenied(self.send("implementer", transcript=transcript), "completed")
+
+    def test_a_name_is_resolved_from_the_main_transcript_when_the_ledger_never_saw_it(self):
+        lines = launch_lines("toolu_L1", "implementer", WORKER)
+        running = self.main_transcript(lines)
+        self.assertAllowed(self.send("implementer", transcript=running))
+        done = self.main_transcript(lines + [notification(WORKER, "completed")])
+        self.assertDenied(self.send("implementer", transcript=done), "completed its assignment")
+        # The latest agent to bear the name is the one a message reaches.
+        again = self.main_transcript(lines + [notification(WORKER, "completed")]
+                                     + launch_lines("toolu_L2", "implementer", OTHER))
+        self.assertAllowed(self.send("implementer", transcript=again))
+        # A launch under another name is not this one.
+        other_name = self.main_transcript(launch_lines("toolu_L3", "reviewer", WORKER)
+                                          + [notification(WORKER, "completed")])
+        self.assertAllowed(self.send("implementer", transcript=other_name))
+
+    def test_an_id_the_ledger_never_saw_is_known_from_the_main_transcript(self):
+        launched = self.main_transcript(launch_lines("toolu_L1", "implementer", WORKER))
+        self.assertAllowed(self.send(WORKER, transcript=launched))
+        finished = self.main_transcript(launch_lines("toolu_L1", "implementer", WORKER)
+                                        + [notification(WORKER, "completed")])
+        self.assertDenied(self.send(WORKER, transcript=finished), "completed its assignment")
+        # Seen nowhere, in the ledger or the transcript: still refused, fail closed.
+        self.assertDenied(self.send(STRANGER, transcript=launched), "not launched in this session")
+
+    def test_a_subagents_transcript_path_still_names_the_main_session_transcript(self):
+        # Inside a subagent the hook's transcript_path is the session's main transcript.
+        transcript = self.main_transcript(launch_lines("toolu_L1", "implementer", WORKER)
+                                          + [notification(WORKER, "completed")])
+        payload = self.in_subagent("PreToolUse", OTHER, [1_000], "SendMessage",
+                                   {"to": "implementer", "message": "m"})
+        payload["transcript_path"] = transcript
+        self.assertDenied(self.hook(payload), "completed its assignment")
 
     def test_a_running_agents_continuation_is_allowed_by_name_and_by_id(self):
         self.launched(WORKER, name="implementer")
@@ -298,6 +407,27 @@ class TestTheLedgerIsNeverInsideARepository(GuardCase):
         self.assertFalse(os.path.exists(os.path.join(self.tmp, "state")))
 
 
+    def test_a_ledger_file_that_is_a_symlink_is_not_written_through(self):
+        # Finding 6: only the directory was checked; the leaf link led into a repository.
+        repo = self.repository()
+        os.makedirs(self.ledger)
+        victim = os.path.join(repo, "victim")
+        link = os.path.join(self.ledger, f"{SESSION}.jsonl")
+        os.symlink(victim, link)
+        before = self.tree(repo)
+        done = self.launch(RULES_AGENT_LEDGER_DIR=self.ledger)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertFalse(os.path.lexists(victim), "the guard wrote through the symlink")
+        self.assertEqual(self.tree(repo), before)
+        self.assertTrue(os.path.islink(link))
+        # An existing file behind the link is left as it was.
+        with open(victim, "w", encoding="utf-8") as handle:
+            handle.write("kept\n")
+        self.launch(RULES_AGENT_LEDGER_DIR=self.ledger)
+        with open(victim, encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), "kept\n")
+
+
 class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
     def resumed(self, response):
         return self.hook(self.event("PostToolUse", tool_name="SendMessage", tool_use_id="toolu_3",
@@ -360,8 +490,8 @@ class TestTheContextBudget(GuardCase):
         self.assertAllowed(self.hook(pre))
 
     def test_the_hard_bound_denies_every_tool_but_git_and_handoff(self):
-        def at_hard(tool, tool_input, context=HARD):
-            return self.hook(self.in_subagent("PreToolUse", WORKER, [1_000, context], tool, tool_input))
+        def at_hard(tool, tool_input, context=HARD, **extra):
+            return self.hook(self.in_subagent("PreToolUse", WORKER, [1_000, context], tool, tool_input, **extra))
 
         for tool, tool_input in (("Read", {"file_path": "/x"}), ("Edit", {"file_path": "/x", "old_string": "a",
                                                                           "new_string": "b"}),
@@ -380,10 +510,16 @@ class TestTheContextBudget(GuardCase):
         for command in ('git commit -m "Fix it | not > that"',
                         'cd /work/tree && git add -A && git commit -m "m"',
                         'git commit -m "$(cat <<\'EOF\'\nsubject\n\nCo-Authored-By: A <a@example.invalid>\nEOF\n)"',
-                        'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/agent-lifecycle-guard.py" handoff',
-                        "python3 tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py handoff --base origin/main"):
+                        'git -C /work/tree status', 'git diff --stat', 'git log --oneline -5', 'git show HEAD',
+                        'git push origin HEAD', 'git rev-parse HEAD', 'git branch', 'git branch --show-current',
+                        'python3 "$CLAUDE_PROJECT_DIR/tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py" handoff',
+                        f'python3 {GUARD} handoff --base origin/main',
+                        f'cd {REPO} && python3 tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py handoff'):
             with self.subTest(command=command):
                 self.assertAllowed(at_hard("Bash", {"command": command}))
+        # A relative path is the guard when the hook's own cwd says so.
+        self.assertAllowed(at_hard("Bash", {"command": "python3 tools/factory/recipe/rails/hooks/"
+                                                       "agent-lifecycle-guard.py handoff --base origin/main"}, cwd=REPO))
         # Just below the bound nothing is refused.
         self.assertAllowed(at_hard("Read", {"file_path": "/x"}, context=HARD - 1))
 
@@ -412,6 +548,73 @@ class TestTheContextBudget(GuardCase):
         for command in ('git commit -m ">', "git commit -m '|", "git log \\"):
             with self.subTest(command=command):
                 self.assertDenied(self.at_hard_bash(command), "git command")
+
+    def test_a_git_invocation_that_can_run_arbitrary_commands_is_refused_past_the_hard_bound(self):
+        # Finding 1 of the final review: `git -c alias.work='!...' work` ran python3 past the bound.
+        for command in ("git -c 'alias.work=!python3 -c \"print(123)\"' work",
+                        "git -c core.pager=less log", "git -c alias.s=status s", "git --config-env=a=B status",
+                        "git --exec-path=/tmp/x status", "git --git-dir=/x status", "git -C /x -c a=b status",
+                        "git -p status", "git --paginate log", "git work", "git s", "git gc", "git config alias.x '!x'",
+                        "git rebase -x 'make test' main", "git submodule foreach make", "git bisect run make",
+                        "git difftool -x make", "git filter-branch -f", "git clean -fdx", "git reset --hard",
+                        "git checkout -- .", "git restore .", "git stash", "git fetch", "git pull", "git clone x y",
+                        "git", "git -C", "git -C /x", "git -C -c status", "git -- status", "git --version",
+                        "git push --receive-pack=evil origin", "git push --exec=evil origin",
+                        "git push --upload-pack=evil origin", "git diff --ext-diff", "git show --textconv HEAD",
+                        "git log --output=out", "git diff --output out", "git branch -D main", "git branch new-branch",
+                        "git branch -m a b", "git branch --delete x", "git branch --set-upstream-to=o/x",
+                        "cd", "cd a b", "cd /x && git -c a=b status", "cd /x ; git s",
+                        "/usr/bin/git status", "GIT_SSH_COMMAND=evil git push", "env git status", "command git status"):
+            with self.subTest(command=command):
+                self.assertDenied(self.at_hard_bash(command), f"{HARD:,}", "git command", "handoff")
+
+    def test_only_the_guard_itself_may_run_as_handoff_past_the_hard_bound(self):
+        # Finding 5: any script named agent-lifecycle-guard.py used to pass. Identity is the real path
+        # of the running file, resolved against the hook's cwd, with `python3` and `handoff [--base REF]`.
+        elsewhere = os.path.join(self.tmp, "another")
+        os.makedirs(elsewhere)
+        copy = os.path.join(elsewhere, "agent-lifecycle-guard.py")
+        shutil.copy(GUARD, copy)
+        link = os.path.join(elsewhere, "link-to-the-guard.py")
+        os.symlink(GUARD, link)
+        for command in (f"python3 {copy} handoff", "python3 /no-such-directory/agent-lifecycle-guard.py handoff",
+                        "python3 /another/agent-lifecycle-guard.py handoff",
+                        "python3 agent-lifecycle-guard.py handoff",
+                        "python3 '$CLAUDE_PROJECT_DIR/tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py' handoff",
+                        f"python3 {GUARD} handoff --base", f"python3 {GUARD} handoff --base -x",
+                        f"python3 {GUARD} handoff extra", f"python3 {GUARD} measure", f"python3 {GUARD}",
+                        f"python3 {GUARD} check-settings x", f"python3 -c 'print(1)' {GUARD} handoff",
+                        f"python {GUARD} handoff", f"python3 -B {GUARD} handoff", f"/usr/bin/python3 {GUARD} handoff",
+                        f"sh {GUARD} handoff", f"python3 {GUARD}.bak handoff", f"cd {elsewhere} && python3 {copy} handoff",
+                        f"cd {elsewhere} && python3 tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py handoff",
+                        f"cd $HOME && python3 tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py handoff"):
+            with self.subTest(command=command):
+                self.assertDenied(self.hook(self.in_subagent("PreToolUse", WORKER, [HARD], "Bash",
+                                                             {"command": command}, cwd=REPO)), "handoff")
+        for command in (f"python3 {link} handoff", f"python3 {GUARD} handoff --base origin/main",
+                        f"cd {REPO} && python3 tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py handoff",
+                        f"cd {elsewhere} && python3 {GUARD} handoff"):
+            with self.subTest(command=command):
+                self.assertAllowed(self.hook(self.in_subagent("PreToolUse", WORKER, [HARD], "Bash",
+                                                              {"command": command}, cwd=self.tmp)))
+        # The same relative path in the wrong directory is not the guard.
+        self.assertDenied(self.at_hard_bash("python3 tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py handoff"),
+                          "handoff")
+
+    def test_an_agent_launch_inside_a_subagent_is_recorded_and_then_gets_the_checkpoint_note(self):
+        # Finding 7: PostToolUse of Agent returned before the checkpoint check.
+        payload = self.in_subagent("PostToolUse", WORKER, [1_000, CHECKPOINT], "Agent",
+                                   {"description": "d", "prompt": "p", "name": "child"},
+                                   tool_response={"agentId": OTHER, "status": "async_launched"})
+        code, out, _ = self.hook(payload)
+        self.assertEqual(code, 0)
+        self.assertIn("Context checkpoint", out["hookSpecificOutput"]["additionalContext"])
+        events = [(r["event"], r["agent_id"]) for r in self.ledger_records()]
+        self.assertEqual(events, [("launched", OTHER), ("checkpoint", WORKER)])
+        # Once per agent, as for any other tool.
+        again = self.in_subagent("PostToolUse", WORKER, [1_000, CHECKPOINT], "Agent", {"name": "c2"},
+                                 tool_response={"agentId": "a2222222222222222", "status": "async_launched"})
+        self.assertAllowed(self.hook(again))
 
     def test_the_denial_is_recorded(self):
         self.hook(self.in_subagent("PreToolUse", WORKER, [HARD], "Read", {"file_path": "/x"}))
@@ -520,38 +723,68 @@ class TestHandoff(GuardCase):
         self.assertIn("not inside a git worktree", done.stderr)
 
 
+OWN_GUARD_REL = "tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py"
+ENGINE_GUARD_REL = ".claude/hooks/agent-lifecycle-guard.py"
+ENGINE_COMMAND = f'python3 "$CLAUDE_PROJECT_DIR/{ENGINE_GUARD_REL}"'
+LIFECYCLE_EVENTS = ("PreToolUse", "PostToolUse")
+
+
 class TestCheckSettings(GuardCase):
-    def check(self, settings):
+    def check(self, settings, *extra):
         path = os.path.join(self.tmp, "settings.json")
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(settings, handle)
-        return run_guard("check-settings", path)
+        return run_guard("check-settings", path, *extra)
 
     def load(self, path):
         with open(path, encoding="utf-8") as handle:
             return json.load(handle)
 
+    def lifecycle_hooks(self, settings, events=LIFECYCLE_EVENTS):
+        """Every registration of the guard in `settings`, as (event, entry, hook)."""
+        return [(event, entry, hook_) for event in events for entry in settings["hooks"].get(event, [])
+                for hook_ in entry["hooks"] if "agent-lifecycle-guard" in hook_["command"]]
+
+    def with_command(self, settings, command, events=LIFECYCLE_EVENTS):
+        for _, _, hook_ in self.lifecycle_hooks(settings, events):
+            hook_["command"] = command
+        return settings
+
     def test_the_rails_settings_and_this_repositorys_own_wire_the_guard(self):
-        for path in (RAILS_SETTINGS, OWN_SETTINGS):
+        for path, extra in ((RAILS_SETTINGS, ()), (OWN_SETTINGS, ("--guard-path", OWN_GUARD_REL))):
             with self.subTest(path=path):
-                done = run_guard("check-settings", path)
+                done = run_guard("check-settings", path, *extra)
                 self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-                self.assertIn("SubagentStop", done.stdout)
+                self.assertIn("PreToolUse for SendMessage", done.stdout)
+                self.assertNotIn("SubagentStop", done.stdout)
 
     def test_this_repositorys_own_settings_run_the_one_file_the_rails_emit(self):
         commands = [hook["command"] for entries in self.load(OWN_SETTINGS)["hooks"].values()
                     for entry in entries for hook in entry["hooks"]]
-        self.assertIn('python3 "$CLAUDE_PROJECT_DIR/tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py"', commands)
+        self.assertIn(f'python3 "$CLAUDE_PROJECT_DIR/{OWN_GUARD_REL}"', commands)
         self.assertTrue(any("repo-hygiene.py --fix" in command for command in commands), "the SessionStart hook stays")
         self.assertTrue(os.path.isfile(GUARD))
 
-    def test_without_the_subagentstop_entry_it_fails_and_says_so(self):
+    def test_no_subagentstop_registration_is_shipped_because_a_stop_hook_can_be_vetoed(self):
+        for path in (RAILS_SETTINGS, OWN_SETTINGS):
+            with self.subTest(path=path):
+                self.assertNotIn("SubagentStop", self.load(path)["hooks"])
+
+    def test_the_wrong_guard_path_fails_whichever_settings_are_checked(self):
+        # The rails settings name the engine's path; this repository's name its own.
+        self.assertEqual(run_guard("check-settings", RAILS_SETTINGS, "--guard-path", OWN_GUARD_REL).returncode, 1)
+        self.assertEqual(run_guard("check-settings", OWN_SETTINGS).returncode, 1)
+        done = run_guard("check-settings", OWN_SETTINGS, "--guard-path", ENGINE_GUARD_REL)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn(f"python3 \"$CLAUDE_PROJECT_DIR/{ENGINE_GUARD_REL}\"", done.stdout)
+
+    def test_without_a_required_entry_it_fails_and_says_which(self):
         settings = self.load(RAILS_SETTINGS)
-        del settings["hooks"]["SubagentStop"]
+        del settings["hooks"]["PostToolUse"]
         done = self.check(settings)
         self.assertEqual(done.returncode, 1, done.stdout)
-        self.assertIn("SubagentStop", done.stdout)
-        self.assertNotIn("PostToolUse", done.stdout)
+        self.assertIn("PostToolUse for all tools", done.stdout)
+        self.assertNotIn("PreToolUse", done.stdout)
 
     def test_the_previous_rails_settings_fail_naming_every_missing_registration(self):
         previous = {"$schema": "https://json.schemastore.org/claude-code-settings.json",
@@ -563,8 +796,7 @@ class TestCheckSettings(GuardCase):
                          ownership.RECIPE_SHA256[".claude/settings.json"][1])
         done = self.check(previous)
         self.assertEqual(done.returncode, 1)
-        for event in ("PreToolUse for SendMessage", "PreToolUse for all tools", "PostToolUse for all tools",
-                      "SubagentStop"):
+        for event in ("PreToolUse for SendMessage", "PreToolUse for all tools", "PostToolUse for all tools"):
             self.assertIn(event, done.stdout)
 
     def test_a_matcher_that_covers_only_some_tools_is_not_all_tools(self):
@@ -573,44 +805,63 @@ class TestCheckSettings(GuardCase):
         done = self.check(settings)
         self.assertEqual(done.returncode, 1)
         self.assertIn("PostToolUse for all tools", done.stdout)
-        settings["hooks"]["PostToolUse"][0]["matcher"] = ".*"
+        settings["hooks"]["PostToolUse"][0]["matcher"] = "*"
         self.assertEqual(self.check(settings).returncode, 0)
 
-    def with_command(self, settings, command, events=("PreToolUse", "PostToolUse", "SubagentStop")):
-        for event in events:
-            for entry in settings["hooks"][event]:
-                for hook in entry["hooks"]:
-                    if "agent-lifecycle-guard" in hook["command"]:
-                        hook["command"] = command
-        return settings
+    def test_a_registration_with_async_true_is_refused_because_it_cannot_enforce_a_decision(self):
+        # Finding 3: an asynchronous hook's permissionDecision and decision are ignored.
+        for key in ("async", "asyncRewake"):
+            for event in LIFECYCLE_EVENTS:
+                with self.subTest(key=key, event=event):
+                    settings = self.load(RAILS_SETTINGS)
+                    for registered, _, hook_ in self.lifecycle_hooks(settings, (event,)):
+                        hook_[key] = True
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(event, done.stdout)
+                    self.assertIn(key, done.stdout)
+        settings = self.load(RAILS_SETTINGS)
+        for _, _, hook_ in self.lifecycle_hooks(settings):
+            hook_["async"] = False
+        self.assertEqual(self.check(settings).returncode, 0)
 
-    def test_a_command_that_merely_names_the_guard_does_not_invoke_it(self):
-        guard = "$CLAUDE_PROJECT_DIR/.claude/hooks/agent-lifecycle-guard.py"
+    def test_a_command_that_is_not_exactly_the_guard_at_the_named_path_is_refused(self):
+        guard = f"$CLAUDE_PROJECT_DIR/{ENGINE_GUARD_REL}"
         for command in ("echo agent-lifecycle-guard.py", f'echo "{guard}"', f'cat "{guard}"',
                         f'python3 "{guard}" handoff', f'python3 "{guard}" measure', f'python3 "{guard}" check-settings x',
                         f'FOO=1 python3 "{guard}"', f'python3 -c "import x" "{guard}"', f'python3 "{guard}" && true',
                         f'python3 "{guard}" | cat', f'python3 "{guard}" >/dev/null', f'python3 "{guard}" # note',
                         f'sh -c \'python3 "{guard}"\'', f'python3 "{guard}.bak"', "python3 other/agent-lifecycle-guard.pyc",
-                        f'true; python3 "{guard}"', "", f'python3 "{guard}" "'):
+                        f'true; python3 "{guard}"', "", f'python3 "{guard}" "',
+                        # Finding 5: the basename alone, and the quotes that stop the expansion.
+                        "python3 /no-such-directory/agent-lifecycle-guard.py",
+                        f"python3 '{guard}'", "python3 '$CLAUDE_PROJECT_DIR/.claude/hooks/agent-lifecycle-guard.py'",
+                        f"python3 {guard}", f'python "{guard}"', f'python3 -B "{guard}"', f'/usr/bin/python3 "{guard}"',
+                        f'python3  "{guard}"', f' python3 "{guard}"', f'python3 "{guard}" ',
+                        'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/../hooks/agent-lifecycle-guard.py"',
+                        'python3 "$CLAUDE_PROJECT_DIR/other/agent-lifecycle-guard.py"',
+                        'python3 "/abs/.claude/hooks/agent-lifecycle-guard.py"',
+                        'python3 ".claude/hooks/agent-lifecycle-guard.py"'):
             with self.subTest(command=command):
                 done = self.check(self.with_command(self.load(RAILS_SETTINGS), command))
                 self.assertEqual(done.returncode, 1, done.stdout)
-                for event in ("PreToolUse for SendMessage", "PostToolUse for all tools", "SubagentStop"):
+                for event in ("PreToolUse for SendMessage", "PostToolUse for all tools"):
                     self.assertIn(event, done.stdout)
 
-    def test_the_ways_to_invoke_the_guard_in_hook_mode_are_accepted(self):
-        guard = "$CLAUDE_PROJECT_DIR/.claude/hooks/agent-lifecycle-guard.py"
-        for command in (f'python3 "{guard}"', f"python3 {guard}", f'python "{guard}"', f'python3 -B "{guard}"',
-                        "python3 tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py",
-                        f'/usr/bin/python3 "{guard}"'):
-            with self.subTest(command=command):
-                done = self.check(self.with_command(self.load(RAILS_SETTINGS), command))
-                self.assertEqual(done.returncode, 0, done.stdout)
+    def test_only_the_exact_command_for_the_named_path_is_accepted(self):
+        done = self.check(self.with_command(self.load(RAILS_SETTINGS), ENGINE_COMMAND))
+        self.assertEqual(done.returncode, 0, done.stdout)
+        other = "tools/x/guard.py"
+        done = self.check(self.with_command(self.load(RAILS_SETTINGS), f'python3 "$CLAUDE_PROJECT_DIR/{other}"'),
+                          "--guard-path", other)
+        self.assertEqual(done.returncode, 0, done.stdout)
+        done = self.check(self.with_command(self.load(RAILS_SETTINGS), ENGINE_COMMAND), "--guard-path", other)
+        self.assertEqual(done.returncode, 1)
 
     def test_a_finite_matcher_is_not_all_tools_however_long(self):
         listed = "Bash|Read|Edit|Write|Glob|Grep|Agent|SendMessage|NotebookEdit|WebFetch|TodoWrite|mcp__server__tool"
         for matcher in (listed, "Bash|Read|Edit|Write|Glob|Grep|Agent|SendMessage|NotebookEdit|WebFetch|TodoWrite|mcp__.*",
-                        "^(?!Foo$).*$", "[A-Za-z_]+", "mcp__.*"):
+                        "^(?!Foo$).*$", "[A-Za-z_]+", "mcp__.*", ".*"):
             for event in ("PreToolUse", "PostToolUse"):
                 with self.subTest(matcher=matcher, event=event):
                     settings = self.load(RAILS_SETTINGS)
@@ -618,7 +869,7 @@ class TestCheckSettings(GuardCase):
                     done = self.check(settings)
                     self.assertEqual(done.returncode, 1, done.stdout)
                     self.assertIn(f"{event} for all tools", done.stdout)
-        for matcher in (None, "", "*", ".*"):
+        for matcher in (None, "", "*"):
             with self.subTest(unrestricted=matcher):
                 settings = self.load(RAILS_SETTINGS)
                 for event in ("PreToolUse", "PostToolUse"):

@@ -33,16 +33,29 @@ turn. Nothing enforced it, and the orchestrators broke it.
 target to a running task (result "Message queued for delivery to X at its next tool round") or to a
 stopped or evicted one, which it resumes (`{"success":true,"message":"Resuming agent X",
 "resumedAgentId":"a..."}`). `PreToolUse` sees `tool_name` and `tool_input` and, inside a subagent,
-`agent_id`; `PostToolUse` of the `Agent` tool sees the new agent's `agentId`; `SubagentStop` carries
-`agent_id` and `agent_transcript_path`. A subagent's own transcript records the usage of each turn.
-What a hook does not see is the runtime's resolution of a name: `PreToolUse` runs before it.
+`agent_id`; `PostToolUse` of the `Agent` tool sees the new agent's `agentId` and a `tool_response.status`
+(`async_launched`, or `completed` when a foreground agent returned its final result). The session's main
+transcript (`transcript_path`, the same file inside a subagent) records a task notification when an agent
+stops: a JSONL line, in a `queue-operation` record's `content` and in a user message, whose text holds
+`<task-notification>`, `<task-id>AGENT_ID</task-id>` and `<status>STATUS</status>`; it also holds the
+`Agent` tool_use (`input.name`) and its result (`toolUseResult.agentId`). A subagent's own transcript
+records the usage of each turn. What a hook does not see is the runtime's resolution of a name:
+`PreToolUse` runs before it.
+
+**`SubagentStop` is not evidence of completion.** It can be vetoed by another stop hook
+(`{"decision":"block"}`), in which case the runtime keeps the agent running. A guard that recorded
+"stopped" on receiving it would later refuse a message to an agent still doing its assignment (found in
+the final review of #677). The guard therefore neither registers for the event nor handles it.
 
 ## Decision
 
-1. **A completed agent is replaced.** A `PreToolUse` guard refuses a `SendMessage` to a subagent the
-   session has seen complete. It resolves a name to an id from the launches it recorded, treats an id
-   (`a` and 16 hex digits) as itself, and refuses an id it never saw launched, because that cannot be
-   shown to be running. A message to a running agent is a continuation of its assignment and goes
+1. **A completed agent is replaced.** A `PreToolUse` guard refuses a `SendMessage` to a subagent with
+   definitive evidence of completion: (a) a `PostToolUse` of `Agent` whose `tool_response.status` is
+   `completed` (a foreground agent returned), recorded in the ledger, or (b) a task notification for it
+   in the main transcript with any status but `running`, found by streaming the file and parsing only the
+   lines that hold the agent id. It resolves a name to an id from the launches the ledger recorded, else
+   from the main transcript, treats an id (`a` and 16 hex digits) as itself, and refuses an id neither the
+   ledger nor the transcript saw launched, because that cannot be shown to be running. A message to a running agent is a continuation of its assignment and goes
    through, as does one to `main`. The refusal says what to do: dispatch a fresh agent with a concise
    brief from committed state (`tools/repair-packet.py <pr> --finding ...` in an engine, the guard's
    `handoff` anywhere).
@@ -52,27 +65,38 @@ What a hook does not see is the runtime's resolution of a name: `PreToolUse` run
 3. **Within one assignment a subagent has a context budget**, read from its own transcript. At
    `CHECKPOINT_TOKENS` = 210,000 it is told once to commit, keep to its assignment, and return a
    handoff brief if the remaining work is separable. At `HARD_TOKENS` = 350,000 every tool is refused
-   except a `git` command and the guard's `handoff`: it commits and returns, and a fresh agent
-   continues. A Bash command is read by a quote-aware scan that fails closed: `git`, `cd` and
-   `handoff` joined by `&&` or `;` pass; a newline, a `#`, a backtick, a pipe, redirect, subshell or
-   background job outside quotes, or an unterminated quote, refuses the whole command, while the same
-   characters inside quotes (a commit message) are data.
+   except a bounded `git` command and the guard's `handoff`: it commits and returns, and a fresh agent
+   continues. A Bash command is read by a quote-aware scan that fails closed, and its commands, joined by
+   `&&` or `;`, pass only when each is: `git` with no global option but `-C <dir>`, then one of `add`,
+   `commit`, `status`, `diff`, `log`, `show`, `push`, `rev-parse`, or `branch` for listing only
+   (`-c`, `--config-env`, `--exec-path` and any alias are refused, and so is an argument that makes git run
+   a program: `--exec=`, `--receive-pack=`, `--upload-pack=`, `--ext-diff`, `--textconv`, `--output=`);
+   `cd <dir>`; or `python3 <path> handoff [--base REF]` where `<path>`, resolved against the hook's `cwd`
+   and any earlier `cd`, has the real path of the running guard file. A newline, a `#`, a backtick, a
+   pipe, redirect, subshell or background job outside quotes, or an unterminated quote, refuses the whole
+   command, while the same characters inside quotes (a commit message) are data.
 4. **A handoff is a brief from committed repository state, never a transcript.** `handoff` prints the
    branch, the head commit and its subject, the commits and files since the base, and the upstream
    state, and refuses a worktree with uncommitted work, because that would not survive the handoff.
 5. **A missing or stale guard is detected.** `factory rails --check` and `tools/agent-doctor.py`
    report the rail bytes through the existing managed-file comparison, and the doctor reports a
    `WRONG` row when `.claude/settings.json` does not wire the guard, by running the guard's own
-   `check-settings`, so the required registrations are stated once (`REQUIRED_HOOKS`). A registration
-   counts only when its command runs this guard in hook mode (`python3 <path>/agent-lifecycle-guard.py`,
-   no subcommand, no prefix, no shell operator), and "all tools" only when its matcher is absent, empty,
-   `*` or `.*`: a list of tool names covers those tools and no other, however long.
+   `check-settings`, so the required registrations are stated once (`REQUIRED_HOOKS`: `PreToolUse` for
+   `SendMessage`, `PreToolUse` and `PostToolUse` for every tool). A registration counts only when its command
+   is exactly `python3 "$CLAUDE_PROJECT_DIR/<REL>"` (compared as the string it is, so the double quotes that
+   let the variable expand are kept; `<REL>` is `--guard-path`, by default the engine's
+   `.claude/hooks/agent-lifecycle-guard.py`, and this repository's own settings use the path of the file
+   the rails are emitted from), it is not a background hook (`"async": true` or `"asyncRewake": true`,
+   whose decisions Claude Code does not wait for), and "all tools" only when its matcher is absent, empty
+   or `*`: a list of tool names covers those tools and no other, however long.
 6. **State is kept outside any repository.** One append-only JSONL ledger per session in
    `$RULES_AGENT_LEDGER_DIR`, else `${XDG_STATE_HOME:-~/.local/state}/rules-agent-lifecycle/`. A
    location that is relative, or inside a git work tree (a `.git` in it or any directory above it,
    links followed), is refused before anything is created: a refused `$RULES_AGENT_LEDGER_DIR` falls
    back to the default location, and if the default is refused too there is no ledger, so nothing is
-   written and the `SendMessage` check fails closed for an id it cannot show was launched.
+   written and the `SendMessage` check fails closed for an id it cannot show was launched. The ledger
+   file is opened with `O_NOFOLLOW`, and one that is a symbolic link is refused (nothing written, nothing
+   read): the directory check alone let a link in an outside directory carry the append into a repository.
 
 **The thresholds, and why.** They are the measured peaks of a first assignment: the checkpoint is
 the p75 (211k, rounded down) and the hard bound the p95 (348k, rounded up). The checkpoint is where
@@ -86,12 +110,16 @@ them is argued from the record and not from this paragraph. The guard has a `POL
 
 | | Status | Where |
 |---|---|---|
-| A `SendMessage` to a completed subagent is refused | **Mechanically enforced** (Claude Code) | `PreToolUse` on `SendMessage`; test: completed reuse by name and by id |
+| A `SendMessage` to a completed subagent is refused | **Mechanically enforced** (Claude Code), on definitive evidence only: a foreground `Agent` result of status `completed`, or a task notification in the main transcript | `PreToolUse` on `SendMessage`; tests: completed by foreground result, by notification (both record shapes, any status but `running`), name resolved from the transcript |
+| A `SubagentStop` event | **Not evidence, not registered**: another stop hook can veto it and the agent keeps running | test: a delivered `SubagentStop` leaves the agent messageable; no shipped settings register it |
+| An agent that stopped without a foreground result or a notification (a notification the runtime did not write, an unreadable transcript) | **Not covered**: it looks running, so a message is allowed and the backstop catches a resume | |
 | A `SendMessage` to an id never launched in the session is refused | **Mechanically enforced**, fail closed | same; test: unknown id denied |
 | A resume the runtime reports is detected and the model told to stop it | **Mechanically detected**, after the fact | `PostToolUse` on `SendMessage` (`resumedAgentId`, or "Resuming agent") |
-| A subagent past 350,000 tokens may only commit and return | **Mechanically enforced** in subagents | `PreToolUse` on every tool, from the subagent's transcript; tests: a comment or newline cannot hide a second command, quoted punctuation is data |
-| The ledger is never inside a repository | **Mechanically enforced** | a relative or in-work-tree location is refused before it is created; tests: ledger location |
-| A missing or stale guard is detected | **Mechanically detected** | `factory rails --check` and `agent-doctor.py` (bytes); `agent-doctor.py` via `check-settings` (wiring) |
+| A subagent past 350,000 tokens may only commit and return | **Mechanically enforced** in subagents | `PreToolUse` on every tool, from the subagent's transcript; tests: a comment or newline cannot hide a second command, quoted punctuation is data, only the allowlisted git subcommands run and `git -c` / aliases do not, `handoff` only for this very file |
+| What a permitted git command runs of the repository's own configuration (a commit hook, a configured external diff driver) | **Not covered**: accident prevention, not security | |
+| The ledger is never inside a repository | **Mechanically enforced** | a relative or in-work-tree location is refused before it is created, and a ledger file that is a symbolic link is refused; tests: ledger location, ledger file symlink |
+| A launch inside a subagent is also a tool result the context budget applies to | **Mechanically enforced** | `PostToolUse` of `Agent` records the child launch and then applies the parent's checkpoint check; test: checkpoint note on an `Agent` result |
+| A missing or stale guard is detected | **Mechanically detected** | `factory rails --check` and `agent-doctor.py` (bytes); `agent-doctor.py` via `check-settings` (wiring: exact command and path, foreground, every tool); tests: async refused, another path refused, quoting kept |
 | A handoff refuses uncommitted work | **Mechanically enforced** by the subcommand | `handoff` |
 | The orchestrator does not paste a transcript into the next brief | **Advisory** | `AGENTS.md` §4; no hook sees a brief's content |
 | The checkpoint note at 210,000 tokens | **Advisory** | `additionalContext`; the agent may ignore it |
@@ -116,6 +144,9 @@ them is argued from the record and not from this paragraph. The guard has a `POL
 - **A token limit in the harness instead of a hook.** None is exposed; the transcript is the record
   the cost claims came from, so the budget reads it.
 - **Time limits.** Cost follows context, not wall clock.
+- **Record "stopped" when `SubagentStop` fires.** It was the first design. A stop hook that blocks the
+  event keeps the agent running, so the record is false and the guard would refuse a legitimate
+  continuation; only a returned foreground result and a task notification are definitive.
 
 ## Consequences
 

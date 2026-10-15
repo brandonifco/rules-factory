@@ -268,10 +268,12 @@ class TestTheEmittedRails(unittest.TestCase):
         (hook,) = checkout["hooks"]
         self.assertTrue(hook["command"].startswith("python3 "), hook["command"])
         self.assertIn(".claude/hooks/primary-checkout-guard.py", hook["command"])
-        # The lifecycle guard (#676) is wired on every tool, before and after, and on SubagentStop,
-        # and by the same `python3` invocation: its own `check-settings` is the judge of the rest.
+        # The lifecycle guard (#676) is wired on every tool, before and after, and by the same
+        # `python3` invocation: its own `check-settings` is the judge of the rest. Not on SubagentStop:
+        # another stop hook can veto that event, so it is no evidence an agent completed.
         self.assertEqual(lifecycle["matcher"], "*")
-        for event in ("PreToolUse", "PostToolUse", "SubagentStop"):
+        self.assertNotIn("SubagentStop", settings["hooks"])
+        for event in ("PreToolUse", "PostToolUse"):
             commands = [h["command"] for entry in settings["hooks"][event] for h in entry["hooks"]]
             self.assertIn('python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/agent-lifecycle-guard.py"', commands, event)
 
@@ -7076,14 +7078,38 @@ class TestTheDoctor(TestAProducedEngine):
         path = os.path.join(self.out, ".claude", "settings.json")
         with open(path, encoding="utf-8") as handle:
             settings = json.load(handle)
-        del settings["hooks"]["SubagentStop"]
+        del settings["hooks"]["PostToolUse"]
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(settings, handle)
         done = self.doctor("--local")
         row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
         self.assertIn("WRONG", row)
-        self.assertIn("SubagentStop", row)
+        self.assertIn("PostToolUse", row)
         self.assertIn("does not wire the agent lifecycle guard", done.stdout)
+
+    def reported_after(self, label, change):
+        self.produced()
+        path = os.path.join(self.out, ".claude", "settings.json")
+        with open(path, encoding="utf-8") as handle:
+            settings = json.load(handle)
+        for entry in settings["hooks"]["PostToolUse"]:
+            for hook in entry["hooks"]:
+                change(hook)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(settings, handle)
+        done = self.doctor("--local")
+        row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+        self.assertIn("WRONG", row)
+        self.assertIn(label, row)
+
+    def test_a_lifecycle_guard_registered_async_is_reported(self):
+        # An asynchronous hook cannot enforce a decision (#676, review of #677).
+        self.reported_after("async", lambda hook: hook.update({"async": True}))
+
+    def test_a_lifecycle_guard_registered_at_another_path_is_reported(self):
+        # A command that is not the installed guard enforces nothing, whatever the script is called.
+        self.reported_after("exactly", lambda hook: hook.update(
+            {"command": 'python3 "$CLAUDE_PROJECT_DIR/elsewhere/agent-lifecycle-guard.py"'}))
 
     def test_a_wired_lifecycle_guard_is_ok(self):
         self.produced()

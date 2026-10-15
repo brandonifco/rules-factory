@@ -398,7 +398,9 @@ def local_rows(generate, error):
         problems.append("the agent lifecycle guard is missing, so a completed agent can be resumed and no "
                         "subagent has a context budget (`factory produce` writes it)")
     else:
-        checked = subprocess.run([sys.executable, "-B", str(lifecycle), "check-settings", str(settings_path)],
+        # The engine's own path for the guard, stated: the check judges the exact command the settings run.
+        checked = subprocess.run([sys.executable, "-B", str(lifecycle), "check-settings", str(settings_path),
+                                  "--guard-path", ".claude/hooks/agent-lifecycle-guard.py"],
                                  capture_output=True, text=True, check=False)
         wired_lifecycle = checked.returncode == 0
         detail = (checked.stdout + checked.stderr).strip().splitlines()

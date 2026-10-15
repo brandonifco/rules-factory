@@ -102,7 +102,7 @@ TABLE = (
         "brief the next one reads (#465); section 3 says the orchestrator holds the scheduling decision and the repository holds the state, and names the command that reads it (#466); section 7 says a reviewer is given what its role judges, "
         "and that the role is part of the packet identity (#467); section 3 says where the rails are when the "
         "engine is embedded under a repository root, because GitHub runs a workflow only from the root (#501, "
-        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523); section 9 says the semantic surface is the engine's alone, so a host repository gates its own rule-bearing files (0072); section 7 says what a change owes the semantic review is its review class, computed from the diff and failing closed: a new decision record that overrules nothing, a regeneration with the rules unmoved and a document owe structural validation only, and an exemption is claimed on the pull request's `review class:` line and never assumed (0076); section 7 says a mutation spec's edits apply in order, each to the text the earlier ones left (#623); section 7 says an engine that declares an action surface in `acceptance.json` is accepted through it by a generated full-play harness, what its invariants hold, that the allowlist is built only from observed declines, and that cost is reduced by making the engine faster and not by checking less (0078); section 7 says the verdict of a recorded mutation is the named test's own result, read from the TRX of every test project, and that a build which fails is a build that did not compile (#625, #662); section 4 says what enforces one agent, one attempt: the lifecycle guard refuses a message to a completed agent, bounds a subagent's context at a measured checkpoint and hard bound, and prints a handoff from committed state, and says what no hook can see (#676, 0083)"),
+        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523); section 9 says the semantic surface is the engine's alone, so a host repository gates its own rule-bearing files (0072); section 7 says what a change owes the semantic review is its review class, computed from the diff and failing closed: a new decision record that overrules nothing, a regeneration with the rules unmoved and a document owe structural validation only, and an exemption is claimed on the pull request's `review class:` line and never assumed (0076); section 7 says a mutation spec's edits apply in order, each to the text the earlier ones left (#623); section 7 says an engine that declares an action surface in `acceptance.json` is accepted through it by a generated full-play harness, what its invariants hold, that the allowlist is built only from observed declines, and that cost is reduced by making the engine faster and not by checking less (0078); section 7 says the verdict of a recorded mutation is the named test's own result, read from the TRX of every test project, and that a build which fails is a build that did not compile (#625, #662); section 4 says what enforces one agent, one attempt: the lifecycle guard refuses a message to a completed agent, bounds a subagent's context at a measured checkpoint and hard bound, and prints a handoff from committed state, and says what no hook can see, and what counts as an agent having completed (#676, 0083)"),
     Row("CLAUDE.md", MANAGED, 2,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029); it lists the lifecycle guard (#676, 0083)"),
     Row("docs/agent-team.md", MANAGED, 12,
@@ -134,15 +134,17 @@ TABLE = (
         "earlier in the same command, failing closed on one it cannot read (#463); it reads a command behind "
         "a subshell's `)&&` or a reserved word such as `then`, and a subshell's `cd` does not outlive it (#550)"),
     Row(".claude/hooks/agent-lifecycle-guard.py", MANAGED, 1,
-        "the PreToolUse, PostToolUse and SubagentStop guard behind one agent, one attempt (#676, 0083): it "
-        "refuses a SendMessage to a subagent the session saw complete, or to an agent id it never saw "
+        "the PreToolUse and PostToolUse guard behind one agent, one attempt (#676, 0083): it "
+        "refuses a SendMessage to a subagent with definitive evidence of completion (a foreground result, or a "
+        "task notification in the main transcript; never a SubagentStop, which can be vetoed), or to an agent id it never saw "
         "launched; it detects a resume the runtime reports; it tells a subagent to commit and hand off at "
-        "a measured context checkpoint and lets it only commit and return at the hard bound; its `handoff` "
+        "a measured context checkpoint and lets it only commit and return at the hard bound (a fixed git "
+        "subcommand list with no `-c`, and `handoff` of this very file); its `handoff` "
         "is a brief from committed state; `check-settings` and `measure` are the wiring check and the "
         "telemetry"),
     Row(".claude/settings.json", MANAGED, 2,
         "which tools the guards run before and after (0029); the lifecycle guard is wired on every tool "
-        "before and after, and on SubagentStop (#676, 0083)"),
+        "before and after, in the foreground, and not on SubagentStop, which another stop hook can veto (#676, 0083)"),
     Row("tools/dispatch-agent.sh", MANAGED, 6,
         "one issue, one worktree, one branch; it refuses what is not ready to work, and --sweep "
         "removes what merged work left behind, before every dispatch (0029, #236); the directory it "
@@ -231,7 +233,8 @@ TABLE = (
         "machine that cannot run the gate stops nothing (#195); it looks for the gate workflow where "
         "GitHub reads one, which for an embedded engine is the repository root and not the engine "
         "(#501, 0069); it runs the lifecycle guard's own `check-settings` and reports a WRONG row when "
-        "the settings do not wire it, instead of restating what must be wired (#676, 0083)"),
+        "the settings do not wire it (a foreground registration of exactly the engine's command on every "
+        "tool), instead of restating what must be wired (#676, 0083)"),
     Row("tools/orchestrator-status.py", MANAGED, 3,
         "where the work stands, read from the repository and bounded: the checkout, the worktrees and "
         "their issues, the open pull requests with their heads, checks and recorded verdicts, and the "
@@ -397,11 +400,11 @@ RECIPE_SHA256 = {
         3: "2f15d7192c5328376c1cd1836229c699d1d48f90ef35b451e48fa79b7fbef238",
     },
     ".claude/hooks/agent-lifecycle-guard.py": {
-        1: "91a1f14cb2068ddb8bc59d0dd11d79317c3526aa3c86107a431065629863a50d",
+        1: "178feb6402167bcbaa4c4e101da922acad8d2da7c473d9f6583dff062f199475",
     },
     ".claude/settings.json": {
         1: "4d410acd10ba5b6ed2d3c6a016cc2cfde1cf8e621da54424755376a80da30aa0",
-        2: "4497f3dda94b7626ecf8bdeb84517f1dc1583af3e9760a8510fa59abedb59c0f",
+        2: "faf5e784fd01cd527f4e94630ddef2f77118c8ad922f25a85bc6fff3c0e03097",
     },
     "AGENTS.md": {
         1: "06594a3207634553a28ca057ecb53225082e4f111890961e27589c544353e740",
@@ -437,11 +440,11 @@ RECIPE_SHA256 = {
         31: "6a491708e330e18d5abb83a3dd050140c62516d3f5d91ff3fe0d6f98739aa711",
         32: "2529749d4d1c5a7b1ed9e1198b15f7b5ff4275a39de34e768e12f657e2590ad1",
         33: "4d6f196944d60473983d5f441c30db9b762c8fcefde7bb364ea74485cbf74c09",
-        34: "e50d7ebb1fca5b1af4bde6d9626c74081d5b35b84253ec495caa1168f06ad6bd",
+        34: "b1598edff6b867888ca715526f18acddea81b2d272ab3f82c3733f461c14a5e3",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
-        2: "9017e269141f5b0715c462d22846343816c6b8bfa90c4640c89976b9575937c7",
+        2: "52708e15f1a34b95c4cde951ce8d0c9017782214744243becb1cdff31f0246d2",
     },
     "docs/agent-team.md": {
         1: "48baa22a5f1b6bb3f26d6aaed5715782462430b8b5524e1f0737ad627fae219d",
@@ -606,7 +609,7 @@ RECIPE_SHA256 = {
         6: "29a12d22a4befe577fcf67ab1ae868f0c1db3bc41d4d32babd812dd547324ab0",
         7: "3483e812ad0e5fead7940ddddb45880d7de21ac3e788cfc5f2e9a53660efa26c",
         8: "04b0ebbffc8638fa322543a8591096abb54ef5c5a7e5be4151de6e4066fff4ff",
-        9: "e021d855641b91a39d7f4e0c2489796446325201905b39fc569787bc11e274dd",
+        9: "98faa2dc6431a2acc2dd1689b5a4cfaf7286383d69b7033b6f7c7de24dbe2d19",
     },
     ".editorconfig": {
         1: "4109d1ef55053ef656e536d7818934deb73016fbe950f153bae6b2a163591cb2",

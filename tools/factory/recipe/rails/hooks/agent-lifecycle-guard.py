@@ -25,8 +25,16 @@ recomputes all of this from the same record, so the claim can be checked rather 
 THE BOUNDARY, VERIFIED IN CLAUDE CODE 2.1.287
   * Every hook gets session_id, transcript_path, cwd, permission_mode, agent_type; `agent_id`
     only when the hook fires inside a subagent.
-  * PostToolUse of the Agent tool carries the new agent's `agentId` (and `tool_input.name`);
-    SubagentStop carries `agent_id` when a subagent returns its final result.
+  * PostToolUse of the Agent tool carries the new agent's `agentId` (and `tool_input.name`) and a
+    `tool_response.status`: `async_launched` for a background agent, `completed` when a foreground
+    agent returned its final result.
+  * The MAIN session transcript (`transcript_path`, the same file inside a subagent) records a task
+    notification when an agent stops: a JSONL line, in a `queue-operation` record's `content` and in a
+    user message, whose text holds `<task-notification>`, `<task-id>AGENT_ID</task-id>` and
+    `<status>STATUS</status>`. It also holds the Agent `tool_use` (`input.name`) and its tool_result
+    (`toolUseResult.agentId`), which is how a name is resolved when the ledger never saw it.
+  * SubagentStop is NOT evidence of completion: another stop hook can veto it (the agent then keeps
+    running), so this guard neither registers for it nor handles it.
   * SendMessage's target `to` is resolved by the runtime to a RUNNING task ("Message queued for
     delivery ... at its next tool round") or to a stopped or evicted one, which it RESUMES
     ("Resuming agent X", `resumedAgentId`). PreToolUse sees the target before that resolution.
@@ -35,19 +43,26 @@ THE BOUNDARY, VERIFIED IN CLAUDE CODE 2.1.287
     cache_read_input_tokens + cache_creation_input_tokens.
 
 WHAT IT ENFORCES
-  * PreToolUse SendMessage to a target the session's ledger shows as completed: denied. To an
-    id-shaped target ("a" + 16 hex) the ledger never saw launched: denied, because this cannot
-    show it is running (fail closed). To a launched, not completed agent: allowed. To "main":
-    allowed.
+  * PreToolUse SendMessage to a target with definitive evidence of completion: denied. The evidence
+    is (a) a PostToolUse of Agent whose tool_response status is `completed` (a foreground agent
+    returned), recorded in the ledger, or (b) a task notification for it in the main transcript with
+    any status but `running`. A name is resolved to an id from the ledger first, else from the main
+    transcript. To an id-shaped target ("a" + 16 hex) neither the ledger nor the transcript saw
+    launched: denied, because this cannot show it is running (fail closed). To a launched agent with
+    no completion evidence (running): allowed. To "main": allowed.
   * PostToolUse SendMessage whose result says the runtime resumed an agent: recorded as a
     violation, and the model is told to stop that agent and dispatch a fresh one. Detection after
     the fact, for the case the PreToolUse check could not see.
   * Context budget, in subagents only (see POLICY 2).
 
 WHAT IT CANNOT SEE
-  * A name target the ledger does not know (a teammate, another session, an agent launched before
-    this guard was wired) is allowed; only the PostToolUse backstop catches a resume through it,
-    after it has happened.
+  * A name target neither the ledger nor the main transcript resolves (a teammate, another session,
+    an agent launched before this guard was wired, one launched inside a subagent before the
+    ledger saw it) is allowed; only the PostToolUse backstop catches a resume through it, after it
+    has happened.
+  * An agent that stopped without a result the hooks or the transcript show (a notification the
+    runtime did not write, a transcript that is missing or unreadable) looks running, so a message to
+    it is allowed. The evidence is definitive when present and silent when absent.
   * Hooks the user disables (`disableAllHooks`), user-level settings, the main session's own
     context, and any harness other than Claude Code: another harness's calls that resume a finished
     agent or send it input are unverified here and covered by nothing in this file.
@@ -56,11 +71,17 @@ WHAT IT CANNOT SEE
     cannot tell, so it neither warns nor stops. It never crashes the hook over it.
   * A hard-bound Bash command is judged by a quote-aware scan, not run in a shell: this is accident
     prevention for an agent that has been told to stop, not security. The scan fails closed. Only
-    `git ...`, `cd ...` and the guard's `handoff`, joined by `&&` or `;`, are allowed; a newline, a
-    `#`, a backtick, a redirect, pipe, subshell, background job or any other operator outside quotes
-    refuses the whole command, and so does an unterminated quote. Inside double quotes `$(...)` is
-    not looked into, so a commit message may be a heredoc: a command substitution there is not
-    judged.
+    these, joined by `&&` or `;`, are allowed: `git [-C <dir>] <subcommand> ...` with a subcommand in
+    GIT_SUBCOMMANDS (add, commit, status, diff, log, show, push, rev-parse, and `branch` for listing
+    only), `cd <dir>`, and `python3 <path> handoff [--base REF]` where <path>, resolved against the
+    hook's `cwd` and any `cd` before it, is this very file (real path). Any other global git option
+    (`-c`, `--config-env`, `--exec-path`), a git alias, and an argument that makes git run a program
+    (`--exec=`, `--receive-pack=`, `--upload-pack=`, `--ext-diff`, `--textconv`, `--output=`) refuse
+    the command; so does a newline, a `#`, a backtick, a redirect, pipe, subshell, background job or
+    any other operator outside quotes, and so does an unterminated quote. Inside double quotes
+    `$(...)` is not looked into, so a commit message may be a heredoc: a command substitution there is
+    not judged. What a permitted git command runs of the repository's own configuration (a commit
+    hook, a configured external diff driver) is not judged either.
   * An internal error is reported on stderr and lets the call through. A guard that blocks every
     tool because of its own bug is worse than a missing one, and `check-settings`, the rail-bytes
     check and the tests are what notice a guard that is not what it should be.
@@ -74,13 +95,19 @@ REFUSED with a message on stderr, before anything is created, and the default lo
 instead; a relative $XDG_STATE_HOME is ignored as the XDG specification says. If the default fails
 too (HOME is itself a work tree), there is no ledger: nothing is written and nothing is read, and
 the PreToolUse SendMessage check fails closed as it does for any id it never saw launched, because
-with no ledger it cannot show an id is running. Records: launched, stopped, checkpoint, denied,
-violation.
+with no ledger it cannot show an id is running. The ledger FILE is opened with O_NOFOLLOW and a ledger
+file that is a symbolic link is refused (nothing written, nothing read), because a link in an
+otherwise outside directory would carry the append into a repository. Records: launched, stopped
+(foreground result), checkpoint, denied, violation.
 
 USAGE
   agent-lifecycle-guard.py                          hook mode: one JSON event on stdin
   agent-lifecycle-guard.py handoff [--base REF]     brief from committed state (default origin/main)
-  agent-lifecycle-guard.py check-settings PATH      0 iff PATH wires this guard (REQUIRED_HOOKS)
+  agent-lifecycle-guard.py check-settings PATH [--guard-path REL]
+                                                    0 iff PATH wires this guard (REQUIRED_HOOKS): each
+                                                    registration is foreground (no `async: true`) and
+                                                    runs exactly `python3 "$CLAUDE_PROJECT_DIR/REL"`
+                                                    (REL default .claude/hooks/agent-lifecycle-guard.py)
   agent-lifecycle-guard.py measure [--projects-dir DIR] [--match REGEX] [--ledger-dir DIR] [--events]
                                                     summary; --events adds one line per resume
 
@@ -118,19 +145,28 @@ AGENT_TOOLS = ("Agent", "Task")
 
 # Where this guard must be wired, defined once: `check-settings` reports against it, and
 # tools/agent-doctor.py runs `check-settings` rather than restating it. (event, scope, why);
-# scope is a tool name the matcher must cover, ALL_TOOLS, or None (the event has no matcher).
+# scope is a tool name the matcher must cover or ALL_TOOLS. There is no SubagentStop entry: another
+# stop hook can veto that event, so receiving it is not evidence that an agent completed.
 ALL_TOOLS = "*"
 REQUIRED_HOOKS = (
     ("PreToolUse", "SendMessage", "refuse a message to a completed agent"),
     ("PreToolUse", ALL_TOOLS, "enforce the context hard bound in every tool"),
-    ("PostToolUse", ALL_TOOLS, "record launches, detect a resume, issue the checkpoint note"),
-    ("SubagentStop", None, "record that an agent completed"),
+    ("PostToolUse", ALL_TOOLS, "record launches and completions, detect a resume, issue the checkpoint note"),
 )
-# The matchers that mean every tool, whatever tools exist: absent, empty, `*`, `.*`. A matcher that
-# lists tools covers those and nothing else, however long the list, so it is not on this list.
-UNRESTRICTED_MATCHERS = (None, "", "*", ".*")
-# Interpreter options that leave the script argument the script (`-c` and `-m` would not).
-HARMLESS_INTERPRETER_FLAGS = ("-B", "-I", "-S", "-s", "-u", "-E")
+# The matchers that mean every tool, whatever tools exist: absent, empty, `*`. A matcher that lists
+# tools covers those and nothing else, however long the list, so it is not on this list.
+UNRESTRICTED_MATCHERS = (None, "", "*")
+# Where the guard sits in an engine; this repository's own settings name another path (--guard-path).
+DEFAULT_GUARD_PATH = ".claude/hooks/agent-lifecycle-guard.py"
+# Hook keys that run a command in the background, where a decision cannot be enforced.
+BACKGROUND_KEYS = ("async", "asyncRewake")
+
+# Past the hard bound the only git that runs: no global option but `-C <dir>`, one of these
+# subcommands (an alias is not one), and no argument that runs a program of its own.
+GIT_SUBCOMMANDS = ("add", "commit", "status", "diff", "log", "show", "push", "rev-parse", "branch")
+BRANCH_LISTING = ("--show-current", "--list", "-l", "-a", "--all", "-r", "--remotes", "-v", "-vv", "--verbose")
+GIT_PROGRAM_OPTIONS = ("exec", "receive-pack", "upload-pack", "ext-diff", "textconv", "output",
+                       "open-files-in-pager")
 
 TAIL_START = 256 * 1024
 TAIL_MAX = 16 * 1024 * 1024
@@ -181,7 +217,14 @@ def ledger_file(session_id: object) -> Path | None:
     name = re.sub(r"[^A-Za-z0-9_.-]", "_", session_id if isinstance(session_id, str) else "")[:128]
     if not name.strip("."):
         name = "unknown-session"
-    return directory / f"{name}.jsonl"
+    path = directory / f"{name}.jsonl"
+    if os.path.islink(path):
+        # The directory was checked, the file in it was not: a link would carry the append into a
+        # repository. A linked ledger file is no ledger.
+        print(f"{GUARD_NAME}: the ledger file {path} is a symbolic link, so it is refused and nothing is "
+              f"recorded or read.", file=sys.stderr)
+        return None
+    return path
 
 
 def ledger_append(session_id: object, record: dict) -> bool:
@@ -192,7 +235,7 @@ def ledger_append(session_id: object, record: dict) -> bool:
             return False
         path.parent.mkdir(parents=True, exist_ok=True)
         line = (json.dumps(record, sort_keys=True) + "\n").encode("utf-8")
-        descriptor = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+        descriptor = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
         try:
             os.write(descriptor, line)
         finally:
@@ -244,8 +287,6 @@ class Ledger:
                 self.checkpointed.add(agent)
 
     def knows(self, agent: str) -> bool:
-        # A foreground agent's SubagentStop fires before the Agent tool returns its id, so a stop
-        # on record proves the agent existed even when its launch has not been recorded yet.
         return agent in self.launched or agent in self.stopped
 
 
@@ -332,6 +373,114 @@ def resumed_agent(value: object, depth: int = 0) -> str | None:
             found = resumed_agent(inner, depth + 1)
             if found:
                 return found
+    return None
+
+
+# --------------------------------------------------------------------------- completion evidence
+
+
+def guard_command() -> str:
+    """How to run this file's `handoff`: the real path of the running guard, quoted for a shell."""
+    return f"python3 {shlex.quote(os.path.realpath(__file__))} handoff"
+
+
+def main_transcript(payload: dict) -> Path | None:
+    """The session's MAIN transcript. Inside a subagent the hook still gets that one; a subagent's own
+    file (<session>/subagents/agent-<id>.jsonl) is mapped back to it, should a runtime hand that over."""
+    raw = payload.get("transcript_path")
+    if not isinstance(raw, str) or not raw:
+        return None
+    path = Path(raw)
+    if path.parent.name == "subagents" and path.parent.parent.name:
+        path = path.parent.parent.with_name(path.parent.parent.name + ".jsonl")
+    return path
+
+
+def strings_in(value: object, depth: int = 0):
+    if depth > 8:
+        return
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for inner in value.values():
+            yield from strings_in(inner, depth + 1)
+    elif isinstance(value, list):
+        for inner in value:
+            yield from strings_in(inner, depth + 1)
+
+
+def transcript_lines(path: Path, needles: tuple[bytes, ...]):
+    """(raw, parsed) for each line of `path` holding any of `needles` that parses as a JSON object.
+    Streaming: a long transcript is never held in memory, and a line that lacks every needle is not parsed."""
+    try:
+        with open(path, "rb") as handle:
+            for raw in handle:
+                if not any(needle in raw for needle in needles):
+                    continue
+                try:
+                    parsed = json.loads(raw)
+                except ValueError:
+                    continue
+                if isinstance(parsed, dict):
+                    yield raw, parsed
+    except (OSError, ValueError):
+        return
+
+
+def transcript_agent_state(path: Path, agent: str) -> tuple[bool, bool]:
+    """(seen, completed) for `agent` in the main transcript.
+
+    Seen: an Agent tool result carried this agent id, or a task notification named it. Completed: a task
+    notification for it, whatever its status but `running` (Claude Code 2.1.287 writes it as text with
+    `<task-notification>` and `<task-id>AGENT</task-id>` ... `<status>STATUS</status>` in a
+    `queue-operation` record's `content` and in a user message), or a foreground Agent result that says
+    the agent completed.
+    """
+    pattern = re.compile(r"<task-notification>\s*<task-id>" + re.escape(agent) + r"</task-id>"
+                         r"(?:(?!</task-notification>).)*?<status>\s*([A-Za-z_-]+)\s*</status>", re.DOTALL)
+    seen = completed = False
+    for raw, parsed in transcript_lines(path, (agent.encode("utf-8"),)):
+        result = parsed.get("toolUseResult")
+        if isinstance(result, dict) and result.get("agentId") == agent:
+            seen = True
+            if result.get("status") == "completed":
+                completed = True
+        if b"<task-notification>" in raw:
+            for text in strings_in(parsed):
+                for match in pattern.finditer(text):
+                    seen = True
+                    if match.group(1) != "running":
+                        completed = True
+    return seen, completed
+
+
+def transcript_agent_for_name(path: Path, name: str) -> str | None:
+    """The id of the latest agent launched with `name`: an Agent tool_use whose input.name is `name`,
+    and the agentId on the toolUseResult of the tool_result that answered it."""
+    needles = (json.dumps(name).encode("utf-8"), json.dumps(name, ensure_ascii=False).encode("utf-8"),
+               b'"agentId"')
+    launches: list[str] = []
+    answers: dict[str, str] = {}
+    for raw, parsed in transcript_lines(path, needles):
+        message = parsed.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "tool_use" and block.get("name") in AGENT_TOOLS:
+                given = block.get("input")
+                if isinstance(given, dict) and given.get("name") == name and isinstance(block.get("id"), str):
+                    launches.append(block["id"])
+            elif block.get("type") == "tool_result" and isinstance(block.get("tool_use_id"), str):
+                result = parsed.get("toolUseResult")
+                agent = result.get("agentId") if isinstance(result, dict) else None
+                if isinstance(agent, str) and SAFE_ID.match(agent):
+                    answers[block["tool_use_id"]] = agent
+    for launch in reversed(launches):
+        if launch in answers:
+            return answers[launch]
     return None
 
 
@@ -482,25 +631,75 @@ def command_segments(command: str) -> list[list[str]] | None:
     return [segment for segment in segments if segment]
 
 
-def invokes_guard(words: list[str], subcommand: str | None = None) -> bool:
-    """True for `python3 [harmless flags] <path>/agent-lifecycle-guard.py [subcommand]`, exactly."""
-    if not words or not re.fullmatch(r"python3?(\.\d+)?", os.path.basename(words[0])):
+def git_allowed(words: list[str]) -> bool:
+    """`git [-C <dir>]... <subcommand> <args>` with a subcommand from GIT_SUBCOMMANDS, and nothing else.
+
+    No other global option (`-c`, `--config-env`, `--exec-path`, ...): `git -c alias.x='!cmd' x` runs
+    `cmd`. An alias is not a built-in subcommand, so it is refused with every other name. An argument
+    that makes git run a program (`--exec=`, `--receive-pack=`, `--ext-diff`, `--output=`, ...) is
+    refused, abbreviations included, and `branch` may only list.
+    """
+    rest = words[1:]
+    while rest[:1] == ["-C"]:
+        if len(rest) < 2 or rest[1].startswith("-"):
+            return False
+        rest = rest[2:]
+    if not rest or rest[0] not in GIT_SUBCOMMANDS:
         return False
-    index = 1
-    while index < len(words) and words[index] in HARMLESS_INTERPRETER_FLAGS:
-        index += 1
-    if index >= len(words) or os.path.basename(words[index]) != GUARD_NAME:
-        return False
-    rest = words[index + 1:]
-    return rest == [] if subcommand is None else rest[:1] == [subcommand]
+    subcommand, args = rest[0], rest[1:]
+    for arg in args:
+        if arg.startswith("--") and arg != "--":
+            option = arg[2:].split("=", 1)[0]
+            if option and any(known.startswith(option) for known in GIT_PROGRAM_OPTIONS):
+                return False
+        if "ext::" in arg:
+            return False
+    if subcommand == "branch":
+        return all(arg in BRANCH_LISTING for arg in args)
+    return True
 
 
-def allowed_at_hard_bound(tool: str, tool_input: dict) -> bool:
-    """Past the hard bound only a git command, or this file's `handoff`, may run (POLICY 2).
+def expand_project_dir(word: str, expand: bool) -> str:
+    """`$CLAUDE_PROJECT_DIR` at the start of a word, as the shell would expand it (not when a quote
+    or a backslash in the command may have stopped the shell expanding it)."""
+    project = os.environ.get("CLAUDE_PROJECT_DIR")
+    if expand and project and os.path.isabs(project):
+        for prefix in ("${CLAUDE_PROJECT_DIR}", "$CLAUDE_PROJECT_DIR"):
+            if word == prefix or word.startswith(prefix + "/"):
+                return project + word[len(prefix):]
+    return word
+
+
+def resolve_word(word: str, current: str | None, expand: bool) -> str | None:
+    """The real path a path word names from directory `current`, or None when it cannot be told."""
+    word = expand_project_dir(word, expand)
+    if not word or any(char in word for char in "$~*?[{"):
+        return None
+    if not os.path.isabs(word):
+        if current is None:
+            return None
+        word = os.path.join(current, word)
+    return os.path.realpath(word)
+
+
+def runs_this_guard(words: list[str], current: str | None, expand: bool) -> bool:
+    """`python3 <path> handoff [--base REF]`, where <path> is, resolved from `current`, this very file."""
+    if len(words) < 3 or words[0] != "python3" or words[2] != "handoff":
+        return False
+    tail = words[3:]
+    if tail and not (len(tail) == 2 and tail[0] == "--base" and tail[1] and not tail[1].startswith("-")):
+        return False
+    path = resolve_word(words[1], current, expand)
+    return path is not None and path == os.path.realpath(__file__)
+
+
+def allowed_at_hard_bound(tool: str, tool_input: dict, cwd: object = None) -> bool:
+    """Past the hard bound only a bounded git command, or this file's `handoff`, may run (POLICY 2).
 
     The command is read by `command_segments` (quotes respected, so a commit message may hold any
-    punctuation, and anything it cannot read refused). Every segment must be `git ...`, `cd ...`, or
-    `python3 <path>/agent-lifecycle-guard.py handoff ...`.
+    punctuation, and anything it cannot read refused). Every segment must be `git_allowed`, `cd <dir>`,
+    or `python3 <this file> handoff [--base REF]`; the script is identified by its real path, resolved
+    against the hook's `cwd` and any `cd` before it, and not by its name.
     """
     if tool != "Bash":
         return False
@@ -510,7 +709,20 @@ def allowed_at_hard_bound(tool: str, tool_input: dict) -> bool:
     segments = command_segments(command)
     if not segments:
         return False
-    return all(segment[0] in ("git", "cd") or invokes_guard(segment, "handoff") for segment in segments)
+    current = os.path.realpath(cwd) if isinstance(cwd, str) and os.path.isabs(cwd) else None
+    expand = "'" not in command and "\\" not in command
+    for words in segments:
+        if words[0] == "git":
+            allowed = git_allowed(words)
+        elif words[0] == "cd":
+            allowed = len(words) == 2
+            if allowed:
+                current = resolve_word(words[1], current, expand)
+        else:
+            allowed = runs_this_guard(words, current, expand)
+        if not allowed:
+            return False
+    return True
 
 
 # --------------------------------------------------------------------------- hook events
@@ -523,13 +735,15 @@ def pre_tool_use(payload: dict) -> int:
 
     if agent:
         context = subagent_context(payload)
-        if context is not None and context >= HARD_TOKENS and not allowed_at_hard_bound(tool, tool_input):
+        if context is not None and context >= HARD_TOKENS \
+                and not allowed_at_hard_bound(tool, tool_input, payload.get("cwd")):
             record(payload, "denied", reason="context-hard-bound", agent_id=agent, tool=tool, tokens=context)
             return deny("PreToolUse", (
                 f"Context budget: this agent is at {context:,} tokens, past the hard bound of "
-                f"{HARD_TOKENS:,}. Only a git command or the guard's `handoff` may run now. Commit "
-                f"what is done (`git add` and `git commit`), run `python3 {GUARD_NAME} handoff` from "
-                f"the worktree, and return the brief it prints as your final message. A fresh agent "
+                f"{HARD_TOKENS:,}. Only a git command (add, commit, status, diff, log, show, push, "
+                f"rev-parse, branch; `-C <dir>` is the one global option) or the guard's `handoff` may run "
+                f"now. Commit what is done (`git add` and `git commit`), run `{guard_command()}` from the "
+                f"worktree, and return the brief it prints as your final message. A fresh agent "
                 f"continues from the repository; do not keep working in this one."))
 
     if tool == "SendMessage":
@@ -548,25 +762,34 @@ def send_message(payload: dict, tool_input: dict) -> int:
         return 0
     session = payload.get("session_id")
     ledger = Ledger(ledger_records(ledger_file(session)))
+    transcript = main_transcript(payload)
     by_id = bool(AGENT_ID.match(target))
     agent = target if by_id else ledger.names.get(target)
+    if agent is None and transcript is not None and not by_id:
+        agent = transcript_agent_for_name(transcript, target)  # launched in a way the ledger did not see
     if agent is None:
         return 0  # a teammate, a session, or an agent this ledger never saw: the backstop covers it
-    if agent in ledger.stopped:
+    # Completed only on definitive evidence: a foreground Agent result that said so, or a task
+    # notification in the main transcript. A SubagentStop event is not evidence: another stop hook can veto it.
+    seen, completed = ledger.knows(agent), agent in ledger.stopped
+    if transcript is not None and not completed:
+        in_transcript, completed = transcript_agent_state(transcript, agent)
+        seen = seen or in_transcript
+    if completed:
         record(payload, "denied", reason="completed-agent", agent_id=agent, target=target)
         return deny("PreToolUse", (
             f"{target} has completed its assignment and is single-use (AGENTS.md section 4: one agent, "
             f"one attempt). Sending to it would resume it, carrying its whole earlier context into "
             f"every turn. Dispatch a fresh agent with a concise brief from committed state: in an "
-            f"engine `tools/repair-packet.py <pr> --finding ...`, anywhere `python3 {GUARD_NAME} "
-            f"handoff` from the worktree. Do not paste the old agent's transcript into the brief."))
-    if by_id and not ledger.knows(agent):
+            f"engine `tools/repair-packet.py <pr> --finding ...`, anywhere `{guard_command()}` "
+            f"from the worktree. Do not paste the old agent's transcript into the brief."))
+    if by_id and not seen:
         record(payload, "denied", reason="unknown-agent-id", agent_id=agent, target=target)
         return deny("PreToolUse", (
-            f"{target} was not launched in this session as far as the lifecycle ledger can show, so "
-            f"this cannot show it is still running, and a message to a completed agent resumes it. "
-            f"Message a running agent by the name it was launched with, or dispatch a fresh agent "
-            f"with a concise brief from committed state."))
+            f"{target} was not launched in this session as far as the lifecycle ledger and the session "
+            f"transcript can show, so this cannot show it is still running, and a message to a completed "
+            f"agent resumes it. Message a running agent by the name it was launched with, or dispatch a "
+            f"fresh agent with a concise brief from committed state."))
     return 0
 
 
@@ -580,7 +803,10 @@ def post_tool_use(payload: dict) -> int:
         if agent:
             name = tool_input.get("name")
             record(payload, "launched", agent_id=agent, name=name if isinstance(name, str) and name else None)
-        return 0
+            if find_key(response, "status") == "completed":
+                # A foreground agent returned its final result: the one completion a hook sees for certain.
+                record(payload, "stopped", agent_id=agent, source="agent-result")
+        # No return: inside a subagent the launch is also a tool result the budget applies to.
 
     if tool == "SendMessage":
         resumed = resumed_agent(response)
@@ -590,8 +816,8 @@ def post_tool_use(payload: dict) -> int:
                 f"The runtime resumed agent {resumed}, which had completed: it is now running again "
                 f"with its whole earlier context, which is the cost AGENTS.md section 4 exists to avoid. "
                 f"Stop it (TaskStop), and dispatch a fresh agent with a concise brief from committed "
-                f"state (in an engine `tools/repair-packet.py <pr> --finding ...`, anywhere `python3 "
-                f"{GUARD_NAME} handoff`). Do not message completed agents.")
+                f"state (in an engine `tools/repair-packet.py <pr> --finding ...`, anywhere `{guard_command()}`). "
+                f"Do not message completed agents.")
 
     agent = payload.get("agent_id")
     if isinstance(agent, str) and agent:
@@ -603,15 +829,8 @@ def post_tool_use(payload: dict) -> int:
                 f"Context checkpoint: this agent is at {context:,} tokens, past {CHECKPOINT_TOKENS:,}, where "
                 f"three in four first assignments have finished. Commit what is done now. Keep to your "
                 f"assignment and do not widen it. If the remaining work is separable, return with a handoff "
-                f"brief (`python3 {GUARD_NAME} handoff`) so a fresh agent continues from the repository. "
+                f"brief (`{guard_command()}`) so a fresh agent continues from the repository. "
                 f"At {HARD_TOKENS:,} only git commands and `handoff` will run."))
-    return 0
-
-
-def subagent_stop(payload: dict) -> int:
-    agent = payload.get("agent_id")
-    if isinstance(agent, str) and agent:
-        record(payload, "stopped", agent_id=agent)
     return 0
 
 
@@ -626,10 +845,10 @@ def hook() -> int:
         return 2
     event = payload.get("hook_event_name")
     if not isinstance(event, str):
-        event = ("SubagentStop" if "agent_transcript_path" in payload or "last_assistant_message" in payload
-                 else "PostToolUse" if "tool_response" in payload
+        event = ("PostToolUse" if "tool_response" in payload
                  else "PreToolUse" if "tool_name" in payload else "")
-    handler = {"PreToolUse": pre_tool_use, "PostToolUse": post_tool_use, "SubagentStop": subagent_stop}.get(event)
+    # SubagentStop is deliberately not handled: another stop hook can veto it, so it proves nothing.
+    handler = {"PreToolUse": pre_tool_use, "PostToolUse": post_tool_use}.get(event)
     if handler is None:
         return 0
     try:
@@ -727,12 +946,9 @@ def covers(matcher: object, scope: str | None) -> bool:
     return matcher_covers(matcher, scope)
 
 
-def runs_guard(command: object) -> bool:
-    """True when `command` runs this guard in hook mode: python3, this file as the script, no subcommand."""
-    if not isinstance(command, str):
-        return False
-    segments = command_segments(command)
-    return segments is not None and len(segments) == 1 and invokes_guard(segments[0])
+def expected_command(guard_path: str) -> str:
+    """The one command a registration may carry: double quotes kept, so `$CLAUDE_PROJECT_DIR` expands."""
+    return f'python3 "$CLAUDE_PROJECT_DIR/{guard_path}"'
 
 
 def describe(event: str, scope: str | None) -> str:
@@ -741,27 +957,46 @@ def describe(event: str, scope: str | None) -> str:
     return f"{event} for all tools (matcher \"*\")" if scope == ALL_TOOLS else f"{event} for {scope}"
 
 
-def settings_problems(settings: object) -> list[str]:
-    """One line per registration `REQUIRED_HOOKS` asks for that `settings` does not carry."""
+def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) -> list[str]:
+    """One line per registration `REQUIRED_HOOKS` asks for that `settings` does not carry.
+
+    A registration counts when its matcher covers the scope, its command is exactly
+    `expected_command(guard_path)` (compared as the string it is: parsing it would discard the quotes
+    that decide whether the variable expands), and it is not a background hook, whose decisions
+    Claude Code does not wait for and cannot enforce.
+    """
     if not isinstance(settings, dict):
         return ["the settings are not a JSON object"]
+    command = expected_command(guard_path)
     problems = []
     if settings.get("disableAllHooks") is True:
         problems.append("`disableAllHooks` is true, so no hook runs, this guard included")
     hooks = settings.get("hooks") if isinstance(settings.get("hooks"), dict) else {}
     for event, scope, why in REQUIRED_HOOKS:
         found = False
+        background: list[str] = []
         entries = hooks.get(event) if isinstance(hooks.get(event), list) else []
         for entry in entries:
             if not isinstance(entry, dict) or not covers(entry.get("matcher"), scope):
                 continue
             for hook_ in entry.get("hooks") if isinstance(entry.get("hooks"), list) else []:
-                if isinstance(hook_, dict) and hook_.get("type", "command") == "command" \
-                        and runs_guard(hook_.get("command")):
+                if not isinstance(hook_, dict) or hook_.get("type", "command") != "command" \
+                        or hook_.get("command") != command:
+                    continue
+                keys = [key for key in BACKGROUND_KEYS if hook_.get(key) is True]
+                if keys:
+                    background.extend(keys)
+                else:
                     found = True
-        if not found:
-            problems.append(f"missing: {describe(event, scope)} does not run {GUARD_NAME} in hook mode "
-                            f"(`python3 <path>/{GUARD_NAME}`, no subcommand), needed to {why}")
+        if found:
+            continue
+        if background:
+            problems.append(f"background: {describe(event, scope)} runs {GUARD_NAME} with "
+                            f"\"{background[0]}\": true, so its decisions are not enforced; it must run in the "
+                            f"foreground, needed to {why}")
+        else:
+            problems.append(f"missing: {describe(event, scope)} does not run {GUARD_NAME} as exactly "
+                            f"`{command}`, needed to {why}")
     return problems
 
 
@@ -771,7 +1006,7 @@ def cmd_check_settings(args: argparse.Namespace) -> int:
     except (OSError, ValueError) as error:
         print(f"{args.path}: cannot be read as JSON settings ({error})", file=sys.stderr)
         return 1
-    problems = settings_problems(settings)
+    problems = settings_problems(settings, args.guard_path)
     if problems:
         print(f"{args.path} does not wire {GUARD_NAME}:\n" + "\n".join(f"  {line}" for line in problems))
         return 1
@@ -962,6 +1197,8 @@ def build_parser() -> argparse.ArgumentParser:
     handoff.add_argument("--base", default="origin/main", help="the ref the branch is measured against")
     check = sub.add_parser("check-settings", help="exit 0 iff the settings file wires this guard")
     check.add_argument("path")
+    check.add_argument("--guard-path", default=DEFAULT_GUARD_PATH,
+                       help="where the guard sits under $CLAUDE_PROJECT_DIR (default: the engine's)")
     measure = sub.add_parser("measure", help="telemetry from Claude Code transcripts and the guard ledger")
     measure.add_argument("--projects-dir", default=None, help="default ~/.claude/projects")
     measure.add_argument("--match", default=None, help="regex over project directory names")
