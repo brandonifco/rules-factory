@@ -1521,7 +1521,9 @@ elif argv[:1] == ["api"] and len(argv) > 1:
         # The base commit's provenance.json, which pr-policy.py reads for a retired deletion (#243).
         body = state.get("contents", {}).get(route.split("?ref=", 1)[1])
         if body is None:
-            refuse("no contents at that ref")
+            # What `gh api` prints for a path that is not at that ref. The rails tell a policy the base
+            # never had from a base they could not read by exactly this text (#612).
+            refuse("gh: Not Found (HTTP 404)")
         print(json.dumps(body))
     elif route.startswith(prefix + "commits/") and route.endswith("/status"):
         sha = route[len(prefix + "commits/"):-len("/status")]
