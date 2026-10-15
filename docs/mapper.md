@@ -242,6 +242,17 @@ and a completeness claim over 15% of the map. A section the extent names that *n
 contains is still refused — the invariant asked of the union, so splitting the extent cannot lose
 it.
 
+How a corpus's share is found is the adapter's to say (`Adapter.portion_of`), because the corpus is
+the authority for what it contains. `EcfrXml` claims the extent items that are sections its
+document prints; `UslmXml` claims the items that are USLM identifiers its document prints, a
+section of the Code (`/us/usc/t15/s7704`) or a rule of a court (`Rule 6`)
+([#660](https://github.com/brandonifco/rules-factory/issues/660)), so a statute chapter and a
+regulation can be cited by one map. The default, for a grammar whose corpus is one document, claims
+nothing. Two things are asked of the claims. Every section the extent names is claimed by **some**
+corpus, or the run is refused; and by **no more than one**, or it is refused too, since a section
+walked under two corpora is counted twice. A map citing a **single** corpus divides nothing: its
+adapter is handed the whole extent and refuses a section it does not hold.
+
 | Verdict | What it means |
 |---|---|
 | **reached** | a quote the map makes of the corpus sits in the unit — an entry's `evidence`, or an example quoted in an entry's `ambiguity.bounds`, which is 0031's second fate for a worked example and which `check-locators.py` holds to the corpus the same way ([#393](https://github.com/brandonifco/rules-factory/issues/393)). Found in the unit's own text, never a citation naming it, and a bound never stands in for an entry's own missing quote |

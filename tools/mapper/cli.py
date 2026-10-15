@@ -229,11 +229,17 @@ def _walks(args):
     cited = sorted(protocol_step.cited_corpora(document))
     rejections = inventory_step.load_rejections(
         inventory_step.path_beside(args.map_path), cited)
-    walks, claimed = [], set()
+    walks, claimed, twice = [], set(), set()
     for source in cited:
         adapter = corpus_step.open_corpus(manifest, source, here)
         portion, mine = adapter.portion_of(extent)
+        if len(cited) == 1:
+            # A lone corpus has nothing to divide the extent with, so it is handed all of it and
+            # its own adapter refuses a section it does not hold. Taking its share would drop
+            # that section in silence, and the check of the union below runs only for several.
+            portion, mine = extent, None
         if mine is not None:
+            twice |= claimed & mine
             claimed |= mine
         entries = [entry for entry in document.get("entries") or []
                    if not isinstance(entry, dict)
@@ -250,6 +256,10 @@ def _walks(args):
             raise protocol_step.Refused(
                 f"the extent names {', '.join(orphan)}, which no corpus this map cites contains; "
                 f"an extent over a section that is not there claims coverage of nothing")
+        if twice:
+            raise protocol_step.Refused(
+                f"the extent names {', '.join(sorted(twice))}, which more than one corpus this "
+                f"map cites contains; a section walked under two corpora is counted twice")
     return walks
 
 
