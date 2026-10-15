@@ -1,0 +1,6 @@
+{
+  "expectNotVerified": [
+    "artifact usc-15-release-zip",
+    "rebuild usc-15-ch103-extraction"
+  ]
+}
