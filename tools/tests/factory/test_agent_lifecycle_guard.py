@@ -498,10 +498,73 @@ class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
             with self.subTest(response=response):
                 self.assertBlocked(self.resumed(response))
 
+    def assertBlockedNaming(self, result, name):
+        """A resume the response does not name by id is still a violation; the correction names the target."""
+        code, out, _ = result
+        self.assertEqual(code, 0)
+        self.assertEqual(out["decision"], "block")
+        self.assertIn(name, out["reason"])
+        self.assertIn("TaskStop", out["reason"])
+        self.assertIn("fresh agent", out["reason"])
+
+    # Claude Code 2.1.287 reports a resume in five forms (checked in the installed binary); each, as a
+    # dict, as JSON text, as a list of text blocks and as bare text, is a violation naming the agent it
+    # resumed: by id when the response gives one, else by the name in the message, else by the target.
+    RUNTIME_FORMS = (
+        ("resumedAgentId", WORKER, {"success": True, "message": f"Resuming agent {WORKER}", "resumedAgentId": WORKER}),
+        ("inlineHandback, report not in the message", "implementer",
+         {"success": True, "message": "Resumed agent. Its final report is not in this message.",
+          "inlineHandback": {"displayName": "worker", "content": [{"type": "text", "text": "done"}]}}),
+        ("inlineHandback, report follows the JSON", "implementer",
+         {"success": True, "message": "Resumed agent. Its final report follows this JSON, framed by the harness.",
+          "inlineHandback": {"displayName": "worker"}}),
+        ("Resumed agent X. Result:", "worker",
+         {"success": True, "message": "Resumed agent worker. Result: done", "inlineHandback": {}}),
+        ("Resumed agent X. Result: without inlineHandback", "worker",
+         {"success": True, "message": "Resumed agent worker. Result: done"}),
+        ("was resumed but failed", "worker",
+         {"success": False, "message": 'Agent "worker" was resumed but failed while running: error'}),
+        ("resumed it as an in-process teammate", "worker",
+         {"success": True, "message": 'Teammate "worker" was not running; resumed it as an in-process teammate '
+                                      'and queued your message.'}),
+        ("already waking", "worker",
+         {"success": True, "message": "worker is already waking; message queued for its next tool round."}),
+    )
+
+    def test_every_form_the_runtime_reports_a_resume_in_is_a_violation(self):
+        for form, name, response in self.RUNTIME_FORMS:
+            text = json.dumps(response)
+            for shape, value in (("dict", response), ("json", text), ("blocks", [{"type": "text", "text": text}]),
+                                 ("text", response["message"])):
+                if shape == "text" and "inlineHandback" in form:
+                    continue  # the key is the evidence there; the message alone is the next form's test
+                with self.subTest(form=form, shape=shape):
+                    self.assertBlockedNaming(self.resumed(value), name)
+
+    def test_an_inline_handback_alone_is_a_violation_naming_the_target(self):
+        self.assertBlockedNaming(self.resumed({"success": True, "inlineHandback": {"content": []}}), "implementer")
+
+    def test_the_resume_messages_alone_are_a_violation_without_the_key(self):
+        for message in ("Resumed agent. Its final report is not in this message.",
+                        "Resumed agent. Its final report follows this JSON, framed by the harness."):
+            with self.subTest(message=message):
+                self.assertBlockedNaming(self.resumed(message), "implementer")
+
+    def test_an_inline_handback_without_a_message_is_a_violation_naming_the_target(self):
+        self.assertBlockedNaming(self.resumed({"success": True, "inlineHandback": {"content": []}}), "implementer")
+
+    def test_a_violation_for_a_resume_without_an_id_is_recorded_with_the_target(self):
+        self.assertBlockedNaming(self.resumed({"success": False, "message": 'Agent "worker" was resumed but failed '
+                                                                          'while running: error'}), "worker")
+        (violation,) = [r for r in self.ledger_records() if r["event"] == "violation"]
+        self.assertEqual((violation["reason"], violation["agent_id"]), ("completed-agent-resumed", "worker"))
+
     def test_a_queued_message_is_silent(self):
         for response in ({"success": True, "message": "Message queued for delivery to implementer at its next tool round."},
                          "Message queued for delivery to implementer at its next tool round.",
-                         [{"type": "text", "text": "Message queued for delivery to main"}]):
+                         {"success": True, "message": "Message queued for delivery to worker at its next tool round."},
+                         [{"type": "text", "text": "Message queued for delivery to main"}],
+                         {"success": True, "message": "Message queued for delivery to main"}):
             with self.subTest(response=response):
                 self.assertAllowed(self.resumed(response))
         self.assertFalse(os.path.exists(self.ledger), "a queued message must leave no violation behind")
@@ -703,6 +766,20 @@ class TestTheContextBudget(GuardCase):
     def test_the_latest_turn_is_found_past_a_large_tail_of_other_lines(self):
         payload = self.in_subagent("PreToolUse", WORKER, [HARD], "Read", {"file_path": "/x"}, padding=400_000)
         self.assertDenied(self.hook(payload), f"{HARD:,}")
+
+    def test_a_line_that_cannot_be_decoded_is_skipped_and_the_latest_decodable_usage_decides(self):
+        # 10,000 nested arrays exhaust the JSON decoder's recursion (RecursionError, not ValueError).
+        deep = '{"type":"user","toolUseResult":{"usage":' + "[" * 10_000 + "0" + "]" * 10_000 + "}}\n"
+        payload = self.in_subagent("PreToolUse", WORKER, [HARD], "Write", {"file_path": "/x"})
+        sub = os.path.join(os.path.dirname(payload["transcript_path"]), SESSION, "subagents",
+                           f"agent-{WORKER}.jsonl")
+        with open(sub, "a", encoding="utf-8") as handle:
+            handle.write(deep)
+        code, out, err = self.hook(payload)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny", (out, err))
+        self.assertIn(f"{HARD:,}", out["hookSpecificOutput"]["permissionDecisionReason"])
+        self.assertNotIn("RecursionError", err)
 
     def test_without_a_readable_transcript_there_is_no_verdict_and_no_crash(self):
         gone = self.event("PreToolUse", agent_id=WORKER, tool_name="Read", tool_input={"file_path": "/x"},
@@ -945,6 +1022,24 @@ class TestCheckSettings(GuardCase):
         for _, _, hook_ in self.lifecycle_hooks(settings):
             hook_["timeout"] = 30
         self.assertEqual(self.check(settings).returncode, 0)
+
+    def test_a_timeout_that_is_not_a_positive_number_is_refused_and_named(self):
+        # The runtime's settings schema takes a positive number; True is not one, however Python counts it.
+        for timeout in (-1, 0, -0.5, True, False, "30", None, [30], {"s": 30}, float("nan"), float("inf")):
+            with self.subTest(timeout=timeout):
+                settings = self.load(RAILS_SETTINGS)
+                for _, _, hook_ in self.lifecycle_hooks(settings):
+                    hook_["timeout"] = timeout
+                done = self.check(settings)
+                self.assertEqual(done.returncode, 1, done.stdout)
+                self.assertIn("'timeout'", done.stdout)
+                self.assertIn("positive number", done.stdout)
+        for timeout in (1, 30, 0.5, 600):
+            with self.subTest(timeout=timeout):
+                settings = self.load(RAILS_SETTINGS)
+                for _, _, hook_ in self.lifecycle_hooks(settings):
+                    hook_["timeout"] = timeout
+                self.assertEqual(self.check(settings).returncode, 0)
 
     def test_a_group_may_hold_other_hooks_but_the_guard_hook_is_judged_alone(self):
         # The primary-checkout guard sits in a group of its own with its own keys; only the group and

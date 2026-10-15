@@ -69,7 +69,7 @@ the final review of #677). The guard therefore neither registers for the event n
    `handoff` anywhere).
 2. **A resume the guard could not prevent is detected.** A `PostToolUse` backstop reads the
    `SendMessage` result; if the runtime reports it resumed an agent, the guard records a violation and
-   tells the model to stop that agent and dispatch a fresh one.
+   tells the model to stop that agent and dispatch a fresh one. It recognises every form the runtime reports a resume in (Claude Code 2.1.287), not only the one that carries `resumedAgentId`.
 3. **Within one assignment a subagent has a context budget**, read from its own transcript. At
    `CHECKPOINT_TOKENS` = 210,000 it is told once to commit, keep to its assignment, and return a
    handoff brief if the remaining work is separable. At `HARD_TOKENS` = 350,000 every tool is refused
@@ -137,12 +137,12 @@ them is argued from the record and not from this paragraph. The guard has a `POL
 | A `SubagentStop` event | **Not evidence, not registered**: another stop hook can veto it and the agent keeps running | test: a delivered `SubagentStop` leaves the agent messageable; no shipped settings register it |
 | An agent that stopped without a foreground result or a notification (a notification the runtime did not write, an unreadable transcript) | **Not covered**: it looks running, so a message is allowed and the backstop catches a resume | |
 | A `SendMessage` to an id never launched in the session is refused | **Mechanically enforced**, fail closed | same; test: unknown id denied |
-| A resume the runtime reports is detected and the model told to stop it | **Mechanically detected**, after the fact | `PostToolUse` on `SendMessage` (`resumedAgentId`, or "Resuming agent") |
+| A resume the runtime reports is detected and the model told to stop it | **Mechanically detected**, after the fact | `PostToolUse` on `SendMessage`, for the five forms Claude Code 2.1.287 reports a resume in (a result that is a dict, JSON text or a list of text blocks): the key `resumedAgentId` or `inlineHandback`, or a message that starts `Resuming agent ` or `Resumed agent`, or contains `was resumed but`, `resumed it as an in-process teammate` or ` is already waking; message queued`. `Message queued for delivery to X at its next tool round.` (X running, or main) stays silent |
 | A subagent past 350,000 tokens may only commit and return | **Mechanically enforced** in subagents | `PreToolUse` on every tool, from the subagent's transcript; tests: every bypass found in review (comment, newline, alias `-c`, `$'...'`, `--receive-pack`, `--exec`, `$(...)` in double quotes, heredoc) is refused; `git add -A`, `git commit -m "fix: x > y \| z"`, `git push -u origin branch-name`, `git status --short` and `handoff` of this very file run; a long near-miss is refused quickly |
 | What a permitted git command runs of the repository's own configuration (a commit hook, a configured external diff driver) | **Not covered**: accident prevention, not security | |
 | The ledger is never inside a repository | **Mechanically enforced** | a relative or in-work-tree location is refused before it is created, and a ledger file that is a symbolic link is refused; tests: ledger location, ledger file symlink |
 | A launch inside a subagent is also a tool result the context budget applies to | **Mechanically enforced** | `PostToolUse` of `Agent` records the child launch and then applies the parent's checkpoint check; test: checkpoint note on an `Agent` result |
-| A missing or stale guard is detected | **Mechanically detected** | `factory rails --check` and `agent-doctor.py` (bytes); `agent-doctor.py` via `check-settings` (wiring: exact command and path, foreground, every tool); tests: any key beyond `matcher`/`hooks` on the group and `type`/`command`/`timeout` on the hook (`args`, `if`, `once`, `async`, `shell`, ...) refused and named, another path refused, quoting kept |
+| A missing or stale guard is detected | **Mechanically detected** | `factory rails --check` and `agent-doctor.py` (bytes); `agent-doctor.py` via `check-settings` (wiring: exact command and path, foreground, every tool); tests: any key beyond `matcher`/`hooks` on the group and `type`/`command`/`timeout` on the hook (`args`, `if`, `once`, `async`, `shell`, ...) refused and named, a `timeout` that is not a positive number (a bool, zero, negative, a string, nan) refused and named, another path refused, quoting kept |
 | A handoff refuses uncommitted work | **Mechanically enforced** by the subcommand | `handoff` |
 | The orchestrator does not paste a transcript into the next brief | **Advisory** | `AGENTS.md` §4; no hook sees a brief's content |
 | The checkpoint note at 210,000 tokens | **Advisory** | `additionalContext`; the agent may ignore it |
@@ -151,6 +151,7 @@ them is argued from the record and not from this paragraph. The guard has a `POL
 | Hooks disabled by the user (`disableAllHooks`), user-level settings | **Not covered**; `check-settings` reports `disableAllHooks` in the project file only | |
 | The main session's own context | **Not covered**: `agent_id` is absent there, so no budget applies | |
 | A transcript that is missing or in an unrecognised layout | **No budget verdict**: the guard neither warns nor stops | |
+| A transcript line that cannot be decoded (corrupt, or nested past the JSON decoder's recursion limit) | **Skipped**: the latest decodable usage still decides the budget; test: a 350,000-token turn followed by a 10,000-deep line still denies | |
 | Codex `resume_agent` and `send_input` | **Not covered, unverified**; Codex is used here only as one-shot `codex exec` reviewers, which are not resumed | |
 | A Bash command past the hard bound is matched against a grammar, not parsed or run by any shell model | **Accident prevention, not security**: what a permitted git command runs of the repository's own configuration is not judged. A heredoc or `$(...)` commit message, `cd`, `&&` and a guard path outside the plain characters are refused by design | |
 | An internal error in the guard | **Fails open**, with a message on stderr; malformed stdin, including stdin nested too deeply to parse, fails closed (exit 2) | |

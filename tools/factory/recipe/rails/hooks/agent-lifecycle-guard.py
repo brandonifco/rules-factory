@@ -59,7 +59,11 @@ WHAT IT ENFORCES
     no completion evidence (running): allowed. To "main": allowed.
   * PostToolUse SendMessage whose result says the runtime resumed an agent: recorded as a
     violation, and the model is told to stop that agent and dispatch a fresh one. Detection after
-    the fact, for the case the PreToolUse check could not see.
+    the fact, for the case the PreToolUse check could not see. Claude Code 2.1.287 reports a resume
+    five ways (a result that is a dict, JSON text, or a list of text blocks): the key `resumedAgentId`
+    or `inlineHandback`, or a message that starts `Resuming agent ` or `Resumed agent`, or contains
+    `was resumed but`, `resumed it as an in-process teammate`, or ` is already waking; message queued`.
+    `Message queued for delivery to X at its next tool round.` (X running, or main) is none of them.
   * Context budget, in subagents only (see POLICY 2).
 
 WHAT IT CANNOT SEE
@@ -116,7 +120,8 @@ USAGE
                                                     0 iff PATH wires this guard (REQUIRED_HOOKS): each
                                                     registration is a hook group with only `matcher`
                                                     and `hooks`, holding a hook with only `type`
-                                                    ("command"), `command` and `timeout`, and that
+                                                    ("command"), `command` and `timeout` (a positive
+                                                    number), and that
                                                     command is exactly `python3 "$CLAUDE_PROJECT_DIR/REL"`
                                                     (REL default .claude/hooks/agent-lifecycle-guard.py)
   agent-lifecycle-guard.py measure [--projects-dir DIR] [--match REGEX] [--ledger-dir DIR] [--events]
@@ -381,10 +386,46 @@ def find_key(value: object, key: str, depth: int = 0) -> str | None:
 
 
 RESUMING = re.compile(r"^\s*Resuming agent\s+(\S+)")
+RESUMED = re.compile(r"^\s*Resumed agent(?:\s+(\S+))?")
+QUOTED_BEFORE_RESUMED = re.compile(r'"([^"]+)"\s+was resumed but')
+QUOTED_TEAMMATE = re.compile(r'"([^"]+)"')
+WAKING = re.compile(r"(\S+) is already waking; message queued")
+NAME_EDGES = ".,;:\"'"
+
+
+def resume_in_text(text: str) -> str | None:
+    """The agent a runtime message says it resumed ("" when the message does not name it), else None.
+
+    Claude Code 2.1.287 words a resume five ways, and a message starting `Message queued for delivery`
+    (a running agent, or main) is none of them: `Resuming agent X`; `Resumed agent` (alone, or
+    `Resumed agent X. Result: ...`); `... was resumed but ...` (it failed while running); `... resumed it
+    as an in-process teammate`; `X is already waking; message queued` (another caller resumed it).
+    """
+    match = RESUMING.match(text)
+    if match:
+        return match.group(1).strip(NAME_EDGES)
+    match = RESUMED.match(text)
+    if match:
+        return (match.group(1) or "").strip(NAME_EDGES)
+    if "was resumed but" in text:
+        match = QUOTED_BEFORE_RESUMED.search(text)
+        return match.group(1) if match else ""
+    if "resumed it as an in-process teammate" in text:
+        match = QUOTED_TEAMMATE.search(text)
+        return match.group(1) if match else ""
+    if " is already waking; message queued" in text:
+        match = WAKING.search(text)
+        return match.group(1).strip(NAME_EDGES) if match else ""
+    return None
 
 
 def resumed_agent(value: object, depth: int = 0) -> str | None:
-    """The agent a SendMessage result says the runtime resumed, or None."""
+    """The agent a SendMessage result says the runtime resumed, or None if it reports no resume.
+
+    The result is a dict, JSON text, or a list of text blocks. A resume is `resumedAgentId`, an
+    `inlineHandback` key, or a message in one of the forms of `resume_in_text`. The answer is the agent's
+    id or name, or "" when the result says it resumed one without naming it (test with `is not None`).
+    """
     if depth > 6:
         return None
     if isinstance(value, str):
@@ -394,20 +435,23 @@ def resumed_agent(value: object, depth: int = 0) -> str | None:
                 return resumed_agent(json.loads(stripped), depth + 1)
             except ValueError:
                 pass
-        match = RESUMING.match(value)
-        return match.group(1).rstrip(".,;:") if match else None
+        return resume_in_text(value)
     if isinstance(value, dict):
         direct = value.get("resumedAgentId")
         if isinstance(direct, str) and direct:
             return direct
+        if "inlineHandback" in value:
+            message = value.get("message")
+            named = resume_in_text(message) if isinstance(message, str) else None
+            return named or ""
         for inner in value.values():
             found = resumed_agent(inner, depth + 1)
-            if found:
+            if found is not None:
                 return found
     elif isinstance(value, list):
         for inner in value:
             found = resumed_agent(inner, depth + 1)
-            if found:
+            if found is not None:
                 return found
     return None
 
@@ -442,7 +486,7 @@ def transcript_lines(path: Path, needles: tuple[bytes, ...]):
                     continue
                 try:
                     parsed = json.loads(raw)
-                except ValueError:
+                except Exception:  # noqa: BLE001 -- ValueError, RecursionError, MemoryError: the line is undecodable
                     continue
                 if isinstance(parsed, dict):
                     yield raw, parsed
@@ -582,7 +626,7 @@ def latest_context(path: Path) -> int | None:
                     continue
                 try:
                     found = turn_context(json.loads(raw))
-                except ValueError:
+                except Exception:  # noqa: BLE001 -- ValueError, RecursionError, MemoryError: one undecodable line
                     continue
                 if found is not None:
                     return found
@@ -716,7 +760,10 @@ def post_tool_use(payload: dict) -> int:
 
     if tool == "SendMessage":
         resumed = resumed_agent(response)
-        if resumed:
+        if resumed is not None:
+            if not resumed:  # the result reports a resume without naming it: say who it was sent to
+                target = tool_input.get("to") if isinstance(tool_input.get("to"), str) else tool_input.get("recipient")
+                resumed = target.strip() if isinstance(target, str) and target.strip() else "(unnamed)"
             record(payload, "violation", reason="completed-agent-resumed", agent_id=resumed)
             return block(
                 f"The runtime resumed agent {resumed}, which had completed: it is now running again "
@@ -880,6 +927,12 @@ def unsupported_keys(group: dict, hook_: dict) -> list[str]:
     found += [f"{key!r} on the hook" for key in hook_ if key not in HOOK_KEYS]
     if hook_.get("type") != "command":
         found.append(f"'type' is {hook_.get('type')!r}, not 'command'")
+    if "timeout" in hook_:
+        timeout = hook_["timeout"]
+        # The runtime's settings schema takes a positive number; a bool is not one, nan and inf are not usable.
+        if (isinstance(timeout, bool) or not isinstance(timeout, (int, float))
+                or not math.isfinite(timeout) or timeout <= 0):
+            found.append(f"'timeout' is {timeout!r}, not a positive number")
     return found
 
 
@@ -965,14 +1018,14 @@ def parse_time(text: object) -> datetime.datetime | None:
 
 
 def read_jsonl(path: Path, needles: tuple[bytes, ...]):
-    """Parsed lines of `path` that contain any of `needles`, in file order. Streaming; bad lines skipped."""
+    """Parsed lines of `path` that contain any of `needles`, in file order. Streaming; a line that cannot be decoded for any reason is skipped."""
     try:
         with open(path, "rb") as handle:
             for raw in handle:
                 if any(needle in raw for needle in needles):
                     try:
                         parsed = json.loads(raw)
-                    except ValueError:
+                    except Exception:  # noqa: BLE001 -- ValueError, RecursionError, MemoryError: the line is undecodable
                         continue
                     if isinstance(parsed, dict):
                         yield parsed
