@@ -263,11 +263,19 @@ class TestTheEmittedRails(unittest.TestCase):
     def test_the_settings_run_the_guard_without_an_executable_bit(self):
         # `produce` writes with the default mode, so a hook invoked by path alone would not run.
         settings = json.loads(self.emitted[".claude/settings.json"])
-        (entry,) = settings["hooks"]["PreToolUse"]
-        self.assertEqual(entry["matcher"], "Bash|Edit|Write|NotebookEdit")
-        (hook,) = entry["hooks"]
+        checkout, lifecycle = settings["hooks"]["PreToolUse"]
+        self.assertEqual(checkout["matcher"], "Bash|Edit|Write|NotebookEdit")
+        (hook,) = checkout["hooks"]
         self.assertTrue(hook["command"].startswith("python3 "), hook["command"])
         self.assertIn(".claude/hooks/primary-checkout-guard.py", hook["command"])
+        # The lifecycle guard (#676) is wired on every tool, before and after, and by the same
+        # `python3` invocation: its own `check-settings` is the judge of the rest. Not on SubagentStop:
+        # another stop hook can veto that event, so it is no evidence an agent completed.
+        self.assertEqual(lifecycle["matcher"], "*")
+        self.assertNotIn("SubagentStop", settings["hooks"])
+        for event in ("PreToolUse", "PostToolUse"):
+            commands = [h["command"] for entry in settings["hooks"][event] for h in entry["hooks"]]
+            self.assertIn('python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/agent-lifecycle-guard.py"', commands, event)
 
 
 class TestBytecodeStaysOutOfTheCheckout(unittest.TestCase):
@@ -6469,6 +6477,21 @@ class TestFactoryRails(TestAProducedEngine):
         self.assertIn("a workflow that exists is not a workflow that is required", output)
         self.assertEqual(self.read_state(), before, "--check changed the repository")
 
+    def test_check_reports_a_stale_or_missing_lifecycle_guard(self):
+        # #676: the guard is a managed file, so a copy that is not what the recipe writes, or none, is reported.
+        self.produced()
+        guard = os.path.join(self.out, ".claude", "hooks", "agent-lifecycle-guard.py")
+        with open(guard, "a", encoding="utf-8") as handle:
+            handle.write("# stale\n")
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        row = next(line for line in output.splitlines() if line.startswith("Agent files"))
+        self.assertIn("WRONG", row)
+        self.assertIn(".claude/hooks/agent-lifecycle-guard.py", row)
+        os.remove(guard)
+        row = next(line for line in self.rails("--check")[1].splitlines() if line.startswith("Agent files"))
+        self.assertIn(".claude/hooks/agent-lifecycle-guard.py (absent)", row)
+
     def test_check_names_the_configured_chain(self):
         self.produced()
         code, output = self.rails("--check")
@@ -7062,6 +7085,98 @@ class TestTheDoctor(TestAProducedEngine):
             json.dump({"hooks": {}}, handle)
         done = self.doctor("--local")
         self.assertIn("not wired into .claude/settings.json", done.stdout)
+
+    def test_a_lifecycle_guard_the_settings_do_not_wire_is_reported(self):
+        # The previous recipe of .claude/settings.json wired only the checkout guard (#676): the
+        # guard file is there, the rail bytes are not at issue, and nothing would invoke it.
+        self.produced()
+        path = os.path.join(self.out, ".claude", "settings.json")
+        with open(path, encoding="utf-8") as handle:
+            settings = json.load(handle)
+        del settings["hooks"]["PostToolUse"]
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(settings, handle)
+        done = self.doctor("--local")
+        row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+        self.assertIn("WRONG", row)
+        self.assertIn("PostToolUse", row)
+        self.assertIn("does not wire the agent lifecycle guard", done.stdout)
+
+    def reported_after(self, label, change):
+        self.produced()
+        path = os.path.join(self.out, ".claude", "settings.json")
+        with open(path, encoding="utf-8") as handle:
+            settings = json.load(handle)
+        for entry in settings["hooks"]["PostToolUse"]:
+            for hook in entry["hooks"]:
+                change(hook)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(settings, handle)
+        done = self.doctor("--local")
+        row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+        self.assertIn("WRONG", row)
+        self.assertIn(label, row)
+
+    def neighbour_row(self, entry):
+        self.produced()
+        path = os.path.join(self.out, ".claude", "settings.json")
+        with open(path, encoding="utf-8") as handle:
+            settings = json.load(handle)
+        settings["hooks"]["PreToolUse"].append({"matcher": "Bash", "hooks": [entry]})
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(settings, handle)
+        done = self.doctor("--local")
+        return next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+
+    def test_a_neighbouring_hook_without_a_string_type_makes_the_lifecycle_guard_not_wired(self):
+        # Review of #677 at 5ad72d4: Claude Code rejects a registration it cannot load, so the guard beside it
+        # is not running either. After the review at 4ed9085 the doctor holds the structure that hosts a hook
+        # (here: a `type` that is a string), not the runtime's schema for the rest of a neighbour.
+        row = self.neighbour_row({"command": "true"})
+        self.assertIn("WRONG", row)
+        self.assertIn("hooks.PreToolUse[2].hooks[0]", row)
+
+    def test_a_neighbouring_prompt_hook_leaves_the_lifecycle_guard_ok(self):
+        # Review of #677 at 4ed9085: a `prompt` hook is valid, so it is not a missing registration.
+        self.assertIn("OK", self.neighbour_row({"type": "prompt", "prompt": "Check whether the task is complete."}))
+
+    def test_a_neighbours_wrong_typed_field_is_not_detected_a_documented_limit(self):
+        # The runtime's settings schema is the vendor's and changes per release (decision 0083).
+        self.assertIn("OK", self.neighbour_row({"type": "command", "command": "true", "timeout": "bad"}))
+
+    def test_a_lifecycle_guard_registered_async_is_reported(self):
+        # An asynchronous hook cannot enforce a decision (#676, review of #677).
+        self.reported_after("async", lambda hook: hook.update({"async": True}))
+
+    def test_a_lifecycle_guard_registered_at_another_path_is_reported(self):
+        # A command that is not the installed guard enforces nothing, whatever the script is called.
+        self.reported_after("exactly", lambda hook: hook.update(
+            {"command": 'python3 "$CLAUDE_PROJECT_DIR/elsewhere/agent-lifecycle-guard.py"'}))
+
+    def test_a_wired_lifecycle_guard_is_ok(self):
+        self.produced()
+        done = self.doctor("--local")
+        row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+        self.assertIn("OK", row)
+
+    def test_a_missing_lifecycle_guard_is_reported_by_the_bytes_and_by_the_wiring(self):
+        self.produced()
+        os.remove(os.path.join(self.out, ".claude", "hooks", "agent-lifecycle-guard.py"))
+        done = self.doctor("--local")
+        self.assertIn(".claude/hooks/agent-lifecycle-guard.py (absent)", done.stdout)
+        row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
+        self.assertIn("WRONG", row)
+
+    def test_a_stale_lifecycle_guard_is_reported_by_the_bytes(self):
+        # The file is there and wired, but it is not the guard this factory emits (an older copy, or an edit).
+        self.produced()
+        with open(os.path.join(self.out, ".claude", "hooks", "agent-lifecycle-guard.py"), "a", encoding="utf-8") as handle:
+            handle.write("# stale\n")
+        done = self.doctor("--local")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        rails = next(line for line in done.stdout.splitlines() if line.startswith("Rail files "))
+        self.assertIn("WRONG", rails)
+        self.assertIn(".claude/hooks/agent-lifecycle-guard.py", done.stdout)
 
     def test_a_missing_rail_is_reported(self):
         self.produced()
