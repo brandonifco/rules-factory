@@ -284,10 +284,10 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
         self.assertAllowed(self.send("implementer", transcript=running))
         done = self.main_transcript(lines + [notification(WORKER, "completed")])
         self.assertDenied(self.send("implementer", transcript=done), "completed its assignment")
-        # The latest agent to bear the name is the one a message reaches.
+        # Two agents bore the name and one completed: the runtime picks one, so the message is denied.
         again = self.main_transcript(lines + [notification(WORKER, "completed")]
                                      + launch_lines("toolu_L2", "implementer", OTHER))
-        self.assertAllowed(self.send("implementer", transcript=again))
+        self.assertDenied(self.send("implementer", transcript=again), "completed its assignment")
         # A launch under another name is not this one.
         other_name = self.main_transcript(launch_lines("toolu_L3", "reviewer", WORKER)
                                           + [notification(WORKER, "completed")])
@@ -402,11 +402,35 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
             with self.subTest(other):
                 self.assertAllowed(self.send(other))
 
-    def test_a_name_reused_for_a_fresh_agent_reaches_the_fresh_one(self):
+    def test_a_name_borne_by_several_agents_is_denied_when_any_of_them_completed(self):
+        # Review of #677 at ff51852: the runtime picks one agent under a name, so a completed agent must not
+        # hide behind a later running one (or the other way round).
         self.launched(WORKER, name="implementer")
         self.stopped(WORKER)
         self.launched(OTHER, name="implementer")
-        self.assertAllowed(self.send("implementer"))
+        self.assertDenied(self.send("implementer"), "completed its assignment")
+        self.assertDenied(self.send("Implementer"), "completed its assignment")
+
+    def test_names_the_runtime_keeps_apart_are_resolved_independently(self):
+        # `ß`.lower() is `ß`, `ss` is `ss`: the runtime's lower-casing keeps them apart, casefold() merged them.
+        ledger_case = self.launched
+        ledger_case(WORKER, name="worker-ß")
+        self.stopped(WORKER)
+        ledger_case(OTHER, name="worker-ss")
+        self.assertDenied(self.send("worker-ß"), "completed its assignment")
+        self.assertAllowed(self.send("worker-ss"))
+
+    def test_names_the_runtime_keeps_apart_are_resolved_independently_in_the_main_transcript(self):
+        lines = (launch_lines("toolu_L1", "worker-ß", WORKER) + launch_lines("toolu_L2", "worker-ss", OTHER)
+                 + [notification(WORKER, "completed")])
+        transcript = self.main_transcript(lines)
+        self.assertDenied(self.send("worker-ß", transcript=transcript), "completed its assignment")
+        self.assertAllowed(self.send("worker-ss", transcript=transcript))
+        reversed_ = self.main_transcript(launch_lines("toolu_L1", "worker-ß", WORKER)
+                                         + launch_lines("toolu_L2", "worker-ss", OTHER)
+                                         + [notification(OTHER, "completed")])
+        self.assertAllowed(self.send("worker-ß", transcript=reversed_))
+        self.assertDenied(self.send("worker-ss", transcript=reversed_), "completed its assignment")
 
     def test_main_is_always_allowed(self):
         self.launched(WORKER, name="implementer")
@@ -662,12 +686,12 @@ class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
          {"success": True, "message": "Resumed agent worker. Result: done", "inlineHandback": {}}),
         ("Resumed agent X. Result: without inlineHandback", "worker",
          {"success": True, "message": "Resumed agent worker. Result: done"}),
-        ("was resumed but failed", "worker",
+        ("was resumed but failed", "implementer",
          {"success": False, "message": 'Agent "worker" was resumed but failed while running: error'}),
-        ("resumed it as an in-process teammate", "worker",
+        ("resumed it as an in-process teammate", "implementer",
          {"success": True, "message": 'Teammate "worker" was not running; resumed it as an in-process teammate '
                                       'and queued your message.'}),
-        ("already waking", "worker",
+        ("already waking", "implementer",
          {"success": True, "message": "worker is already waking; message queued for its next tool round."}),
     )
 
@@ -695,9 +719,9 @@ class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
 
     def test_a_violation_for_a_resume_without_an_id_is_recorded_with_the_target(self):
         self.assertBlockedNaming(self.resumed({"success": False, "message": 'Agent "worker" was resumed but failed '
-                                                                          'while running: error'}), "worker")
+                                                                          'while running: error'}), "implementer")
         (violation,) = [r for r in self.ledger_records() if r["event"] == "violation"]
-        self.assertEqual((violation["reason"], violation["agent_id"]), ("completed-agent-resumed", "worker"))
+        self.assertEqual((violation["reason"], violation["agent_id"]), ("completed-agent-resumed", "implementer"))
 
     def test_a_delivery_message_naming_resume_wording_in_the_recipient_is_silent(self):
         # Review of #677 at 4ed9085: the display name of a running agent may hold any text, so a delivery
@@ -722,12 +746,31 @@ class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
         self.assertBlockedNaming(self.resumed({"success": True, "message": text, "inlineHandback": {}}), "implementer")
 
     def test_resume_wording_that_is_not_at_the_start_of_the_message_is_silent(self):
-        for text in ('Delivered. Agent "worker" was resumed but failed while running: error',
-                     'Delivered. Teammate "worker" was not running; resumed it as an in-process teammate',
-                     "Delivered. worker is already waking; message queued for its next tool round.",
-                     "Delivered. Resuming agent a0123456789abcdef", "Delivered. Resumed agent worker."):
+        for text in ("Delivered. Resuming agent a0123456789abcdef", "Delivered. Resumed agent worker."):
             with self.subTest(text=text):
                 self.assertAllowed(self.resumed({"success": True, "message": text}))
+
+    def test_a_resume_is_detected_whatever_the_display_name_holds(self):
+        # Review of #677 at ff51852: a display name keeps its spaces and quotes, and the runtime interpolates it
+        # into these messages. The fixed phrases are the evidence; the name is never matched.
+        for text in ("review agent is already waking; message queued for its next tool round.",
+                     'Agent "say "hi" now" was resumed but failed while running: x',
+                     'Teammate "a b" was not running; resumed it as an in-process teammate with 2 prior messages and '
+                     'queued your message.',
+                     "Delivered. worker is already waking; message queued for its next tool round."):
+            for shape, response in (("text", text), ("dict", {"success": True, "message": text}),
+                                    ("blocks", [{"type": "text", "text": json.dumps({"message": text})}])):
+                with self.subTest(text=text, shape=shape):
+                    self.assertBlockedNaming(self.resumed(response), "implementer")
+
+    def test_a_message_queued_for_any_recipient_is_never_a_resume(self):
+        for name in ("review agent is already waking; message queued for its next tool round.",
+                     'say "hi" was resumed but x', 'a" was not running; resumed it as an in-process teammate', "plain"):
+            for text in (f"Message queued for delivery to {name} at its next tool round.",
+                         f"Message queued for the main session; {name}"):
+                with self.subTest(text=text):
+                    self.assertAllowed(self.resumed({"success": True, "message": text}))
+        self.assertFalse(os.path.exists(self.ledger), "a queued message must leave no violation behind")
 
     def test_a_queued_message_is_silent(self):
         for response in ({"success": True, "message": "Message queued for delivery to implementer at its next tool round."},
@@ -1210,6 +1253,33 @@ class TestCheckSettings(GuardCase):
                 for _, _, hook_ in self.lifecycle_hooks(settings):
                     hook_["timeout"] = timeout
                 self.assertEqual(self.check(settings).returncode, 0)
+
+    def test_a_valid_registration_does_not_hide_an_invalid_one_of_the_guard(self):
+        # Review of #677 at ff51852: a duplicate registration of the guard with a timeout or a type the runtime's
+        # schema refuses made the settings invalid, while a valid one beside it certified them wired.
+        for event in LIFECYCLE_EVENTS:
+            for key, value, shown in (("timeout", "bad", "'timeout'"), ("timeout", -3, "'timeout'"),
+                                      ("type", "not-a-hook-type", "'type'"), ("args", [], "'args'")):
+                with self.subTest(event=event, key=key, value=value):
+                    settings = self.load(RAILS_SETTINGS)
+                    copies = [(entry, hook_) for _, entry, hook_ in self.lifecycle_hooks(settings, (event,))]
+                    self.assertTrue(copies)
+                    entry, hook_ = copies[0]
+                    duplicate = json.loads(json.dumps(entry))
+                    for twin in duplicate["hooks"]:
+                        if twin.get("command") == hook_.get("command"):
+                            twin[key] = value
+                    settings["hooks"][event].append(duplicate)
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn("not wired", done.stdout)
+                    self.assertIn(shown, done.stdout)
+                    self.assertIn(event, done.stdout)
+        # The same duplicate, valid, is still wired.
+        settings = self.load(RAILS_SETTINGS)
+        entry = settings["hooks"]["PostToolUse"][0]
+        settings["hooks"]["PostToolUse"].append(json.loads(json.dumps(entry)))
+        self.assertEqual(self.check(settings).returncode, 0)
 
     def test_a_group_may_hold_other_hooks_but_the_guard_hook_is_judged_alone(self):
         # The primary-checkout guard sits in a group of its own with its own keys; only the group and

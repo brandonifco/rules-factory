@@ -53,20 +53,22 @@ WHAT IT ENFORCES
     transcript `queue-operation` enqueue record whose content starts with `<task-notification>` (task
     id and status from that leading block alone), with any status but `running`. A notification
     quoted anywhere else (a tool_result that read a file or a log, an `<agent-message>`, any other
-    record, any string past the leading block) is not evidence. A name is resolved to an id from the ledger first, else from the main
-    transcript, and two names are equal under `normal_name` (NFKC, control and format characters dropped, casefold, whitespace runs to `-`, trimmed,
-    applied to both sides: a superset of the runtime's equivalence, so a false match denies, which fails safe). To an id-shaped target ("a" + 16 hex) neither the ledger nor the transcript saw
+    record, any string past the leading block) is not evidence. A name is resolved to every id the ledger and the main
+    transcript launched under it, and two names are equal under `normal_name` (NFKC, control and format characters dropped, `str.lower()`, whitespace runs to `-`,
+    trimmed, applied to both sides: the runtime's own equivalence). A name that resolves to more than one launched
+    agent is denied when ANY of them has completed (fail safe: the runtime picks one of them). To an id-shaped target ("a" + 16 hex) neither the ledger nor the transcript saw
     launched: denied, because this cannot show it is running (fail closed). To a launched agent with
     no completion evidence (running): allowed. To "main": allowed.
   * PostToolUse SendMessage whose result says the runtime resumed an agent: recorded as a
     violation, and the model is told to stop that agent and dispatch a fresh one. Detection after
     the fact, for the case the PreToolUse check could not see. Claude Code 2.1.287 reports a resume
     five ways (a result that is a dict, JSON text, or a list of text blocks): the key `resumedAgentId`
-    or `inlineHandback`, or a message that STARTS `Resuming agent `, `Resumed agent`, `Agent "X" was
-    resumed but`, `Teammate "X" was not running; resumed it as an in-process teammate` or `X is already
-    waking; message queued`. A message starting `Message queued for delivery to ` or `Message queued for
-    the main` (X running, or main) is none of them, whatever its recipient's name says, unless the result
-    carries `resumedAgentId` or `inlineHandback`.
+    or `inlineHandback`, or a message that STARTS `Resuming agent ` or `Resumed agent`, or one that does not
+    start `Message queued` and contains the runtime's fixed phrases `" was resumed but`, `" was not running;
+    resumed it as an in-process teammate` or ` is already waking; message queued for its next tool round`.
+    The display name, which may hold spaces and quotes, is never pattern-matched. A message starting
+    `Message queued` (X running, or main) is none of them, whatever its recipient's name says, unless the
+    result carries `resumedAgentId` or `inlineHandback`.
   * Context budget, in subagents only (see POLICY 2).
 
 WHAT IT CANNOT SEE
@@ -311,16 +313,16 @@ def normal_name(name: str) -> str:
     """The one form in which two agent names are compared, on both sides, wherever a name is matched.
 
     NFKC, control and format characters dropped (Unicode categories Cc and Cf, except the few the runtime
-    reads as whitespace), casefold, every run of whitespace turned into one `-`, trimmed. The runtime resolves
+    reads as whitespace), `str.lower()`, every run of whitespace turned into one `-`, trimmed. The runtime resolves
     a SendMessage target to an agent under its own normalisation (read in Claude Code 2.1.287: NFKC; remove
     Cc and Cf characters unless `\\s` matches them; trim; lower case; whitespace runs to `-`), so `WORKER`,
     ` worker `, a full-width `ｗｏｒｋｅｒ`, `worker` followed by a zero-width space, and `review agent` for
-    `review-agent` all reach the agent launched under the plain name. This is deliberately a SUPERSET of
-    that equivalence (casefold folds more than lower case does): a false match here denies a message to an
-    agent that is not the one meant, which fails safe, and a missing match would let a resume through.
+    `review-agent` all reach the agent launched under the plain name. It is the runtime's equivalence, not a wider one:
+    `casefold()` would merge names the runtime keeps apart (`worker-ß`, `worker-ss`), and a completed agent
+    would hide behind a running one. A name that still resolves to several launched agents is judged by
+    `send_message`, which denies when any of them has completed.
     """
-    text = _without_invisible(unicodedata.normalize("NFKC", name))
-    text = _without_invisible(unicodedata.normalize("NFKC", text.casefold()))
+    text = _without_invisible(unicodedata.normalize("NFKC", name)).lower()
     return "-".join(part for part in _RUNTIME_SPACES.split(text) if part)
 
 
@@ -362,7 +364,7 @@ class Ledger:
 
     def __init__(self, records: list[dict]):
         self.launched: dict[str, str | None] = {}   # agent id -> name
-        self.names: dict[str, str] = {}              # normal_name(name) -> id of the latest agent that bore it
+        self.names: dict[str, list[str]] = {}        # normal_name(name) -> ids of every agent that bore it
         self.stopped: set[str] = set()
         self.checkpointed: set[str] = set()
         for record in records:
@@ -374,7 +376,9 @@ class Ledger:
                 name = record.get("name") if isinstance(record.get("name"), str) and record.get("name") else None
                 self.launched[agent] = name
                 if name:
-                    self.names[normal_name(name)] = agent
+                    ids = self.names.setdefault(normal_name(name), [])
+                    if agent not in ids:
+                        ids.append(agent)
             elif event == "stopped":
                 self.stopped.add(agent)
             elif event == "checkpoint":
@@ -438,27 +442,31 @@ def find_key(value: object, key: str, depth: int = 0) -> str | None:
 
 RESUMING = re.compile(r"^\s*Resuming agent\s+(\S+)")
 RESUMED = re.compile(r"^\s*Resumed agent(?:\s+(\S+))?")
-QUOTED_BEFORE_RESUMED = re.compile(r'^\s*Agent "([^"]+)"\s+was resumed but')
-QUOTED_TEAMMATE = re.compile(r'^\s*Teammate "([^"]+)"\s+was not running; resumed it as an in-process teammate')
-WAKING = re.compile(r"^\s*(\S+) is already waking; message queued")
-DELIVERY = re.compile(r"^\s*Message queued for (?:delivery to |the main)")
 QUEUED = re.compile(r"^\s*Message queued")
+# The runtime's own fixed wording around the caller's display name, which is never matched.
+RESUME_PHRASES = (
+    '" was resumed but',
+    '" was not running; resumed it as an in-process teammate',
+    " is already waking; message queued for its next tool round",
+)
 NAME_EDGES = ".,;:\"'"
 
 
 def resume_in_text(text: str) -> str | None:
-    """The agent a runtime message says it resumed ("" when the message does not name it), else None.
+    """"" when a runtime message says it resumed an agent, the agent's id or name when it names one, else None.
 
-    Claude Code 2.1.287 words a resume five ways, each at the START of its message: `Resuming agent X`;
-    `Resumed agent` (alone, or `Resumed agent X. Result: ...`); `Agent "X" was resumed but ...` (it failed
-    while running); `Teammate "X" was not running; resumed it as an in-process teammate ...`;
-    `X is already waking; message queued` (another caller resumed it). A message starting
-    `Message queued for delivery to ` or `Message queued for the main` reports a delivery to a running agent
-    or to main, and the recipient's display name, which is the caller's text, may hold any of those words
-    (a running agent named `worker was resumed but still running`): it is none of the five. Nor is any text
-    that merely contains one of them further in.
+    Claude Code 2.1.287 words a resume five ways. Two START with fixed words: `Resuming agent X` and
+    `Resumed agent` (alone, or `Resumed agent X. Result: ...`). Three put the caller's display name, which
+    may hold spaces and quotes, before or between fixed phrases: `Agent "X" was resumed but ...` (it failed
+    while running), `Teammate "X" was not running; resumed it as an in-process teammate ...`, and
+    `X is already waking; message queued for its next tool round` (another caller resumed it). So the display
+    name is never pattern-matched: a message that does not start with `Message queued` is a resume when it
+    contains one of those fixed phrases or starts with one of the first two. A message that starts
+    `Message queued` reports a delivery to a running agent or to main, and the recipient's name, which is
+    the caller's text, may hold any of the phrases (a running agent named `worker was resumed but still
+    running`): it is no resume.
     """
-    if DELIVERY.match(text):
+    if QUEUED.match(text):
         return None
     match = RESUMING.match(text)
     if match:
@@ -466,16 +474,8 @@ def resume_in_text(text: str) -> str | None:
     match = RESUMED.match(text)
     if match:
         return (match.group(1) or "").strip(NAME_EDGES)
-    match = QUOTED_BEFORE_RESUMED.match(text)
-    if match:
-        return match.group(1)
-    match = QUOTED_TEAMMATE.match(text)
-    if match:
-        return match.group(1)
-    if not QUEUED.match(text):
-        match = WAKING.match(text)
-        if match:
-            return match.group(1).strip(NAME_EDGES)
+    if any(phrase in text for phrase in RESUME_PHRASES):
+        return ""
     return None
 
 
@@ -595,8 +595,8 @@ def transcript_agent_state(path: Path, agent: str) -> tuple[bool, bool]:
     return seen, completed
 
 
-def transcript_agent_for_name(path: Path, name: str) -> str | None:
-    """The id of the latest agent launched with `name`: an Agent tool_use whose input.name is `name` under
+def transcript_agents_for_name(path: Path, name: str) -> list[str]:
+    """The ids of every agent launched with `name`: an Agent tool_use whose input.name is `name` under
     `normal_name`, and the agentId on the toolUseResult of the tool_result that answered it.
 
     The name cannot be a byte needle, because the launch may spell it any way `normal_name` folds, so the
@@ -623,10 +623,11 @@ def transcript_agent_for_name(path: Path, name: str) -> str | None:
                 agent = result.get("agentId") if isinstance(result, dict) else None
                 if isinstance(agent, str) and SAFE_ID.match(agent):
                     answers[block["tool_use_id"]] = agent
-    for launch in reversed(launches):
-        if launch in answers:
-            return answers[launch]
-    return None
+    found: list[str] = []
+    for launch in launches:
+        if launch in answers and answers[launch] not in found:
+            found.append(answers[launch])
+    return found
 
 
 # --------------------------------------------------------------------------- context budget
@@ -773,17 +774,26 @@ def send_message(payload: dict, tool_input: dict) -> int:
     transcript = main_transcript(payload)
     target_name = normal_name(target)
     by_id = bool(AGENT_ID.match(target_name))  # a spelling that folds to an id is treated as one: fails safe
-    agent = target_name if by_id else ledger.names.get(target_name)
-    if agent is None and transcript is not None and not by_id:
-        agent = transcript_agent_for_name(transcript, target)  # launched in a way the ledger did not see
-    if agent is None:
+    agents: list[str] = [target_name] if by_id else list(ledger.names.get(target_name, []))
+    if transcript is not None and not by_id:  # launched in a way the ledger did not see, or under the same name
+        agents += [found for found in transcript_agents_for_name(transcript, target) if found not in agents]
+    if not agents:
         return 0  # a teammate, a session, or an agent this ledger never saw: the backstop covers it
     # Completed only on definitive evidence: a foreground Agent result that said so, or a task
     # notification in the main transcript. A SubagentStop event is not evidence: another stop hook can veto it.
-    seen, completed = ledger.knows(agent), agent in ledger.stopped
-    if transcript is not None and not completed:
-        in_transcript, completed = transcript_agent_state(transcript, agent)
-        seen = seen or in_transcript
+    # A name that several launched agents bear is denied when ANY of them completed: the runtime picks one.
+    seen = False
+    agent = agents[0]
+    completed = False
+    for candidate in agents:
+        candidate_seen, candidate_completed = ledger.knows(candidate), candidate in ledger.stopped
+        if transcript is not None and not candidate_completed:
+            in_transcript, candidate_completed = transcript_agent_state(transcript, candidate)
+            candidate_seen = candidate_seen or in_transcript
+        seen = seen or candidate_seen
+        if candidate_completed:
+            completed, agent = True, candidate
+            break
     if completed:
         record(payload, "denied", reason="completed-agent", agent_id=agent, target=target)
         return deny("PreToolUse", (
@@ -1041,6 +1051,22 @@ def registration_defects(event: str, value: object) -> list[str]:
     return defects
 
 
+def guard_refusals(hooks: dict, event: str, command: str) -> list[str]:
+    """What is wrong with each registration under `hooks.<event>` that runs this guard (its command is
+    `command`), whatever its matcher covers: keys that change how Claude Code runs it, and a type or timeout
+    the runtime's schema refuses."""
+    refused: list[str] = []
+    entries = hooks.get(event) if isinstance(hooks.get(event), list) else []
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            continue
+        for position, hook_ in enumerate(entry.get("hooks") if isinstance(entry.get("hooks"), list) else []):
+            if isinstance(hook_, dict) and hook_.get("command") == command:
+                refused.extend(unsupported_keys(entry, hook_)
+                               + own_defects(f"hooks.{event}[{index}].hooks[{position}]", hook_))
+    return refused
+
+
 def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) -> list[str]:
     """One line per registration `REQUIRED_HOOKS` asks for that `settings` does not carry.
 
@@ -1075,21 +1101,19 @@ def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) ->
     for event, scope, why in REQUIRED_HOOKS:
         if event in unloadable:
             continue
+        # Every registration that runs this guard must be valid: one invalid registration of it means not wired,
+        # whatever else is registered, and wherever its matcher points.
         found = False
-        refused: list[str] = []
+        refused = guard_refusals(hooks, event, command)
         entries = hooks.get(event) if isinstance(hooks.get(event), list) else []
-        for index, entry in enumerate(entries):
+        for entry in entries:
             if not isinstance(entry, dict) or not covers(entry.get("matcher"), scope):
                 continue
-            for position, hook_ in enumerate(entry.get("hooks") if isinstance(entry.get("hooks"), list) else []):
-                if not isinstance(hook_, dict) or hook_.get("command") != command:
-                    continue
-                extra = unsupported_keys(entry, hook_) + own_defects(f"hooks.{event}[{index}].hooks[{position}]", hook_)
-                if extra:
-                    refused.extend(extra)
-                else:
+            for hook_ in entry.get("hooks") if isinstance(entry.get("hooks"), list) else []:
+                if isinstance(hook_, dict) and hook_.get("command") == command and not (
+                        unsupported_keys(entry, hook_) or own_defects("", hook_)):
                     found = True
-        if found:
+        if found and not refused:
             continue
         if refused:
             background = [key for key in BACKGROUND_KEYS if any(f"'{key}'" in item for item in refused)]
@@ -1102,6 +1126,14 @@ def settings_problems(settings: object, guard_path: str = DEFAULT_GUARD_PATH) ->
         else:
             problems.append(f"missing: {describe(event, scope)} does not run {GUARD_NAME} as exactly "
                             f"`{command}`, needed to {why}")
+    for event in hooks:
+        if event in required_events or event in unloadable:
+            continue
+        refused = guard_refusals(hooks, event, command)
+        if refused:
+            problems.append(f"not wired: {event} runs {GUARD_NAME} with {'; '.join(refused)}: every registration "
+                            f"of the guard must be valid (a group has only {', '.join(GROUP_KEYS)}; a hook only "
+                            f"{', '.join(HOOK_KEYS)} with type 'command')")
     return problems
 
 
