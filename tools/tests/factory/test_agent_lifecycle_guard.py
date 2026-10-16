@@ -323,6 +323,54 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
         self.assertAllowed(self.send("implementer"))
         self.assertDenied(self.send("reviewer"), "completed")
 
+    REF = "7cedb0"
+
+    def addressed_transcript(self, running=()):
+        """A main transcript: `worker` launched and completed, a SendMessage result that pinned its ref (as
+        Claude Code 2.1.287 returns `pin: {id, name, ref}`), and any `running` names launched and not stopped."""
+        lines = launch_lines("toolu_L1", "worker", WORKER) + [
+            {"type": "user", "message": {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": "toolu_S1", "content": "queued"}]},
+             "toolUseResult": {"success": True,
+                               "message": "Message queued for delivery to worker at its next tool round.",
+                               "pin": {"id": WORKER, "name": "worker", "ref": self.REF}}},
+            notification(WORKER, "completed")]
+        for index, name in enumerate(running):
+            lines += launch_lines(f"toolu_R{index}", name, f"a{index:016x}")
+        return self.main_transcript(lines)
+
+    def test_the_addresses_the_runtime_resolves_reach_a_completed_agent_and_are_refused(self):
+        # Review of #677 at f3a062c: `name [ref]` and a unique name prefix resolve to the agent in the runtime.
+        transcript = self.addressed_transcript()
+        for to in (f"worker [{self.REF}]",   # the displayed address: by name and by the ref it was pinned with
+                   "worker [abcdef]",        # by name alone, whatever the ref
+                   f"anything [{self.REF}]",  # by ref alone, whatever the name
+                   "wor", "w", "WOR", " Wor "):  # a prefix of the name
+            with self.subTest(to=to):
+                self.assertDenied(self.send(to, transcript=transcript), "completed its assignment")
+
+    def test_a_prefix_or_address_of_running_agents_only_is_allowed(self):
+        transcript = self.addressed_transcript(running=("reviewer", "review-two"))
+        for to in ("rev", "review", "reviewer", "reviewer [abcdef]", "review-t", "nobody", "nobody [abcdef]", "x [123456]"):
+            with self.subTest(to=to):
+                self.assertAllowed(self.send(to, transcript=transcript))
+        self.assertDenied(self.send("wor", transcript=transcript), "completed")
+
+    def test_a_prefix_that_matches_a_completed_agent_through_the_ledger_is_refused(self):
+        self.launched(WORKER, name="implementer")
+        self.stopped(WORKER)
+        self.launched(OTHER, name="reviewer")
+        self.assertDenied(self.send("impl"), "completed its assignment")
+        self.assertDenied(self.send("implementer [abcdef]"), "completed its assignment")
+        self.assertAllowed(self.send("rev"))
+        self.assertAllowed(self.send("nobody"))
+
+    def test_an_unknown_name_that_is_a_prefix_of_nothing_launched_is_allowed(self):
+        transcript = self.addressed_transcript()
+        for to in ("workers", "orker", "other", f"other [abcdef]", "[]", "[7cedb1]", "a0123456789abcdee [7cedb1]"):
+            with self.subTest(to=to):
+                self.assertAllowed(self.send(to, transcript=transcript))
+
     SPELLINGS = ("worker", "WORKER", "Worker", " worker ", "\tworker\n", "ｗｏｒｋｅｒ", "ＷＯＲＫＥＲ",
                  "\u3000worker\u3000",
                  # Review of #677 at 4ed9085: the runtime also removes control and format characters.
@@ -734,11 +782,52 @@ class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
                                     ("blocks", [{"type": "text", "text": json.dumps({"success": True, "message": text})}])):
                 with self.subTest(name=name, shape=shape):
                     self.assertAllowed(self.resumed(response))
-        for text in ("Message queued for the main session; it was resumed but still running.",
-                     "Message queued for the main session at its next tool round."):
-            with self.subTest(text=text):
-                self.assertAllowed(self.resumed({"success": True, "message": text}))
+        text = "Message queued for the main conversation's next turn."
+        self.assertAllowed(self.resumed({"success": True, "message": text}))
         self.assertFalse(os.path.exists(self.ledger), "a queued message must leave no violation behind")
+
+    def test_a_pin_that_names_the_recipient_is_not_runtime_response_text(self):
+        # Review of #677 at f3a062c: Claude Code 2.1.287 returns `pin: {id, name, ref}` with a delivery to a
+        # running agent, and `pin.name` is the recipient's display name. Only `message`, `resumedAgentId`
+        # and `inlineHandback` are read; never `pin` or any other field.
+        text = "Message queued for delivery to Resumed agent at its next tool round."
+        pin = {"id": WORKER, "name": "Resumed agent", "ref": "7cedb0"}
+        for name in ("Resumed agent", "Resuming agent a1", 'x" was resumed but', "worker is already waking; message queued for its next tool round"):
+            pinned = {"id": WORKER, "name": name, "ref": "7cedb0"}
+            for shape, response in (("dict", {"success": True, "message": text, "pin": pinned}),
+                                    ("json", json.dumps({"success": True, "message": text, "pin": pinned})),
+                                    ("blocks", [{"type": "text", "text": json.dumps({"message": text, "pin": pinned})}]),
+                                    ("other field", {"success": True, "message": text, "pin": pin, "note": name})):
+                with self.subTest(name=name, shape=shape):
+                    self.assertAllowed(self.resumed(response))
+        self.assertFalse(os.path.exists(self.ledger), "a delivery must leave no violation behind")
+
+    def test_a_resume_is_reported_whatever_the_recipient_name_begins_with(self):
+        # Review of #677 at f3a062c: `Message queued worker is already waking; ...` starts with the words of a
+        # delivery, because the recipient's display name does. The runtime's closing words are the evidence.
+        suffix = " is already waking; message queued for its next tool round (not delivered if the agent turns out to have been stopped)."
+        for name in ("Message queued worker", "Message queued", "Message queued for delivery to worker", "worker"):
+            text = name + suffix
+            for shape, response in (("text", text), ("dict", {"success": True, "message": text}),
+                                    ("blocks", [{"type": "text", "text": json.dumps({"message": text})}])):
+                with self.subTest(name=name, shape=shape):
+                    self.assertBlockedNaming(self.resumed(response), "implementer")
+
+    def test_every_exact_delivery_form_is_silent(self):
+        # The only exemptions, whole message: a delivery to a running agent, and one to the main conversation.
+        texts = ("Message queued for delivery to implementer at its next tool round.",
+                 "Message queued for delivery to Message queued worker at its next tool round.",
+                 "Message queued for delivery to a b  c at its next tool round.",
+                 'Message queued for delivery to say "hi" was resumed but x at its next tool round.',
+                 "Message queued for delivery to worker is already waking; message queued for its next tool round at its next tool round.",
+                 "Message queued for delivery to Resumed agent at its next tool round.",
+                 "Message queued for the main conversation's next turn.")
+        for text in texts:
+            for shape, response in (("text", text), ("dict", {"success": True, "message": text}),
+                                    ("blocks", [{"type": "text", "text": json.dumps({"success": True, "message": text})}])):
+                with self.subTest(text=text, shape=shape):
+                    self.assertAllowed(self.resumed(response))
+        self.assertFalse(os.path.exists(self.ledger), "a delivery must leave no violation behind")
 
     def test_a_delivery_message_that_carries_the_resume_evidence_is_still_a_violation(self):
         text = "Message queued for delivery to worker at its next tool round."
@@ -766,10 +855,9 @@ class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
     def test_a_message_queued_for_any_recipient_is_never_a_resume(self):
         for name in ("review agent is already waking; message queued for its next tool round.",
                      'say "hi" was resumed but x', 'a" was not running; resumed it as an in-process teammate', "plain"):
-            for text in (f"Message queued for delivery to {name} at its next tool round.",
-                         f"Message queued for the main session; {name}"):
-                with self.subTest(text=text):
-                    self.assertAllowed(self.resumed({"success": True, "message": text}))
+            text = f"Message queued for delivery to {name} at its next tool round."
+            with self.subTest(text=text):
+                self.assertAllowed(self.resumed({"success": True, "message": text}))
         self.assertFalse(os.path.exists(self.ledger), "a queued message must leave no violation behind")
 
     def test_a_queued_message_is_silent(self):

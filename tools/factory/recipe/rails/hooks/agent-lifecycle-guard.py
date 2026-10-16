@@ -442,7 +442,12 @@ def find_key(value: object, key: str, depth: int = 0) -> str | None:
 
 RESUMING = re.compile(r"^\s*Resuming agent\s+(\S+)")
 RESUMED = re.compile(r"^\s*Resumed agent(?:\s+(\S+))?")
-QUEUED = re.compile(r"^\s*Message queued")
+# The two whole messages that report a delivery to an agent that is running, or to the main conversation.
+# The recipient's display name, which is the caller's text, sits inside the first and is never matched.
+DELIVERED = re.compile(r"Message queued for delivery to .* at its next tool round\.|"
+                       r"Message queued for the main conversation's next turn\.", re.DOTALL)
+# How the runtime closes the report that another caller already woke the agent: a resume, whatever precedes it.
+WAKING_END = " is already waking; message queued for its next tool round (not delivered if the agent turns out to have been stopped)."
 # The runtime's own fixed wording around the caller's display name, which is never matched.
 RESUME_PHRASES = (
     '" was resumed but',
@@ -459,14 +464,18 @@ def resume_in_text(text: str) -> str | None:
     `Resumed agent` (alone, or `Resumed agent X. Result: ...`). Three put the caller's display name, which
     may hold spaces and quotes, before or between fixed phrases: `Agent "X" was resumed but ...` (it failed
     while running), `Teammate "X" was not running; resumed it as an in-process teammate ...`, and
-    `X is already waking; message queued for its next tool round` (another caller resumed it). So the display
-    name is never pattern-matched: a message that does not start with `Message queued` is a resume when it
-    contains one of those fixed phrases or starts with one of the first two. A message that starts
-    `Message queued` reports a delivery to a running agent or to main, and the recipient's name, which is
-    the caller's text, may hold any of the phrases (a running agent named `worker was resumed but still
-    running`): it is no resume.
+    `X is already waking; message queued for its next tool round (not delivered if the agent turns out to have
+    been stopped).` (another caller resumed it). So the display name is never pattern-matched. The order is:
+    a message that ENDS with the runtime's closing words of the last form is a resume, even when the display
+    name makes it start `Message queued`; a message that is, whole, one of the two delivery forms
+    (`DELIVERED`: to a running agent, to main) is no resume, whatever the recipient's name says (a running
+    agent named `worker was resumed but still running`); any other message is a resume when it starts with
+    one of the first two forms or contains one of the fixed phrases.
     """
-    if QUEUED.match(text):
+    whole = text.strip()
+    if whole.endswith(WAKING_END):
+        return ""
+    if DELIVERED.fullmatch(whole):
         return None
     match = RESUMING.match(text)
     if match:
@@ -483,8 +492,11 @@ def resumed_agent(value: object, depth: int = 0) -> str | None:
     """The agent a SendMessage result says the runtime resumed, or None if it reports no resume.
 
     The result is a dict, JSON text, or a list of text blocks. A resume is `resumedAgentId`, an
-    `inlineHandback` key, or a message in one of the forms of `resume_in_text`. The answer is the agent's
-    id or name, or "" when the result says it resumed one without naming it (test with `is not None`).
+    `inlineHandback` key, or a `message` string in one of the forms of `resume_in_text`. Nothing else of the
+    response is read: not `pin` (`{id, name, ref}`, whose `name` is the recipient's display name, which the
+    caller chose), and no other field. A text block is entered through its `text` (and a wrapper through its
+    `content`), which carry the response and are not fields of it. The answer is the agent's id or name, or ""
+    when the result says it resumed one without naming it (test with `is not None`).
     """
     if depth > 6:
         return None
@@ -499,12 +511,14 @@ def resumed_agent(value: object, depth: int = 0) -> str | None:
         direct = value.get("resumedAgentId")
         if isinstance(direct, str) and direct:
             return direct
+        message = value.get("message")
+        named = resume_in_text(message) if isinstance(message, str) else None
         if "inlineHandback" in value:
-            message = value.get("message")
-            named = resume_in_text(message) if isinstance(message, str) else None
             return named or ""
-        for inner in value.values():
-            found = resumed_agent(inner, depth + 1)
+        if named is not None:
+            return named
+        for key in ("text", "content"):
+            found = resumed_agent(value.get(key), depth + 1)
             if found is not None:
                 return found
     elif isinstance(value, list):
@@ -595,15 +609,15 @@ def transcript_agent_state(path: Path, agent: str) -> tuple[bool, bool]:
     return seen, completed
 
 
-def transcript_agents_for_name(path: Path, name: str) -> list[str]:
-    """The ids of every agent launched with `name`: an Agent tool_use whose input.name is `name` under
-    `normal_name`, and the agentId on the toolUseResult of the tool_result that answered it.
+def transcript_launched_names(path: Path) -> dict[str, list[str]]:
+    """normal_name(name) -> the ids of every agent launched under it: an Agent tool_use whose input.name
+    folds to that name under `normal_name`, and the agentId on the toolUseResult of the tool_result that
+    answered it.
 
     The name cannot be a byte needle, because the launch may spell it any way `normal_name` folds, so the
     lines parsed are the launches (the tool's own name) and the results that carry an agent id."""
-    wanted = normal_name(name)
     needles = tuple(json.dumps(tool).encode("utf-8") for tool in AGENT_TOOLS) + (b'"agentId"',)
-    launches: list[str] = []
+    launches: list[tuple[str, str]] = []
     answers: dict[str, str] = {}
     for raw, parsed in transcript_lines(path, needles):
         message = parsed.get("message")
@@ -615,19 +629,91 @@ def transcript_agents_for_name(path: Path, name: str) -> list[str]:
                 continue
             if block.get("type") == "tool_use" and block.get("name") in AGENT_TOOLS:
                 given = block.get("input")
-                if (isinstance(given, dict) and isinstance(given.get("name"), str)
-                        and normal_name(given["name"]) == wanted and isinstance(block.get("id"), str)):
-                    launches.append(block["id"])
+                if isinstance(given, dict) and isinstance(given.get("name"), str) and isinstance(block.get("id"), str):
+                    launches.append((block["id"], normal_name(given["name"])))
             elif block.get("type") == "tool_result" and isinstance(block.get("tool_use_id"), str):
                 result = parsed.get("toolUseResult")
                 agent = result.get("agentId") if isinstance(result, dict) else None
                 if isinstance(agent, str) and SAFE_ID.match(agent):
                     answers[block["tool_use_id"]] = agent
+    named: dict[str, list[str]] = {}
+    for launch, name in launches:
+        if launch in answers and answers[launch] not in named.setdefault(name, []):
+            named[name].append(answers[launch])
+    return named
+
+
+def pins_with_ref(value: object, ref: str, depth: int = 0) -> list[str]:
+    """The `id` of every `pin`-shaped object `{id, name, ref}` under `value` whose `ref` is `ref`; JSON text
+    inside a string is entered. Claude Code 2.1.287 returns that pin with a successful SendMessage delivery."""
     found: list[str] = []
-    for launch in launches:
-        if launch in answers and answers[launch] not in found:
-            found.append(answers[launch])
+    if depth > 6:
+        return found
+    if isinstance(value, str):
+        if value.strip()[:1] in "{[" and ref in value:
+            decoded = decode_json(value.strip())
+            if decoded is not UNDECODABLE:
+                found += pins_with_ref(decoded, ref, depth + 1)
+    elif isinstance(value, dict):
+        pinned = value.get("id")
+        if value.get("ref") == ref and isinstance(pinned, str) and SAFE_ID.match(pinned):
+            found.append(pinned)
+        for inner in value.values():
+            found += pins_with_ref(inner, ref, depth + 1)
+    elif isinstance(value, list):
+        for inner in value:
+            found += pins_with_ref(inner, ref, depth + 1)
     return found
+
+
+def transcript_agents_for_ref(path: Path, ref: str) -> list[str]:
+    """The ids the main transcript pinned to `ref`: the `pin.ref` the runtime returned for an agent in an
+    earlier SendMessage result (the `[ref]` of its displayed address `name [ref]`)."""
+    ids: list[str] = []
+    for _, parsed in transcript_lines(path, (ref.encode("utf-8"),)):
+        ids += [found for found in pins_with_ref(parsed, ref) if found not in ids]
+    return ids
+
+
+ADDRESS = re.compile(r"^(.*?)\s*\[([0-9a-f]{6})\]$", re.DOTALL)
+
+
+def resolve_agents(target: str, ledger: "Ledger", transcript: Path | None) -> list[str]:
+    """The ids of the launched agents a SendMessage target can reach, as the runtime resolves it.
+
+    The runtime reads a target as the name of an agent, as the displayed address `name [ref]` (a name and
+    the 6-hex ref it was pinned with), and as a unique prefix of a name (Claude Code 2.1.287). The hook runs
+    before that resolution and cannot tell which it will choose, so this fails safe: the ids of the agents
+    launched under the target's name, under the name of the address, with the ref of the address, and under
+    any name the normalised target is a prefix of. `send_message` denies when any of them has completed.
+    Names come from the ledger and from the main transcript, ids from the transcript's pins.
+    """
+    names: dict[str, list[str]] = {key: list(ids) for key, ids in ledger.names.items()}
+    if transcript is not None:
+        for key, ids in transcript_launched_names(transcript).items():
+            merged = names.setdefault(key, [])
+            merged += [found for found in ids if found not in merged]
+    wanted = [normal_name(target)]
+    address = ADDRESS.match(target)
+    if address and normal_name(address.group(1)):
+        wanted.append(normal_name(address.group(1)))
+    agents: list[str] = []
+
+    def add(ids: list[str]) -> None:
+        agents.extend(found for found in ids if found not in agents)
+
+    for name in wanted:
+        add(names.get(name, []))
+    if address and AGENT_ID.match(wanted[-1]):
+        add([wanted[-1]])  # `<agent id> [ref]`: the id is the address
+    if address and transcript is not None:
+        add(transcript_agents_for_ref(transcript, address.group(2)))
+    prefix = wanted[0]
+    if prefix:
+        for name, ids in names.items():
+            if name.startswith(prefix):
+                add(ids)
+    return agents
 
 
 # --------------------------------------------------------------------------- context budget
@@ -774,9 +860,8 @@ def send_message(payload: dict, tool_input: dict) -> int:
     transcript = main_transcript(payload)
     target_name = normal_name(target)
     by_id = bool(AGENT_ID.match(target_name))  # a spelling that folds to an id is treated as one: fails safe
-    agents: list[str] = [target_name] if by_id else list(ledger.names.get(target_name, []))
-    if transcript is not None and not by_id:  # launched in a way the ledger did not see, or under the same name
-        agents += [found for found in transcript_agents_for_name(transcript, target) if found not in agents]
+    # By name, as a displayed address `name [ref]`, or as a name prefix: see `resolve_agents`.
+    agents: list[str] = [target_name] if by_id else resolve_agents(target, ledger, transcript)
     if not agents:
         return 0  # a teammate, a session, or an agent this ledger never saw: the backstop covers it
     # Completed only on definitive evidence: a foreground Agent result that said so, or a task
