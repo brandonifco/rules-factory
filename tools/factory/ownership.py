@@ -147,8 +147,8 @@ TABLE = (
         "and not otherwise validated) and refuses any key on the guard's own entry that changes how "
         "it runs, in every registration of the guard, and the telemetry; names are compared under the "
         "runtime's normalisation (control and format characters dropped, lower case, whitespace to a hyphen), "
-        "a name several agents bear is refused when any of them completed, as is a `name [ref]` address or a "
-        "name prefix that reaches one, a resume is read from the response's `message`, `resumedAgentId` and "
+        "a name several agents bear is refused when any of them completed, as is a `name [ref]` address that reaches one "
+        "(its ref read from a genuine `SendMessage` pin only; a name is never expanded to longer names), a resume is read from the response's `message`, `resumedAgentId` and "
         "`inlineHandback` alone (never `pin`), from the runtime's fixed phrases and never from the display "
         "name, and stdin is decoded as strict UTF-8"),
     Row(".claude/settings.json", MANAGED, 2,
@@ -409,7 +409,7 @@ RECIPE_SHA256 = {
         3: "2f15d7192c5328376c1cd1836229c699d1d48f90ef35b451e48fa79b7fbef238",
     },
     ".claude/hooks/agent-lifecycle-guard.py": {
-        1: "88465b5a1611e5d72e355cd48e143f5db0bf98bd7cae7dcaac1bd02dfba0af11",
+        1: "dfbff0f8fea22abcb118fa88f90a4aecc831745cf22fa8ef6b3f01eb3a092b39",
     },
     ".claude/settings.json": {
         1: "4d410acd10ba5b6ed2d3c6a016cc2cfde1cf8e621da54424755376a80da30aa0",

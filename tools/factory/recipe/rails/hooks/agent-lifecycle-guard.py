@@ -220,8 +220,7 @@ HARD_BOUND_GIT = re.compile(
 HARD_BOUND_HANDOFF = re.compile(
     rf"[ \t]*python3{_WS}({_PLAIN}){_WS}handoff(?:{_WS}--base{_WS}{_PLAIN})?[ \t]*", re.ASCII)
 
-TAIL_START = 256 * 1024
-TAIL_MAX = 16 * 1024 * 1024
+CHUNK = 256 * 1024
 BRIEF_COMMITS = 40
 BRIEF_FILES = 80
 
@@ -643,35 +642,34 @@ def transcript_launched_names(path: Path) -> dict[str, list[str]]:
     return named
 
 
-def pins_with_ref(value: object, ref: str, depth: int = 0) -> list[str]:
-    """The `id` of every `pin`-shaped object `{id, name, ref}` under `value` whose `ref` is `ref`; JSON text
-    inside a string is entered. Claude Code 2.1.287 returns that pin with a successful SendMessage delivery."""
-    found: list[str] = []
-    if depth > 6:
-        return found
-    if isinstance(value, str):
-        if value.strip()[:1] in "{[" and ref in value:
-            decoded = decode_json(value.strip())
-            if decoded is not UNDECODABLE:
-                found += pins_with_ref(decoded, ref, depth + 1)
-    elif isinstance(value, dict):
-        pinned = value.get("id")
-        if value.get("ref") == ref and isinstance(pinned, str) and SAFE_ID.match(pinned):
-            found.append(pinned)
-        for inner in value.values():
-            found += pins_with_ref(inner, ref, depth + 1)
-    elif isinstance(value, list):
-        for inner in value:
-            found += pins_with_ref(inner, ref, depth + 1)
-    return found
-
-
 def transcript_agents_for_ref(path: Path, ref: str) -> list[str]:
-    """The ids the main transcript pinned to `ref`: the `pin.ref` the runtime returned for an agent in an
-    earlier SendMessage result (the `[ref]` of its displayed address `name [ref]`)."""
+    """The ids the main transcript pinned to `ref`: the `toolUseResult.pin` (`{id, name, ref}`, Claude Code
+    2.1.287) of a user record whose `tool_result` answers a `SendMessage` `tool_use` of this transcript, the
+    `[ref]` of the displayed address `name [ref]`. A pin quoted anywhere else, in a file a tool read or a
+    message someone wrote, is text and not the runtime, and counts for nothing."""
+    sent: set[str] = set()
+    for _, parsed in transcript_lines(path, (b'"SendMessage"',)):
+        message = parsed.get("message")
+        content = message.get("content") if parsed.get("type") == "assistant" and isinstance(message, dict) else None
+        for block in content if isinstance(content, list) else ():
+            if (isinstance(block, dict) and block.get("type") == "tool_use" and block.get("name") == "SendMessage"
+                    and isinstance(block.get("id"), str)):
+                sent.add(block["id"])
     ids: list[str] = []
+    if not sent:
+        return ids
     for _, parsed in transcript_lines(path, (ref.encode("utf-8"),)):
-        ids += [found for found in pins_with_ref(parsed, ref) if found not in ids]
+        result = parsed.get("toolUseResult")
+        pin = result.get("pin") if isinstance(result, dict) else None
+        message = parsed.get("message")
+        content = message.get("content") if parsed.get("type") == "user" and isinstance(message, dict) else None
+        if not isinstance(pin, dict) or not isinstance(content, list):
+            continue
+        answers_send = any(isinstance(block, dict) and block.get("type") == "tool_result"
+                           and block.get("tool_use_id") in sent for block in content)
+        pinned = pin.get("id")
+        if answers_send and pin.get("ref") == ref and isinstance(pinned, str) and SAFE_ID.match(pinned) and pinned not in ids:
+            ids.append(pinned)
     return ids
 
 
@@ -681,12 +679,13 @@ ADDRESS = re.compile(r"^(.*?)\s*\[([0-9a-f]{6})\]$", re.DOTALL)
 def resolve_agents(target: str, ledger: "Ledger", transcript: Path | None) -> list[str]:
     """The ids of the launched agents a SendMessage target can reach, as the runtime resolves it.
 
-    The runtime reads a target as the name of an agent, as the displayed address `name [ref]` (a name and
-    the 6-hex ref it was pinned with), and as a unique prefix of a name (Claude Code 2.1.287). The hook runs
-    before that resolution and cannot tell which it will choose, so this fails safe: the ids of the agents
-    launched under the target's name, under the name of the address, with the ref of the address, and under
-    any name the normalised target is a prefix of. `send_message` denies when any of them has completed.
-    Names come from the ledger and from the main transcript, ids from the transcript's pins.
+    The runtime reads a target as the exact name of an agent and as the displayed address `name [ref]` (a
+    name and the 6-hex ref it was pinned with; Claude Code 2.1.287). It does not send by prefix: it answers
+    `Not sent` and asks the model to confirm the name it means, and the confirmed send names the agent
+    exactly, which is judged here (0083). The hook runs before that resolution and cannot tell whether a
+    `[ref]` or the name will decide, so this fails safe: the ids of the agents launched under the target's
+    name, under the name of the address, and with the ref of the address. `send_message` denies when any of
+    them has completed. Names come from the ledger and from the main transcript, ids from the transcript's pins.
     """
     names: dict[str, list[str]] = {key: list(ids) for key, ids in ledger.names.items()}
     if transcript is not None:
@@ -708,11 +707,6 @@ def resolve_agents(target: str, ledger: "Ledger", transcript: Path | None) -> li
         add([wanted[-1]])  # `<agent id> [ref]`: the id is the address
     if address and transcript is not None:
         add(transcript_agents_for_ref(transcript, address.group(2)))
-    prefix = wanted[0]
-    if prefix:
-        for name, ids in names.items():
-            if name.startswith(prefix):
-                add(ids)
     return agents
 
 
@@ -755,31 +749,40 @@ def turn_context(line: object) -> int | None:
     return total or None
 
 
+def lines_backwards(path: Path):
+    """The lines of `path`, last first, read in chunks from the end: a line is as long as it is, and the
+    file is never held whole."""
+    with open(path, "rb") as handle:
+        position = handle.seek(0, os.SEEK_END)
+        after: list[bytes] = []  # the pieces of the line that starts before the chunk, in file order
+        while position > 0:
+            step = min(CHUNK, position)
+            position -= step
+            handle.seek(position)
+            parts = handle.read(step).split(b"\n")
+            if len(parts) == 1:
+                after.insert(0, parts[0])
+                continue
+            yield parts[-1] + b"".join(after)
+            yield from reversed(parts[1:-1])
+            after = [parts[0]]
+        yield b"".join(after)
+
+
 def latest_context(path: Path) -> int | None:
-    """The context of the subagent's latest turn, from the tail of its transcript; None if unknown."""
+    """The context of the subagent's latest turn, searched from the end of its transcript back to its start,
+    however large the lines after it; None if no turn carries a usage record (no verdict, as documented)."""
     try:
-        size = path.stat().st_size
-        window = TAIL_START
-        while True:
-            start = max(0, size - window)
-            with open(path, "rb") as handle:
-                handle.seek(start)
-                data = handle.read()
-            lines = data.split(b"\n")
-            if start > 0:
-                lines = lines[1:]  # the first line of a tail is usually cut in two
-            for raw in reversed(lines):
-                if b'"usage"' not in raw:
-                    continue
-                decoded = decode_json(raw)
-                found = None if decoded is UNDECODABLE else turn_context(decoded)
-                if found is not None:
-                    return found
-            if start == 0 or window >= TAIL_MAX:
-                return None
-            window *= 4
+        for raw in lines_backwards(path):
+            if b'"usage"' not in raw:
+                continue
+            decoded = decode_json(raw)
+            found = None if decoded is UNDECODABLE else turn_context(decoded)
+            if found is not None:
+                return found
     except OSError:
         return None
+    return None
 
 
 def subagent_context(payload: dict) -> int | None:
@@ -860,7 +863,7 @@ def send_message(payload: dict, tool_input: dict) -> int:
     transcript = main_transcript(payload)
     target_name = normal_name(target)
     by_id = bool(AGENT_ID.match(target_name))  # a spelling that folds to an id is treated as one: fails safe
-    # By name, as a displayed address `name [ref]`, or as a name prefix: see `resolve_agents`.
+    # By name or as a displayed address `name [ref]`: see `resolve_agents`.
     agents: list[str] = [target_name] if by_id else resolve_agents(target, ledger, transcript)
     if not agents:
         return 0  # a teammate, a session, or an agent this ledger never saw: the backstop covers it

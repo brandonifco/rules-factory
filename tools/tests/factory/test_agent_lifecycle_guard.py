@@ -148,6 +148,18 @@ def launch_lines(tool_use_id, name, agent_id, tool="Agent"):
              "toolUseResult": {"isAsync": True, "status": "async_launched", "agentId": agent_id}}]
 
 
+def send_lines(tool_use_id, to, agent_id, ref):
+    """A SendMessage tool_use and the tool_result that answered it, with the pin Claude Code 2.1.287 returns."""
+    return [{"type": "assistant", "message": {"role": "assistant", "content": [
+                {"type": "tool_use", "id": tool_use_id, "name": "SendMessage",
+                 "input": {"to": to, "message": "m"}}]}},
+            {"type": "user", "message": {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": tool_use_id, "content": "queued"}]},
+             "toolUseResult": {"success": True,
+                               "message": f"Message queued for delivery to {to} at its next tool round.",
+                               "pin": {"id": agent_id, "name": to, "ref": ref}}}]
+
+
 def assistant_line(message_id, context, output, stamp="2026-10-15T10:00:00.000Z"):
     # Spread the context over the three fields the runtime reports, as a real turn is.
     return {"type": "assistant", "timestamp": stamp,
@@ -328,48 +340,72 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
     def addressed_transcript(self, running=()):
         """A main transcript: `worker` launched and completed, a SendMessage result that pinned its ref (as
         Claude Code 2.1.287 returns `pin: {id, name, ref}`), and any `running` names launched and not stopped."""
-        lines = launch_lines("toolu_L1", "worker", WORKER) + [
-            {"type": "user", "message": {"role": "user", "content": [
-                {"type": "tool_result", "tool_use_id": "toolu_S1", "content": "queued"}]},
-             "toolUseResult": {"success": True,
-                               "message": "Message queued for delivery to worker at its next tool round.",
-                               "pin": {"id": WORKER, "name": "worker", "ref": self.REF}}},
+        lines = launch_lines("toolu_L1", "worker", WORKER) + send_lines("toolu_S1", "worker", WORKER, self.REF) + [
             notification(WORKER, "completed")]
         for index, name in enumerate(running):
             lines += launch_lines(f"toolu_R{index}", name, f"a{index:016x}")
         return self.main_transcript(lines)
 
     def test_the_addresses_the_runtime_resolves_reach_a_completed_agent_and_are_refused(self):
-        # Review of #677 at f3a062c: `name [ref]` and a unique name prefix resolve to the agent in the runtime.
+        # Review of #677 at f3a062c: `name [ref]` resolves to the agent in the runtime, by name or by ref.
         transcript = self.addressed_transcript()
         for to in (f"worker [{self.REF}]",   # the displayed address: by name and by the ref it was pinned with
                    "worker [abcdef]",        # by name alone, whatever the ref
-                   f"anything [{self.REF}]",  # by ref alone, whatever the name
-                   "wor", "w", "WOR", " Wor "):  # a prefix of the name
+                   f"anything [{self.REF}]"):  # by ref alone, whatever the name
             with self.subTest(to=to):
                 self.assertDenied(self.send(to, transcript=transcript), "completed its assignment")
 
-    def test_a_prefix_or_address_of_running_agents_only_is_allowed(self):
+    def test_an_address_of_running_agents_only_is_allowed(self):
         transcript = self.addressed_transcript(running=("reviewer", "review-two"))
-        for to in ("rev", "review", "reviewer", "reviewer [abcdef]", "review-t", "nobody", "nobody [abcdef]", "x [123456]"):
+        for to in ("reviewer", "reviewer [abcdef]", "nobody", "nobody [abcdef]", "x [123456]"):
             with self.subTest(to=to):
                 self.assertAllowed(self.send(to, transcript=transcript))
-        self.assertDenied(self.send("wor", transcript=transcript), "completed")
 
-    def test_a_prefix_that_matches_a_completed_agent_through_the_ledger_is_refused(self):
+    def test_an_address_that_names_a_completed_agent_through_the_ledger_is_refused(self):
         self.launched(WORKER, name="implementer")
         self.stopped(WORKER)
         self.launched(OTHER, name="reviewer")
-        self.assertDenied(self.send("impl"), "completed its assignment")
         self.assertDenied(self.send("implementer [abcdef]"), "completed its assignment")
-        self.assertAllowed(self.send("rev"))
+        self.assertAllowed(self.send("reviewer"))
         self.assertAllowed(self.send("nobody"))
 
-    def test_an_unknown_name_that_is_a_prefix_of_nothing_launched_is_allowed(self):
-        transcript = self.addressed_transcript()
-        for to in ("workers", "orker", "other", f"other [abcdef]", "[]", "[7cedb1]", "a0123456789abcdee [7cedb1]"):
+    def test_a_name_is_not_expanded_to_longer_names(self):
+        # Review of #677 at 439d127: a running `worker` stayed messageable while a completed `worker-old` existed;
+        # the runtime does not send by prefix (it asks the model to confirm a name), so the guard judges the
+        # exact name only. A prefix of a completed agent's name is allowed, and so is a name nothing bears.
+        transcript = self.main_transcript(
+            launch_lines("toolu_L1", "worker-old", WORKER) + [notification(WORKER, "completed")]
+            + launch_lines("toolu_L2", "worker", OTHER))
+        self.assertAllowed(self.send("worker", transcript=transcript))
+        self.assertAllowed(self.send(f"worker [{self.REF}]", transcript=transcript))
+        self.assertDenied(self.send("worker-old", transcript=transcript), "completed its assignment")
+        for to in ("wor", "w", "worker-o", "workers", "orker", "other", "[]", "[7cedb1]", "a0123456789abcdee [7cedb1]"):
             with self.subTest(to=to):
                 self.assertAllowed(self.send(to, transcript=transcript))
+
+    def test_quoted_pin_json_in_a_tool_result_does_not_resolve_an_address(self):
+        # Review of #677 at 439d127: a pin quoted in a Read result completed a running `reviewer`.
+        quoted = json.dumps({"id": WORKER, "name": "old-worker", "ref": "abcdef"})
+        base = (launch_lines("toolu_L1", "old-worker", WORKER) + [notification(WORKER, "completed")]
+                + launch_lines("toolu_L2", "reviewer", OTHER))
+        genuine = send_lines("toolu_S1", "reviewer", OTHER, "abcdef")
+        read = [{"type": "assistant", "message": {"role": "assistant", "content": [
+                    {"type": "tool_use", "id": "toolu_R1", "name": "Read", "input": {"file_path": "/x"}}]}},
+                {"type": "user", "message": {"role": "user", "content": [
+                    {"type": "tool_result", "tool_use_id": "toolu_R1", "content": quoted}]},
+                 "toolUseResult": {"type": "text", "file": {"filePath": "/x", "content": quoted}}}]
+        spoofed_result = [{"type": "user", "message": {"role": "user", "content": [
+                              {"type": "tool_result", "tool_use_id": "toolu_R1", "content": quoted}]},
+                           "toolUseResult": {"pin": {"id": WORKER, "name": "old-worker", "ref": "abcdef"}}}]
+        self.assertAllowed(self.send("reviewer [abcdef]", transcript=self.main_transcript(base + genuine)))
+        self.assertAllowed(self.send("reviewer [abcdef]", transcript=self.main_transcript(base + genuine + read)))
+        # The quoted pin alone resolves nothing, and neither does a pin on a result that answers no SendMessage.
+        self.assertAllowed(self.send("reviewer [abcdef]", transcript=self.main_transcript(base + read)))
+        self.assertAllowed(self.send("reviewer [abcdef]", transcript=self.main_transcript(base + read + spoofed_result)))
+        # A genuine SendMessage pin of the completed agent does resolve to it.
+        pinned = send_lines("toolu_S2", "old-worker", WORKER, "abcdef")
+        self.assertDenied(self.send("reviewer [abcdef]", transcript=self.main_transcript(base + pinned)),
+                          "completed its assignment")
 
     SPELLINGS = ("worker", "WORKER", "Worker", " worker ", "\tworker\n", "ｗｏｒｋｅｒ", "ＷＯＲＫＥＲ",
                  "\u3000worker\u3000",
@@ -1067,6 +1103,16 @@ class TestTheContextBudget(GuardCase):
     def test_the_latest_turn_is_found_past_a_large_tail_of_other_lines(self):
         payload = self.in_subagent("PreToolUse", WORKER, [HARD], "Read", {"file_path": "/x"}, padding=400_000)
         self.assertDenied(self.hook(payload), f"{HARD:,}")
+
+    def test_a_tool_result_larger_than_any_window_does_not_release_the_hard_bound(self):
+        # Review of #677 at 439d127: a 17 MiB tool result after the 350,000-token turn ended the search.
+        payload = self.in_subagent("PreToolUse", WORKER, [HARD], "Bash",
+                                   {"command": 'python3 -c "print(123)"'}, padding=17 * 1024 * 1024)
+        self.assertDenied(self.hook(payload), f"{HARD:,}")
+        # Only the latest turn decides: a large result after a small turn is not a reason to look further back.
+        many = self.in_subagent("PreToolUse", OTHER, [HARD, 1_000], "Bash",
+                                {"command": 'python3 -c "print(123)"'}, padding=1024 * 1024)
+        self.assertAllowed(self.hook(many))  # the latest turn is small: it is the one that counts
 
     def test_a_line_that_cannot_be_decoded_is_skipped_and_the_latest_decodable_usage_decides(self):
         # 10,000 nested arrays exhaust the JSON decoder's recursion (RecursionError, not ValueError).
