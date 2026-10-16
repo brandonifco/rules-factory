@@ -704,6 +704,62 @@ class TestTheLedgerIsNeverInsideARepository(GuardCase):
             self.assertEqual(handle.read(), "kept\n")
 
 
+    def hard_linked_ledger(self, content=b"kept\n"):
+        """A repository file hard-linked as the session's ledger file: no symbolic link, and the same inode."""
+        repo = self.repository()
+        os.makedirs(self.ledger)
+        victim = os.path.join(repo, "victim")
+        with open(victim, "wb") as handle:
+            handle.write(content)
+        os.link(victim, os.path.join(self.ledger, f"{SESSION}.jsonl"))
+        return repo, victim
+
+    def test_a_hard_linked_ledger_file_is_not_appended_to(self):
+        # Review of #677 at a23f3c2: O_NOFOLLOW and islink() both pass a hard link, so the append reached the repository.
+        repo, victim = self.hard_linked_ledger()
+        before = self.tree(repo)
+        done = self.launch(RULES_AGENT_LEDGER_DIR=self.ledger)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        with open(victim, "rb") as handle:
+            self.assertEqual(handle.read(), b"kept\n", "the guard appended through the hard link")
+        self.assertEqual(self.tree(repo), before)
+        self.assertIn("hard link", done.stderr)
+
+    def test_a_hard_linked_ledger_file_is_not_read(self):
+        # The linked file says `worker` completed; a guard that read it would refuse the send.
+        records = (json.dumps({"event": "launched", "agent_id": WORKER, "name": "worker"}) + "\n"
+                   + json.dumps({"event": "stopped", "agent_id": WORKER}) + "\n").encode("utf-8")
+        _, victim = self.hard_linked_ledger(records)
+        self.assertAllowed(self.send("worker"))
+        with open(victim, "rb") as handle:
+            self.assertEqual(handle.read(), records)
+
+    def test_a_ledger_file_with_a_second_link_is_refused_once_it_has_one(self):
+        # An ordinary ledger file (one link) works; the same file given a second link is then refused.
+        self.assertEqual(self.launch(RULES_AGENT_LEDGER_DIR=self.ledger).returncode, 0)
+        path = os.path.join(self.ledger, f"{SESSION}.jsonl")
+        with open(path, "rb") as handle:
+            before = handle.read()
+        self.assertEqual(before.count(b"\n"), 1)
+        os.link(path, os.path.join(self.tmp, "second-name"))
+        self.assertEqual(self.launch(RULES_AGENT_LEDGER_DIR=self.ledger).returncode, 0)
+        with open(path, "rb") as handle:
+            self.assertEqual(handle.read(), before)
+
+    def test_a_ledger_file_that_is_not_a_regular_file_is_not_written(self):
+        os.makedirs(self.ledger)
+        fifo = os.path.join(self.ledger, f"{SESSION}.jsonl")
+        os.mkfifo(fifo)
+        reader = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)  # so that a write to it neither blocks nor fails
+        try:
+            done = self.launch(RULES_AGENT_LEDGER_DIR=self.ledger)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertEqual(os.read(reader, 4096), b"", "the guard wrote into a file that is not a regular file")
+            self.assertIn("not a regular file", done.stderr)
+        finally:
+            os.close(reader)
+
+
 class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
     def resumed(self, response):
         return self.hook(self.event("PostToolUse", tool_name="SendMessage", tool_use_id="toolu_3",
@@ -1788,6 +1844,75 @@ class TestMeasure(GuardCase):
         done = self.measure(root, "--match", "no-such-project")
         self.assertEqual(done.returncode, 1)
         self.assertIn("matches", done.stderr)
+
+
+    # -- review of #677 at a23f3c2: measure uses the detector the backstop uses -------------------
+
+    def one_agent(self, main_lines, name=None):
+        """A project whose main transcript is `main_lines` and whose one subagent (WORKER) ran 100k, 300k, then
+        320k and 340k after a resume at 10:00:10."""
+        root = os.path.join(self.tmp, "projects")
+        project = os.path.join(root, "-work-rules-engine")
+        agents = os.path.join(project, SESSION, "subagents")
+        self.write(os.path.join(project, f"{SESSION}.jsonl"), main_lines)
+        self.write(os.path.join(agents, f"agent-{WORKER}.jsonl"), [
+            self.line("m1", 100_000, 5, "2026-10-15T10:00:00.000Z"),
+            self.line("m2", 300_000, 10, "2026-10-15T10:00:06.000Z"),
+            self.line("m3", 320_000, 20, "2026-10-15T10:00:20.000Z"),
+            self.line("m4", 340_000, 10, "2026-10-15T10:00:30.000Z")])
+        return root
+
+    def assertOneResumeOfWorker(self, root, stamp="2026-10-15T10:00:10.000Z"):
+        done = self.measure(root, "--events")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        lines = done.stdout.splitlines()
+        for wanted in ("resumed agents: 1", "resume events: 1", "resume events unattributed: 0",
+                       "post-resume turns: 2",
+                       "first-assignment peak context over 1 agents (nearest rank): p50 300000 p75 300000 "
+                       "p90 300000 p95 300000",
+                       f"  {stamp} " + WORKER):
+            self.assertIn(wanted, lines)
+
+    def test_a_resume_record_without_resumedagentid_is_counted_and_its_turns_leave_the_first_peak(self):
+        # The record the review reproduced: the message alone says the runtime resumed the agent.
+        record = {"type": "user", "timestamp": "2026-10-15T10:00:10Z",
+                  "toolUseResult": {"message": f"Resuming agent {WORKER}"}}
+        self.assertOneResumeOfWorker(self.one_agent([record]), stamp="2026-10-15T10:00:10Z")
+
+    def test_an_inline_handback_resume_is_attributed_by_its_pin(self):
+        record = {"type": "user", "timestamp": "2026-10-15T10:00:10.000Z",
+                  "toolUseResult": {"success": True, "inlineHandback": {"content": []},
+                                    "pin": {"id": WORKER, "name": "worker", "ref": "abcdef"}}}
+        self.assertOneResumeOfWorker(self.one_agent([record]))
+
+    def test_a_resume_that_names_no_agent_is_attributed_by_the_send_message_target(self):
+        # `worker was resumed but ...` names no id and carries no pin: the SendMessage that asked is resolved
+        # as the PreToolUse check resolves it, through the launches in the main transcript.
+        lines = launch_lines("toolu_L", "worker", WORKER) + [
+            {"type": "assistant", "message": {"role": "assistant", "content": [
+                {"type": "tool_use", "id": "toolu_S", "name": "SendMessage", "input": {"to": "worker", "message": "m"}}]}},
+            {"type": "user", "timestamp": "2026-10-15T10:00:10.000Z",
+             "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_S", "content": "x"}]},
+             "toolUseResult": {"message": 'Agent "worker" was resumed but failed while running.'}}]
+        self.assertOneResumeOfWorker(self.one_agent(lines))
+
+    def test_a_resume_whose_agent_cannot_be_identified_is_counted_as_unattributed(self):
+        record = {"type": "user", "timestamp": "2026-10-15T10:00:10.000Z",
+                  "toolUseResult": {"message": 'Teammate "nobody" was not running; resumed it as an in-process teammate.'}}
+        done = self.measure(self.one_agent([record]), "--events")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        lines = done.stdout.splitlines()
+        for wanted in ("resumed agents: 0", "resume events: 0", "resume events unattributed: 1",
+                       "post-resume turns: 0", "  2026-10-15T10:00:10.000Z unattributed"):
+            self.assertIn(wanted, lines)
+
+    def test_text_that_only_looks_like_a_resume_in_another_field_is_not_one(self):
+        # A Write result carries the written file's text in `content`: it is not the runtime's message.
+        record = {"type": "user", "timestamp": "2026-10-15T10:00:10.000Z",
+                  "toolUseResult": {"type": "create", "filePath": "/x", "content": f"Resuming agent {WORKER}"}}
+        lines = self.measure(self.one_agent([record])).stdout.splitlines()
+        for wanted in ("resume events: 0", "resume events unattributed: 0", "post-resume turns: 0"):
+            self.assertIn(wanted, lines)
 
 
 if __name__ == "__main__":

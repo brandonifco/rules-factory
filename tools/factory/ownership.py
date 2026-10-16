@@ -409,7 +409,7 @@ RECIPE_SHA256 = {
         3: "2f15d7192c5328376c1cd1836229c699d1d48f90ef35b451e48fa79b7fbef238",
     },
     ".claude/hooks/agent-lifecycle-guard.py": {
-        1: "dfbff0f8fea22abcb118fa88f90a4aecc831745cf22fa8ef6b3f01eb3a092b39",
+        1: "6cc64e91494604524f714f1debe8543079a86b230a73e84d88376f4a1f2d61c1",
     },
     ".claude/settings.json": {
         1: "4d410acd10ba5b6ed2d3c6a016cc2cfde1cf8e621da54424755376a80da30aa0",

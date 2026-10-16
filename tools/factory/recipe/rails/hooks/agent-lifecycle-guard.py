@@ -113,9 +113,11 @@ REFUSED with a message on stderr, before anything is created, and the default lo
 instead; a relative $XDG_STATE_HOME is ignored as the XDG specification says. If the default fails
 too (HOME is itself a work tree), there is no ledger: nothing is written and nothing is read, and
 the PreToolUse SendMessage check fails closed as it does for any id it never saw launched, because
-with no ledger it cannot show an id is running. The ledger FILE is opened with O_NOFOLLOW and a ledger
-file that is a symbolic link is refused (nothing written, nothing read), because a link in an
-otherwise outside directory would carry the append into a repository. Records: launched, stopped
+with no ledger it cannot show an id is running. A ledger FILE is refused (nothing written, nothing read)
+unless it is a regular file with one hard link: checked with lstat before it is opened, and again with
+fstat on the opened descriptor before anything is read or written (it is opened with O_NOFOLLOW and
+O_NONBLOCK). A symbolic link or a hard link in an otherwise outside directory would carry the append into
+a repository, and neither is told from an ordinary file by the directory check. Records: launched, stopped
 (foreground result), checkpoint, denied, violation.
 
 USAGE
@@ -153,6 +155,7 @@ import math
 import os
 import re
 import shlex
+import stat
 import subprocess
 import sys
 import unicodedata
@@ -269,13 +272,34 @@ def ledger_file(session_id: object) -> Path | None:
     if not name.strip("."):
         name = "unknown-session"
     path = directory / f"{name}.jsonl"
-    if os.path.islink(path):
-        # The directory was checked, the file in it was not: a link would carry the append into a
-        # repository. A linked ledger file is no ledger.
-        print(f"{GUARD_NAME}: the ledger file {path} is a symbolic link, so it is refused and nothing is "
+    try:
+        problem = ledger_file_problem(os.lstat(path))
+    except FileNotFoundError:
+        return path  # no ledger yet: the first append creates it
+    except OSError as error:
+        problem = f"cannot be examined ({error.strerror})"
+    if problem:
+        # The directory was checked, the file in it was not: a link, of either kind, would carry the append into
+        # a repository. A ledger file that is not an ordinary file of its own is no ledger.
+        print(f"{GUARD_NAME}: the ledger file {path} {problem}, so it is refused and nothing is "
               f"recorded or read.", file=sys.stderr)
         return None
     return path
+
+
+NO_FOLLOW = getattr(os, "O_NOFOLLOW", 0)
+NO_BLOCK = getattr(os, "O_NONBLOCK", 0)
+
+
+def ledger_file_problem(info: os.stat_result) -> str | None:
+    """Why a ledger file's status disqualifies it, or None for a regular file with one link (see THE LEDGER)."""
+    if stat.S_ISLNK(info.st_mode):
+        return "is a symbolic link"
+    if not stat.S_ISREG(info.st_mode):
+        return "is not a regular file"
+    if info.st_nlink > 1:
+        return f"has {info.st_nlink} hard links"
+    return None
 
 
 def ledger_append(session_id: object, record: dict) -> bool:
@@ -286,8 +310,14 @@ def ledger_append(session_id: object, record: dict) -> bool:
             return False
         path.parent.mkdir(parents=True, exist_ok=True)
         line = (json.dumps(record, sort_keys=True) + "\n").encode("utf-8")
-        descriptor = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        # O_NOFOLLOW refuses a link in the last component, O_NONBLOCK keeps a pipe swapped in after the check
+        # from blocking the hook; the descriptor is examined again before anything is written to it.
+        descriptor = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT | NO_FOLLOW | NO_BLOCK, 0o600)
         try:
+            problem = ledger_file_problem(os.fstat(descriptor))
+            if problem:
+                print(f"{GUARD_NAME}: the ledger file {path} {problem}, so nothing is recorded.", file=sys.stderr)
+                return False
             os.write(descriptor, line)
         finally:
             os.close(descriptor)
@@ -347,7 +377,14 @@ def ledger_records(path: Path | None) -> list[dict]:
     if path is None:
         return []
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        descriptor = os.open(path, os.O_RDONLY | NO_FOLLOW | NO_BLOCK)
+        try:
+            if ledger_file_problem(os.fstat(descriptor)):
+                return []  # not an ordinary file of its own: no ledger (`ledger_file` says why when it matters)
+            with os.fdopen(descriptor, "rb", closefd=False) as handle:
+                text = handle.read().decode("utf-8", errors="replace")
+        finally:
+            os.close(descriptor)
     except OSError:
         return []
     records = []
@@ -1297,14 +1334,68 @@ def transcript_turns(path: Path) -> list[tuple[datetime.datetime | None, int, in
     return [turns[key] for key in order]
 
 
-def resume_events(path: Path) -> list[tuple[str, str]]:
-    """(timestamp text, resumed agent id) for each toolUseResult.resumedAgentId in a transcript."""
+UNATTRIBUTED = ""
+
+# What a transcript line must hold for `resume_events` to look at it: a key or one of the runtime's fixed wordings.
+RESUME_NEEDLES = (b"resumedAgentId", b"inlineHandback", b"Resum", b"was resumed but", b"resumed it as",
+                  b"already waking")
+
+
+def send_message_targets(path: Path) -> dict[str, str]:
+    """The `to` of each SendMessage tool_use of a transcript, by tool_use id."""
+    targets: dict[str, str] = {}
+    for line in read_jsonl(path, (b'"SendMessage"',)):
+        message = line.get("message")
+        content = message.get("content") if line.get("type") == "assistant" and isinstance(message, dict) else None
+        for block in content if isinstance(content, list) else ():
+            if isinstance(block, dict) and block.get("type") == "tool_use" and block.get("name") == "SendMessage":
+                target = block.get("input", {}).get("to") if isinstance(block.get("input"), dict) else None
+                if isinstance(block.get("id"), str) and isinstance(target, str) and target.strip():
+                    targets[block["id"]] = target.strip()
+    return targets
+
+
+def resume_events(path: Path, main: Path | None = None) -> list[tuple[str, str]]:
+    """(timestamp text, resumed agent id) for each resume a transcript records; the id is UNATTRIBUTED when none can be found.
+
+    A resume is what `resumed_agent` finds in the line's `toolUseResult`: the one detector the PostToolUse
+    backstop uses, over the three fields it reads (`resumedAgentId`, `message`, `inlineHandback`) and no other,
+    so the text a tool wrote or read is not mistaken for the runtime's. The agent is, in order: `resumedAgentId`;
+    an id the message names; the `pin.id` of the result; the agent the SendMessage that this result answers was
+    addressed to, resolved as the PreToolUse check resolves it, through the launches of the main transcript
+    (`main`, else this one) and only when that is exactly one agent.
+    """
+    main = main or path
+    targets: dict[str, str] | None = None
     found = []
-    for line in read_jsonl(path, (b"resumedAgentId",)):
+    for line in read_jsonl(path, RESUME_NEEDLES):
         result = line.get("toolUseResult")
-        agent = result.get("resumedAgentId") if isinstance(result, dict) else None
-        if isinstance(agent, str) and agent:
-            found.append((str(line.get("timestamp") or ""), agent))
+        if not isinstance(result, dict):
+            continue
+        named = resumed_agent({key: result[key] for key in ("resumedAgentId", "message", "inlineHandback")
+                               if key in result})
+        if named is None:
+            continue
+        agent = named if named and (AGENT_ID.match(named) or result.get("resumedAgentId") == named) else UNATTRIBUTED
+        pin = result.get("pin")
+        pinned = pin.get("id") if isinstance(pin, dict) else None
+        if not agent and isinstance(pinned, str) and SAFE_ID.match(pinned):
+            agent = pinned
+        if not agent:
+            if targets is None:
+                targets = send_message_targets(path)
+            message = line.get("message")
+            content = message.get("content") if isinstance(message, dict) else None
+            answered = [targets[block["tool_use_id"]] for block in content if isinstance(block, dict)
+                        and block.get("type") == "tool_result" and block.get("tool_use_id") in targets
+                        ] if isinstance(content, list) else []
+            for target in answered or ([named] if named else []):
+                normal = normal_name(target)
+                reached = [normal] if AGENT_ID.match(normal) else resolve_agents(target, Ledger([]), main)
+                if len(reached) == 1:
+                    agent = reached[0]
+                    break
+        found.append((str(line.get("timestamp") or ""), agent))
     return found
 
 
@@ -1336,7 +1427,7 @@ def cmd_measure(args: argparse.Namespace) -> int:
             for transcript in sorted((project / main.stem / "subagents").glob("agent-*.jsonl")):
                 agent_id = transcript.stem[len("agent-"):]
                 agents[f"{project.name}/{main.stem}/{agent_id}"] = transcript
-                for stamp, agent in resume_events(transcript):
+                for stamp, agent in resume_events(transcript, main):
                     events.setdefault(agent, set()).add((stamp, agent))
 
     total = post_tokens = post_turns = reread = 0
@@ -1366,8 +1457,10 @@ def cmd_measure(args: argparse.Namespace) -> int:
             reread += max(0, min(context, before[-1] if before else 0) - first_context)
 
     known = {key.rsplit("/", 1)[1] for key in agents}
+    unattributed = sorted(events.pop(UNATTRIBUTED, ()))
     all_events = sorted((stamp, agent) for agent, stamps in events.items() for stamp, _ in stamps)
     counted = [(stamp, agent) for stamp, agent in all_events if agent in known]
+    listed = sorted(counted + unattributed)
 
     print("rules-agent-lifecycle measure (tokens are input + cache read + cache creation + output per turn)")
     print(f"projects dir: {root}")
@@ -1376,6 +1469,7 @@ def cmd_measure(args: argparse.Namespace) -> int:
     print(f"resumed agents: {len(resumed_agents)}")
     print(f"resume events: {len(counted)}")
     print(f"resume events without a transcript: {len(all_events) - len(counted)}")
+    print(f"resume events unattributed: {len(unattributed)}")
     print(f"tokens in all agent turns: {total}")
     print(f"post-resume turns: {post_turns}")
     print(f"tokens in post-resume turns: {post_tokens} ({pct(post_tokens, total)} of all)")
@@ -1404,12 +1498,12 @@ def cmd_measure(args: argparse.Namespace) -> int:
         print(f"guard violations (a completed agent was resumed anyway): "
               f"{sum(1 for r in records if r.get('event') == 'violation')}")
         print(f"checkpoint notes issued: {sum(1 for r in records if r.get('event') == 'checkpoint')}")
-    if counted and not args.events:
-        print(f"(--events lists the {len(counted)} resume events, one line each)")
-    if counted and args.events:
+    if listed and not args.events:
+        print(f"(--events lists the {len(listed)} resume events, one line each)")
+    if listed and args.events:
         print("resume events (time, agent):")
-        for stamp, agent in counted:
-            print(f"  {stamp or 'untimed'} {agent}")
+        for stamp, agent in listed:
+            print(f"  {stamp or 'untimed'} {agent or 'unattributed'}")
     return 0
 
 
