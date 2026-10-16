@@ -9,6 +9,7 @@ transcripts, and removes it.
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -289,6 +290,29 @@ class TestACompletedAgentIsNotMessaged(GuardCase):
         noise = [{"type": "user", "message": {"role": "user", "content": "x" * 5000}} for _ in range(400)]
         transcript = self.main_transcript(noise + ["{not json " + WORKER, notification(WORKER, "completed")] + noise)
         self.assertDenied(self.send("implementer", transcript=transcript), "completed")
+
+    def test_a_main_transcript_line_nested_past_the_decoder_hides_neither_a_launch_nor_a_notification(self):
+        # 10,000 nested arrays raise RecursionError, not ValueError: the line is not a record, and the launch
+        # before it, the notification after it and a launch between the two are all still read.
+        # Each poisoned line carries the strings every reader of the transcript selects lines by (an agent id,
+        # `"agentId"`, `"SendMessage"`, a ref), so it reaches the decoder rather than being passed over.
+        deep = ('{"agentId":"' + WORKER + '","name":"SendMessage","ref":"' + self.REF + '","type":"queue-operation",'
+                '"operation":"enqueue","content":' + "[" * 10_000)
+        lines = ([deep] + launch_lines("toolu_L1", "implementer", WORKER) + [deep]
+                 + launch_lines("toolu_L2", "reviewer", OTHER) + [deep]
+                 + send_lines("toolu_S1", "implementer", WORKER, self.REF) + [deep]
+                 + [notification(WORKER, "completed")] + [deep])
+        transcript = self.main_transcript(lines)
+        self.assertDenied(self.send("implementer", transcript=transcript), "completed its assignment")
+        self.assertDenied(self.send(WORKER, transcript=transcript), "completed its assignment")
+        self.assertDenied(self.send(f"implementer [{self.REF}]", transcript=transcript), "completed its assignment")
+        self.assertAllowed(self.send("reviewer", transcript=transcript))
+        self.assertAllowed(self.send(OTHER, transcript=transcript))
+
+    def test_the_guard_decodes_json_in_one_place(self):
+        with open(GUARD, encoding="utf-8") as handle:
+            source = handle.read()
+        self.assertEqual(re.findall(r"\bjson\.loads?\(", source), ["json.loads("])
 
     def test_a_name_is_resolved_from_the_main_transcript_when_the_ledger_never_saw_it(self):
         lines = launch_lines("toolu_L1", "implementer", WORKER)
@@ -703,6 +727,19 @@ class TestTheLedgerIsNeverInsideARepository(GuardCase):
         with open(victim, encoding="utf-8") as handle:
             self.assertEqual(handle.read(), "kept\n")
 
+
+    def test_a_ledger_file_that_is_a_symlink_is_not_read(self):
+        # The file behind the link says `worker` completed; a guard that followed the link would refuse the send.
+        records = (json.dumps({"event": "launched", "agent_id": WORKER, "name": "worker"}) + "\n"
+                   + json.dumps({"event": "stopped", "agent_id": WORKER}) + "\n")
+        os.makedirs(self.ledger)
+        victim = os.path.join(self.tmp, "elsewhere.jsonl")
+        with open(victim, "w", encoding="utf-8") as handle:
+            handle.write(records)
+        os.symlink(victim, os.path.join(self.ledger, f"{SESSION}.jsonl"))
+        self.assertAllowed(self.send("worker"))
+        with open(victim, encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), records)
 
     def hard_linked_ledger(self, content=b"kept\n"):
         """A repository file hard-linked as the session's ledger file: no symbolic link, and the same inode."""

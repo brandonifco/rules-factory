@@ -6477,6 +6477,21 @@ class TestFactoryRails(TestAProducedEngine):
         self.assertIn("a workflow that exists is not a workflow that is required", output)
         self.assertEqual(self.read_state(), before, "--check changed the repository")
 
+    def test_check_reports_a_stale_or_missing_lifecycle_guard(self):
+        # #676: the guard is a managed file, so a copy that is not what the recipe writes, or none, is reported.
+        self.produced()
+        guard = os.path.join(self.out, ".claude", "hooks", "agent-lifecycle-guard.py")
+        with open(guard, "a", encoding="utf-8") as handle:
+            handle.write("# stale\n")
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        row = next(line for line in output.splitlines() if line.startswith("Agent files"))
+        self.assertIn("WRONG", row)
+        self.assertIn(".claude/hooks/agent-lifecycle-guard.py", row)
+        os.remove(guard)
+        row = next(line for line in self.rails("--check")[1].splitlines() if line.startswith("Agent files"))
+        self.assertIn(".claude/hooks/agent-lifecycle-guard.py (absent)", row)
+
     def test_check_names_the_configured_chain(self):
         self.produced()
         code, output = self.rails("--check")
@@ -7151,6 +7166,17 @@ class TestTheDoctor(TestAProducedEngine):
         self.assertIn(".claude/hooks/agent-lifecycle-guard.py (absent)", done.stdout)
         row = next(line for line in done.stdout.splitlines() if "Lifecycle guard wired" in line)
         self.assertIn("WRONG", row)
+
+    def test_a_stale_lifecycle_guard_is_reported_by_the_bytes(self):
+        # The file is there and wired, but it is not the guard this factory emits (an older copy, or an edit).
+        self.produced()
+        with open(os.path.join(self.out, ".claude", "hooks", "agent-lifecycle-guard.py"), "a", encoding="utf-8") as handle:
+            handle.write("# stale\n")
+        done = self.doctor("--local")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        rails = next(line for line in done.stdout.splitlines() if line.startswith("Rail files "))
+        self.assertIn("WRONG", rails)
+        self.assertIn(".claude/hooks/agent-lifecycle-guard.py", done.stdout)
 
     def test_a_missing_rail_is_reported(self):
         self.produced()
