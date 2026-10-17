@@ -42,6 +42,8 @@ RAILS = {
     ".claude/agents/repo-steward.md": "agents/repo-steward.md",
     ".claude/agents/rules-conformance.md": "agents/rules-conformance.md",
     ".claude/hooks/primary-checkout-guard.py": "hooks/primary-checkout-guard.py",
+    # A completed subagent is replaced, not resumed, and a subagent has a context budget (0083).
+    ".claude/hooks/agent-lifecycle-guard.py": "hooks/agent-lifecycle-guard.py",
     ".claude/settings.json": "settings.json",
     "tools/dispatch-agent.sh": "tools/dispatch-agent.sh",
     "tools/new-issue.sh": "tools/new-issue.sh",
@@ -68,7 +70,7 @@ RAILS = {
 
 
 # The rails an operator runs. `produce` writes with the default mode, so a script invoked by path
-# would not run; the hook is invoked through `python3` by .claude/settings.json instead and needs
+# would not run; the hooks are invoked through `python3` by .claude/settings.json instead and need
 # no bit, and tools/requeue-gate.py is the same case -- .github/workflows/verdict-requeue.yml runs
 # it through `python3`, and nobody runs it by hand. The mode is not part of a recipe's bytes, so it
 # plays no part in hand-edit detection.

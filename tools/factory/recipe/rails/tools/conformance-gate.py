@@ -195,15 +195,43 @@ def base_bytes(base_oid, path):
         return None
 
 
-def base_patterns(base_oid, prefix):
-    """The `review.semanticPaths` the base commit's policy lists, or None when it cannot be read."""
-    raw = base_bytes(base_oid, f"{prefix}/{POLICY}" if prefix else POLICY) if base_oid else None
+def base_patterns(reviewclass, base_oid, prefix, files):
+    """`(the base's surface, why the change is owed a semantic review or None)`; Undecidable where the base cannot be read.
+
+    The base's files are listed first. The base commit's surface is used in the ordinary case only: it held exactly
+    one policy, at the path the head holds one, with no link on the way to it, and no rename crosses the engine's
+    directory. Every other case is owed a semantic review, whatever its paths are (a moved engine, several policies,
+    a rename in or out): carrying a surface across a relocation kept opening cases, and more review is the safe
+    error (#612). A base that holds no policy at all is a new engine, and the head's stands alone. A listing that
+    failed or is truncated, a base nobody gave or GitHub has never heard of, a policy that cannot be read: none of
+    those is a policy being added, and none can be decided. An undecidable gate fails.
+    """
+    where = f"{prefix}/{POLICY}" if prefix else POLICY
     try:
-        review = json.loads(raw.decode("utf-8")).get("review") or {}
-    except (AttributeError, UnicodeDecodeError, ValueError):
-        return None
-    listed = review.get("semanticPaths") if isinstance(review, dict) else None
-    return listed if isinstance(listed, list) else None
+        blobs = None
+        if base_oid:
+            try:
+                listing = gh("api", f"repos/{{owner}}/{{repo}}/git/trees/{base_oid}?recursive=1", "--jq",
+                             '.truncated, (.tree[] | select(.type != "tree") | [.mode, .path] | @tsv)').splitlines()
+            except Undecidable:
+                listing = []
+            rows = [line.split("\t", 1) for line in listing[1:]]
+            if listing and listing[0] == "false" and all(len(row) == 2 for row in rows):
+                blobs = rows
+        path, owed = reviewclass.base_basis(blobs, where, files)
+        if owed:
+            return [], owed
+        if path is None:
+            return reviewclass.ABSENT, None
+        try:
+            raw = base64.b64decode(gh("api", f"repos/{{owner}}/{{repo}}/contents/{urllib.parse.quote(path)}"
+                                      f"?ref={base_oid}", "--jq", ".content"))
+        except (Undecidable, ValueError, binascii.Error):
+            raw = None
+        return reviewclass.base_surface(raw), None
+    except reviewclass.BasePolicyUnreadable as error:
+        raise Undecidable(f"the base commit's {where} could not be read ({error}), so the semantic surface this pull "
+                  f"request began on is unknown. A diff that empties its own policy would be judged by none. Run the gate again; if the read keeps failing, the pull request's base is the thing to look at")
 
 
 def review_class(files, patterns, prefix, body, base_oid):
@@ -216,7 +244,8 @@ def review_class(files, patterns, prefix, body, base_oid):
     """
     reviewclass = factory_module("reviewclass")
     inside = {}
-    patterns = reviewclass.surface_patterns(patterns, base_patterns(base_oid, prefix))
+    base_surface, owed = base_patterns(reviewclass, base_oid, prefix, files)
+    patterns = reviewclass.surface_patterns(patterns, base_surface)
     for path, change in reviewclass.changes_of(files).items():
         relative = engine_relative(path, prefix)
         if relative is not None:
@@ -236,7 +265,7 @@ def review_class(files, patterns, prefix, body, base_oid):
                 return None
         return base_bytes(base_oid, f"{prefix}/{path}" if prefix else path) if base_oid else None
 
-    result = reviewclass.classify(inside, patterns, read=read, fclass=fclass)
+    result = reviewclass.classify(inside, patterns, read=read, fclass=fclass, owed=owed)
     declared = reviewclass.declared_class(body)
     effective, problems, hints = reviewclass.judge(result, declared)
     return result, effective, problems, hints, declared, reviewclass

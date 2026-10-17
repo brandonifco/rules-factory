@@ -1517,11 +1517,24 @@ elif argv[:1] == ["api"] and len(argv) > 1:
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(state, handle, indent=2)
         print("{}")
-    elif route.startswith(prefix + "contents/") and "?ref=" in route:
-        # The base commit's provenance.json, which pr-policy.py reads for a retired deletion (#243).
-        body = state.get("contents", {}).get(route.split("?ref=", 1)[1])
+    elif route.startswith(("repos/{owner}/{repo}/git/trees/", prefix + "git/trees/")):
+        # The base commit's files, as `--jq '.truncated, (.tree[] | ... | @tsv)'` prints them: the truncation
+        # flag, then `mode<TAB>path`. This base holds no policy (#612), and a provenance.json only where a
+        # check put one there.
+        ref = route.split("/trees/", 1)[1].split("?", 1)[0]
+        print("false")
+        if state.get("contents", {}).get(ref) is not None:
+            print("100644\tprovenance.json")
+    elif route.startswith(("repos/{owner}/{repo}/contents/", prefix + "contents/")) and "?ref=" in route:
+        # A file at the base commit. The rails ask for `repos/{owner}/{repo}/...`, which `gh` expands to the
+        # current repository. pr-policy.py reads the base's provenance.json for a retired deletion (#243), and
+        # every rail that classifies the diff reads the base's agent-policy.json (#612): this base holds no
+        # such policy, which is a path that is not there, and `gh api` says so in exactly these words. The
+        # rails tell a policy the base never had from a base they could not read by that text.
+        wanted, ref = route.split("/contents/", 1)[1].split("?ref=", 1)
+        body = state.get("contents", {}).get(ref) if wanted == "provenance.json" else None
         if body is None:
-            refuse("no contents at that ref")
+            refuse("gh: Not Found (HTTP 404)")
         print(json.dumps(body))
     elif route.startswith(prefix + "commits/") and route.endswith("/status"):
         sha = route[len(prefix + "commits/"):-len("/status")]

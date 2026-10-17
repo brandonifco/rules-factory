@@ -108,7 +108,15 @@ itself. Report completion only after:
   and no pytest cache, and its last step fails when a run added an untracked or ignored file. A
   test that needs files uses its own temporary directory and removes it.
 - **A background agent.** Its brief says to clean up after itself under this section, and the
-  orchestrator runs `repo-hygiene.py --fix` after merging its pull request.
+  orchestrator runs `repo-hygiene.py --fix` after merging its pull request. A background agent is
+  single-use: once it has returned its result it is replaced by a fresh agent with a brief from
+  committed state, never messaged back to life. `.claude/settings.json` runs
+  `tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py`, which refuses a message to a completed
+  agent, tells the orchestrator when the runtime resumed one anyway, and holds a subagent to a
+  context budget (a note at 210,000 tokens, commit-and-return only at 350,000;
+  [0083](docs/decisions/0083-a-completed-subagent-is-replaced-not-resumed-and-a-subagent-has-a-context-budget.md)).
+  It is accident prevention in Claude Code sessions only; a hook the user disables, a message to a
+  name the session never saw launched, and any other harness are not covered.
 
 **Never delete by wildcard in a directory you share.** A session's scratch directory is shared by
 every agent that session starts. On 2026-09-17 an agent tidying up ran `rm -rf <scratchpad>/*`,

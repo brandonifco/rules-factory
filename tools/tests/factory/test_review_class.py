@@ -62,8 +62,8 @@ class Repo:
     def read(self, path, side):
         return (self.base if side == "base" else self.head).get(path)
 
-    def classify(self, changed, patterns=PATTERNS):
-        return rc.classify(changed, patterns, read=self.read, fclass=FCLASS)
+    def classify(self, changed, patterns=PATTERNS, **more):
+        return rc.classify(changed, patterns, read=self.read, fclass=FCLASS, **more)
 
 
 def doc(text):
@@ -187,11 +187,153 @@ class TestEachClass(unittest.TestCase):
         # mutation: judge by the head's patterns alone
         self.assertEqual(rc.surface_patterns([], ["src/**", "tests/**"]), ["src/**", "tests/**"])
         self.assertEqual(rc.surface_patterns(["src/**", "x/**"], ["src/**", "tests/**"]), ["src/**", "x/**", "tests/**"])
-        self.assertEqual(rc.surface_patterns(["src/**"], None), ["src/**"])
+        self.assertEqual(rc.surface_patterns(["src/**"], rc.ABSENT), ["src/**"])
         repo = Repo({HANDLER: b"int F() => 1;"}, {HANDLER: b"int F() => 2;"})
         self.assertEqual(repo.classify({HANDLER: "MODIFIED"}, patterns=[])["class"], rc.DOCUMENTATION)
         self.assertEqual(repo.classify({HANDLER: "MODIFIED"}, patterns=rc.surface_patterns([], PATTERNS))["class"],
                          rc.SEMANTIC_IMPLEMENTATION)
+
+    def test_an_unreadable_base_policy_is_not_a_new_one(self):
+        # #612: a base read that failed was `None`, which is also what a policy being added gave, so a diff
+        # that emptied `semanticPaths` while the read failed was judged by no surface at all.
+        # mutation: take an unreadable base for an absent one
+        with self.assertRaises(rc.BasePolicyUnreadable):
+            rc.surface_patterns([], None)
+        with self.assertRaises(rc.BasePolicyUnreadable):
+            rc.surface_patterns(["src/**"], "not a list")
+        # A policy that is new is the one thing the head's stands alone for, and it is said, not defaulted.
+        self.assertEqual(rc.surface_patterns([], rc.ABSENT), [])
+        self.assertEqual(rc.surface_patterns(["src/**"], rc.ABSENT), ["src/**"])
+
+    def test_a_base_policy_is_read_from_its_bytes_and_every_failure_to_read_it_is_unreadable(self):
+        # mutation: let a policy that does not parse, or lists its surface as anything but a list, read as empty
+        def policy(review):
+            return json.dumps({"review": review}).encode()
+
+        self.assertEqual(rc.base_surface(policy({"semanticPaths": ["src/**"]})), ["src/**"])
+        self.assertEqual(rc.base_surface(policy({"semanticPaths": []})), [], "a base that listed none had none")
+        self.assertEqual(rc.base_surface(policy({})), [])
+        self.assertIs(rc.base_surface(rc.ABSENT), rc.ABSENT)
+        for unreadable in (None, b"", b"{", b"\xff\xfe", b"[]", b"null", policy("src/**"),
+                           policy({"semanticPaths": "src/**"}), policy({"semanticPaths": {"src": 1}})):
+            with self.subTest(unreadable=unreadable):
+                with self.assertRaises(rc.BasePolicyUnreadable):
+                    rc.base_surface(unreadable)
+
+    def test_every_entry_of_a_base_policy_s_surface_is_a_pattern(self):
+        # #612 (review): the container was checked and its entries were not, so `[42, {"src": "**"}]` was a
+        # readable surface that listed nothing. mutation: drop the check on the entries
+        def policy(listed):
+            return json.dumps({"review": {"semanticPaths": listed}}).encode()
+
+        self.assertEqual(rc.base_surface(policy(["src/**", "tests/**"])), ["src/**", "tests/**"])
+        for bad in ([42, {"src": "**"}], ["src/**", 7], ["src/**", None], ["src/**", ""], ["src/**", ["src/**"]]):
+            with self.subTest(bad=bad):
+                with self.assertRaises(rc.BasePolicyUnreadable):
+                    rc.base_surface(policy(bad))
+
+    def test_a_field_that_is_present_and_invalid_is_not_an_empty_one(self):
+        # #612 (review): `{"review": null}` and `{"review": {"semanticPaths": null}}` read as an empty surface. Only a
+        # field that is not there lists nothing. mutation: take a null for an absent field
+        def doc(value):
+            return json.dumps(value).encode()
+
+        self.assertEqual(rc.base_surface(doc({})), [], "no review section: nothing was listed")
+        self.assertEqual(rc.base_surface(doc({"review": {}})), [], "no semanticPaths: nothing was listed")
+        for bad in ({"review": None}, {"review": []}, {"review": "src/**"}, {"review": {"semanticPaths": None}},
+                    {"review": {"semanticPaths": "src/**"}}):
+            with self.subTest(bad=bad):
+                with self.assertRaises(rc.BasePolicyUnreadable):
+                    rc.base_surface(doc(bad))
+
+    POLICY = ".github/agent-policy.json"
+
+    def basis(self, blobs, head="engine/.github/agent-policy.json", files=()):
+        return rc.base_basis(blobs, head, list(files))
+
+    def test_the_base_surface_is_used_only_in_the_ordinary_case(self):
+        # #612 (review): carrying a surface across a relocation kept opening cases (a rename out of the old
+        # engine, a destination policy that is empty, a link that hides the policy). The base surface is used when
+        # the base held one policy, at the head's path, with no link on the way to it; every other case is owed review.
+        # mutation: read the base's policy wherever it is
+        head = f"engine/{self.POLICY}"
+        ordinary = [("100644", head), ("100644", "engine/src/H.cs"), ("100644", "README.md")]
+        self.assertEqual(self.basis(ordinary), (head, None))
+        self.assertEqual(rc.base_basis([("100644", self.POLICY)], self.POLICY, []), (self.POLICY, None))
+        self.assertEqual(self.basis([("100644", "README.md")]), (None, None), "no policy anywhere: a new engine")
+        for label, blobs in (("the policy moved", [("100644", f"old/{self.POLICY}")]),
+                             ("the base held several", ordinary + [("100644", f"other/{self.POLICY}")]),
+                             ("the base held the head's and one at the root", ordinary + [("100644", self.POLICY)])):
+            with self.subTest(label):
+                path, owed = self.basis(blobs)
+                self.assertIsNone(path)
+                self.assertTrue(owed, "and the change owes a semantic review, with the reason")
+
+    def test_a_link_anywhere_on_the_way_to_the_policy_owes_review(self):
+        # #612 (review): `engine/.github` a link to `config` left a listing with no policy in it, which read as a new one.
+        # mutation: look for a link at the policy file only
+        head = f"engine/{self.POLICY}"
+        for label, blobs in (("the file", [("120000", head)]),
+                             ("the .github directory", [("120000", "engine/.github"), ("100644", "engine/config/agent-policy.json")]),
+                             ("the engine directory", [("120000", "engine")]),
+                             ("a submodule where the engine is", [("160000", "engine")])):
+            with self.subTest(label):
+                path, owed = self.basis(blobs)
+                self.assertIsNone(path)
+                self.assertTrue(owed)
+        self.assertEqual(self.basis([("120000", "elsewhere"), ("100644", head)]), (head, None),
+                         "a link off the path is nothing to the policy")
+        with self.assertRaises(rc.BasePolicyUnreadable):
+            self.basis(None)
+
+    def test_a_link_or_submodule_anywhere_in_a_base_with_no_policy_owes_review(self):
+        # #612 (review, 3rd): `.github -> config` at the repository root, the policy at `config/agent-policy.json`, and
+        # the pull request adding `engine/.github/agent-policy.json` with `[]`. The link is not on the head's path and the
+        # policy is not named `.github/agent-policy.json`, so the base "held no policy" and the head stood alone.
+        # A base with no policy is a new engine only when nothing in it could be hiding one.
+        # mutation: look for a link along the head's path only
+        head = f"engine/{self.POLICY}"
+        hidden = [("120000", ".github"), ("100644", "config/agent-policy.json"), ("100644", "engine/src/H.cs")]
+        path, owed = self.basis(hidden)
+        self.assertIsNone(path)
+        self.assertTrue(owed, "a base that holds a link and no policy of the literal name owes review")
+        self.assertIn("`.github`", owed)
+        for label, mode in (("a link elsewhere", "120000"), ("a submodule elsewhere", "160000")):
+            with self.subTest(label):
+                self.assertTrue(self.basis([(mode, "vendor/x"), ("100644", "engine/src/H.cs")])[1])
+        self.assertEqual(self.basis([("100644", "engine/src/H.cs")]), (None, None), "no link, no policy: a new engine")
+        self.assertEqual(self.basis([("120000", "elsewhere"), ("100644", head)]), (head, None),
+                         "a policy at the head's path is read, whatever links lie elsewhere")
+
+    def test_a_rename_across_the_engine_s_directory_owes_review(self):
+        # #612 (review): `old/src/H.cs` renamed to `new/lib/H.cs` carried a handler out of one engine and into another
+        # that no longer listed it. mutation: judge only the paths inside the engine
+        head = f"engine/{self.POLICY}"
+        ordinary = [("100644", head)]
+        for label, change in (("in", {"path": "engine/notes/H.md", "changeType": "RENAMED", "previous": "legacy/H.cs"}),
+                              ("out", {"path": "legacy/H.cs", "changeType": "RENAMED", "previous": "engine/src/H.cs"}),
+                              ("copied in", {"path": "engine/notes/H.md", "changeType": "COPIED", "previous": "legacy/H.cs"})):
+            with self.subTest(label):
+                path, owed = self.basis(ordinary, files=[change])
+                self.assertIsNone(path)
+                self.assertTrue(owed)
+        within = {"path": "engine/lib/H.cs", "changeType": "RENAMED", "previous": "engine/src/H.cs"}
+        beside = {"path": "docs/B.md", "changeType": "RENAMED", "previous": "docs/A.md"}
+        self.assertEqual(self.basis(ordinary, files=[within, beside, {"path": "README.md", "changeType": "MODIFIED"}]),
+                         (head, None), "a rename inside, or wholly outside, crosses nothing")
+
+    def test_a_change_that_is_owed_review_is_an_implementation_of_everything_it_touches(self):
+        # mutation: let a head that lists no semantic path judge the change `owed` by its paths alone
+        repo = Repo({HANDLER: b"int F() => 1;"}, {HANDLER: b"int F() => 1;", "notes/A.md": b"x"})
+        result = repo.classify({"notes/A.md": "ADDED"}, patterns=[], owed="the engine moved")
+        self.assertEqual(result["class"], rc.SEMANTIC_IMPLEMENTATION)
+        self.assertEqual(result["onSurface"], ["notes/A.md"])
+        self.assertEqual(result["semanticFiles"], ["notes/A.md"])
+        self.assertIn("the engine moved", result["reasons"][0])
+        effective, problems, _ = rc.judge(result, rc.DOCUMENTATION)
+        self.assertEqual(effective, rc.SEMANTIC_IMPLEMENTATION)
+        self.assertTrue(problems, "a claim cannot lower it")
+        self.assertEqual(repo.classify({"notes/A.md": "ADDED"}, patterns=[])["class"], rc.DOCUMENTATION)
 
     def test_a_deleted_record_is_a_semantic_ruling(self):
         # mutation: let a deletion pass as an edit with no text to compare

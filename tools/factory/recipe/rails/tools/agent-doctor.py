@@ -21,7 +21,8 @@ answer. It changes nothing, ever.
     report that says so only after the implementer has spent an afternoon finding out is the same
     failure one step later (#195).
   * **Local** rows come from this checkout: the rails are byte for byte what the factory's recipe
-    wrote, the hook is wired to the tools it guards, the policy is one the rails can record verdicts
+    wrote, the hooks are wired to the tools they guard (the lifecycle guard's own `check-settings` says
+    whether it is, #676), the policy is one the rails can record verdicts
     under, and the gate runs the rails check. The rail bytes and the policy are judged by the
     factory's own rules, from the copy `produce` vendored under `scripts/factory/`, so this and
     `factory rails --check` cannot disagree about the same file.
@@ -385,6 +386,31 @@ def local_rows(generate, error):
                     "" if wired else f"the hook exists, but no PreToolUse entry runs it for {GUARDED_TOOLS}"))
     if not wired:
         problems.append("the primary-checkout guard is not wired into .claude/settings.json, so nothing invokes it")
+
+    # The same question about the lifecycle guard (#676), asked of the guard itself: which events it
+    # must be wired to is stated once, in REQUIRED_HOOKS beside the code that acts on them, and this
+    # runs that check rather than restating the list. A guard file that is absent is a rail-bytes
+    # row above; the wiring is judged here, from the settings the session actually reads.
+    lifecycle = ROOT / ".claude" / "hooks" / "agent-lifecycle-guard.py"
+    if not lifecycle.is_file():
+        rows.append(row("Lifecycle guard wired", WRONG, f"{lifecycle.relative_to(ROOT)} is missing, so nothing "
+                                                        "can enforce it"))
+        problems.append("the agent lifecycle guard is missing, so a completed agent can be resumed and no "
+                        "subagent has a context budget (`factory produce` writes it)")
+    else:
+        # The engine's own path for the guard, stated: the check judges the exact command the settings run.
+        checked = subprocess.run([sys.executable, "-B", str(lifecycle), "check-settings", str(settings_path),
+                                  "--guard-path", ".claude/hooks/agent-lifecycle-guard.py"],
+                                 capture_output=True, text=True, check=False)
+        wired_lifecycle = checked.returncode == 0
+        detail = (checked.stdout + checked.stderr).strip().splitlines()
+        rows.append(row("Lifecycle guard wired", OK if wired_lifecycle else WRONG,
+                        "" if wired_lifecycle else (detail[1].strip() if len(detail) > 1 else detail[0] if detail
+                                                    else "the check said nothing")))
+        if not wired_lifecycle:
+            problems.append(".claude/settings.json does not wire the agent lifecycle guard, so a completed agent "
+                            "can be resumed and no subagent has a context budget: " + "; ".join(
+                                line.strip() for line in detail[1:] or detail))
 
     chain = []
     policy_path = ROOT / POLICY

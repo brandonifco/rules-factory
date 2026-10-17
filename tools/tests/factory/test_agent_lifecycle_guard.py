@@ -1,0 +1,1956 @@
+#!/usr/bin/env python3
+"""The agent lifecycle guard (#676, decision 0083): a completed subagent is replaced, not resumed.
+
+The guard is a hook, so every test runs it the way Claude Code does: as a subprocess, one JSON
+event on stdin, the answer on stdout. The payloads have the shapes verified in Claude Code 2.1.287
+(see the guard's docstring). Every test uses its own temporary directory for the ledger and the
+transcripts, and removes it.
+"""
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import shutil
+import unittest
+
+sys.dont_write_bytecode = True
+
+TOOLS = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPO = os.path.dirname(TOOLS)
+FACTORY = os.path.join(TOOLS, "factory")
+GUARD = os.path.join(FACTORY, "recipe", "rails", "hooks", "agent-lifecycle-guard.py")
+RAILS_SETTINGS = os.path.join(FACTORY, "recipe", "rails", "settings.json")
+OWN_SETTINGS = os.path.join(REPO, ".claude", "settings.json")
+
+sys.path.insert(0, FACTORY)
+import ownership  # noqa: E402
+
+CHECKPOINT = 210_000
+HARD = 350_000
+SESSION = "11111111-2222-3333-4444-555555555555"
+WORKER = "a0123456789abcdef"      # "a" + 16 hex, as the runtime issues them
+OTHER = "afedcba9876543210"
+STRANGER = "a1111111111111111"
+
+
+def run_guard(*args, stdin=None, cwd=None, **environment):
+    env = {key: value for key, value in os.environ.items()
+           if key not in ("RULES_AGENT_LEDGER_DIR", "XDG_STATE_HOME")}
+    env.update(environment)
+    return subprocess.run([sys.executable, GUARD, *args], input=stdin, capture_output=True, text=True,
+                          cwd=cwd, env=env, check=False)
+
+
+class GuardCase(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="lifecycle-guard-test-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.ledger = os.path.join(self.tmp, "ledger")
+
+    # -- events -------------------------------------------------------------------------------
+
+    def event(self, name, **fields):
+        return {"session_id": SESSION, "cwd": self.tmp, "permission_mode": "default",
+                "hook_event_name": name, **fields}
+
+    def hook(self, payload):
+        """(exit code, parsed stdout or None, stderr) of one hook invocation."""
+        done = run_guard(stdin=json.dumps(payload), RULES_AGENT_LEDGER_DIR=self.ledger, CLAUDE_PROJECT_DIR=REPO)
+        out = json.loads(done.stdout) if done.stdout.strip() else None
+        return done.returncode, out, done.stderr
+
+    def launched(self, agent_id, name=None, response=None):
+        fields = {"tool_name": "Agent", "tool_input": {"description": "d", "prompt": "p", **({"name": name} if name else {})},
+                  "tool_response": response or {"agentId": agent_id, "status": "async_launched"}}
+        self.assertEqual(self.hook(self.event("PostToolUse", **fields))[:2], (0, None))
+
+    def stopped(self, agent_id, name=None):
+        """The one completion the hooks see for certain: a foreground Agent call that returned (a)."""
+        self.launched(agent_id, name=name, response={"agentId": agent_id, "status": "completed"})
+
+    def subagent_stop_event(self, agent_id):
+        """What Claude Code delivers when a subagent tries to stop; another stop hook may veto it."""
+        return self.event("SubagentStop", agent_id=agent_id, agent_type="general-purpose",
+                          agent_transcript_path="/nonexistent/agent.jsonl", last_assistant_message="done")
+
+    def send(self, to, transcript=None, **extra):
+        fields = {"transcript_path": transcript} if transcript else {}
+        return self.hook(self.event("PreToolUse", tool_name="SendMessage", tool_use_id="toolu_1",
+                                    tool_input={"to": to, "message": "fix the finding", **extra}, **fields))
+
+    def main_transcript(self, lines):
+        """The session's MAIN transcript, with `lines` (dicts, or raw strings) in order; its path."""
+        path = os.path.join(self.tmp, "projects", "-work-rules-x", f"{SESSION}.jsonl")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            for line in lines:
+                handle.write((line if isinstance(line, str) else json.dumps(line)) + "\n")
+        return path
+
+    def assertDenied(self, result, *needles):
+        code, out, _ = result
+        self.assertEqual(code, 0)
+        self.assertIsNotNone(out, "the guard let it through")
+        decision = out["hookSpecificOutput"]
+        self.assertEqual(decision["hookEventName"], "PreToolUse")
+        self.assertEqual(decision["permissionDecision"], "deny")
+        for needle in needles:
+            self.assertIn(needle, decision["permissionDecisionReason"])
+
+    def assertAllowed(self, result):
+        self.assertEqual(result[:2], (0, None), result)
+
+    def ledger_records(self):
+        names = os.listdir(self.ledger)
+        self.assertEqual(len(names), 1, names)
+        with open(os.path.join(self.ledger, names[0]), encoding="utf-8") as handle:
+            return [json.loads(line) for line in handle]
+
+    # -- transcripts --------------------------------------------------------------------------
+
+    def transcript(self, agent_id, contexts, padding=0):
+        """A main transcript path and, beside it, the subagent's transcript with one turn per context."""
+        project = os.path.join(self.tmp, "projects", "-work-rules-x")
+        main = os.path.join(project, f"{SESSION}.jsonl")
+        sub = os.path.join(project, SESSION, "subagents", f"agent-{agent_id}.jsonl")
+        os.makedirs(os.path.dirname(sub), exist_ok=True)
+        open(main, "a", encoding="utf-8").close()
+        with open(sub, "w", encoding="utf-8") as handle:
+            for index, context in enumerate(contexts):
+                handle.write(json.dumps(assistant_line(f"msg_{index}", context, 7)) + "\n")
+                if padding:
+                    handle.write(json.dumps({"type": "user", "message": {"content": "x" * padding}}) + "\n")
+        return main
+
+    def in_subagent(self, name, agent_id, contexts, tool, tool_input, padding=0, **extra):
+        return self.event(name, agent_id=agent_id, agent_type="general-purpose",
+                          transcript_path=self.transcript(agent_id, contexts, padding),
+                          tool_name=tool, tool_input=tool_input, tool_use_id="toolu_2", **extra)
+
+
+def notification(agent_id, status):
+    """A task notification as Claude Code 2.1.287 writes it into the main transcript: enqueued."""
+    text = (f"<task-notification>\n<task-id>{agent_id}</task-id>\n<tool-use-id>toolu_01N</tool-use-id>\n"
+            f"<output-file>/tmp/x/tasks/{agent_id}.output</output-file>\n<status>{status}</status>\n"
+            f"<summary>Agent \"x\" finished</summary>\n<result>done</result>\n</task-notification>")
+    return {"type": "queue-operation", "operation": "enqueue", "content": text}
+
+
+def launch_lines(tool_use_id, name, agent_id, tool="Agent"):
+    """The Agent tool_use that launched `name` and the tool_result that carried back its agent id."""
+    return [{"type": "assistant", "message": {"role": "assistant", "content": [
+                {"type": "tool_use", "id": tool_use_id, "name": tool,
+                 "input": {"description": "d", "prompt": "p", "name": name}}]}},
+            {"type": "user", "message": {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": tool_use_id, "content": "Async agent launched"}]},
+             "toolUseResult": {"isAsync": True, "status": "async_launched", "agentId": agent_id}}]
+
+
+def send_lines(tool_use_id, to, agent_id, ref):
+    """A SendMessage tool_use and the tool_result that answered it, with the pin Claude Code 2.1.287 returns."""
+    return [{"type": "assistant", "message": {"role": "assistant", "content": [
+                {"type": "tool_use", "id": tool_use_id, "name": "SendMessage",
+                 "input": {"to": to, "message": "m"}}]}},
+            {"type": "user", "message": {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": tool_use_id, "content": "queued"}]},
+             "toolUseResult": {"success": True,
+                               "message": f"Message queued for delivery to {to} at its next tool round.",
+                               "pin": {"id": agent_id, "name": to, "ref": ref}}}]
+
+
+def assistant_line(message_id, context, output, stamp="2026-10-15T10:00:00.000Z"):
+    # Spread the context over the three fields the runtime reports, as a real turn is.
+    return {"type": "assistant", "timestamp": stamp,
+            "message": {"id": message_id, "role": "assistant",
+                        "usage": {"input_tokens": 3, "cache_read_input_tokens": context - 3 - 1000,
+                                  "cache_creation_input_tokens": 1000, "output_tokens": output}}}
+
+
+class TestACompletedAgentIsNotMessaged(GuardCase):
+    def test_a_completed_agent_is_refused_by_name_and_by_id(self):
+        self.launched(WORKER, name="implementer")
+        self.stopped(WORKER)
+        self.assertDenied(self.send("implementer"), "completed its assignment", "single-use", "repair-packet.py")
+        self.assertDenied(self.send(WORKER), "completed its assignment")
+
+    def test_a_ledger_line_that_cannot_be_decoded_does_not_hide_a_completed_agent(self):
+        # `launched` and `stopped` records followed by a line the decoder dies on (RecursionError): the
+        # line is not a record, and the records before and after it still decide.
+        self.launched(WORKER, name="implementer")
+        self.stopped(WORKER)
+        (name,) = os.listdir(self.ledger)
+        with open(os.path.join(self.ledger, name), "a", encoding="utf-8") as handle:
+            handle.write("[" * 10_000 + "\n" + "{" * 10_000 + "\n")
+        self.assertDenied(self.send("implementer"), "completed its assignment")
+        self.assertDenied(self.send(WORKER), "completed its assignment")
+        self.launched(OTHER, name="reviewer")
+        self.stopped(OTHER)
+        self.assertDenied(self.send(OTHER), "completed its assignment")
+
+    def test_the_refusal_is_recorded_for_the_telemetry(self):
+        self.launched(WORKER, name="implementer")
+        self.stopped(WORKER)
+        self.send("implementer")
+        denied = [r for r in self.ledger_records() if r["event"] == "denied"]
+        self.assertEqual([(r["reason"], r["agent_id"]) for r in denied], [("completed-agent", WORKER)])
+
+    def test_a_foreground_agent_that_returned_is_completed(self):
+        # (a) PostToolUse of Agent with a "completed" status: the call returned the agent's final result.
+        self.launched(WORKER, name="reviewer", response={"agentId": WORKER, "status": "completed"})
+        self.assertEqual([r["event"] for r in self.ledger_records()], ["launched", "stopped"])
+        self.assertDenied(self.send("reviewer"), "completed its assignment")
+        self.assertDenied(self.send(WORKER), "completed its assignment")
+
+    def test_a_subagentstop_event_alone_is_not_completion_because_another_stop_hook_can_veto_it(self):
+        self.launched(WORKER, name="implementer")
+        self.assertEqual(self.hook(self.subagent_stop_event(WORKER))[:2], (0, None))
+        self.assertAllowed(self.send("implementer"))
+        self.assertAllowed(self.send(WORKER))
+        self.assertEqual([r["event"] for r in self.ledger_records()], ["launched"])
+
+    def test_an_async_launch_result_is_not_completion(self):
+        for status in ("async_launched", "running", "queued"):
+            with self.subTest(status=status):
+                self.launched(WORKER, name="implementer", response={"agentId": WORKER, "status": status})
+                self.assertAllowed(self.send("implementer"))
+
+    def test_a_task_notification_in_the_main_transcript_means_the_agent_stopped(self):
+        # (b) Any status but "running", from a queue-operation enqueue record, which is how Claude Code
+        # 2.1.287 writes every genuine notification.
+        for status in ("completed", "failed", "killed", "stopped"):
+            with self.subTest(status=status):
+                transcript = self.main_transcript([notification(WORKER, status)])
+                shutil.rmtree(self.ledger, ignore_errors=True)
+                self.launched(WORKER, name="implementer")
+                self.assertDenied(self.send("implementer", transcript=transcript), "completed its assignment")
+                self.assertDenied(self.send(WORKER, transcript=transcript), "completed its assignment")
+
+    def test_a_notification_that_only_looks_like_one_does_not_mark_a_running_agent_completed(self):
+        # Finding 3 of the review at 9df6565: every string of every record was searched, so reading a
+        # log, a source file or an example that quotes a notification poisoned the evidence.
+        text = notification(WORKER, "completed")["content"]
+        enqueue = {"type": "queue-operation", "operation": "enqueue"}
+        quoted_in_a_tool_result = {
+            "type": "user", "message": {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": "toolu_R", "content": text}]},
+            "toolUseResult": {"stdout": text}}
+        impostors = {
+            "a tool_result block that quotes it": quoted_in_a_tool_result,
+            "an agent-message enqueue": {**enqueue, "content": f'<agent-message from="reviewer">\n{text}\n</agent-message>'},
+            "an enqueue that does not start with it": {**enqueue, "content": "Here is one:\n" + text},
+            "an enqueue led by a space": {**enqueue, "content": " " + text},
+            "a notification for another agent that quotes this one's past its block":
+                {**enqueue, "content": notification(OTHER, "running")["content"].replace(
+                    "<result>done</result>", "<result>" + text + "</result>")},
+            "a dequeue": {"type": "queue-operation", "operation": "dequeue", "content": text},
+            "an enqueue with a list content": {**enqueue, "content": [{"type": "text", "text": text}]},
+            "a user message": {"type": "user", "message": {"role": "user", "content": text}},
+            "an assistant message": {"type": "assistant", "message": {"role": "assistant", "content": [
+                {"type": "text", "text": text}]}},
+            "another record type": {"type": "attachment", "operation": "enqueue", "content": text},
+        }
+        for shape, line in impostors.items():
+            with self.subTest(shape=shape):
+                transcript = self.main_transcript(launch_lines("toolu_L1", "implementer", WORKER) + [line])
+                self.assertAllowed(self.send("implementer", transcript=transcript))
+                self.assertAllowed(self.send(WORKER, transcript=transcript))
+        # The genuine record, after the same noise, still counts.
+        genuine = self.main_transcript(launch_lines("toolu_L1", "implementer", WORKER)
+                                       + [quoted_in_a_tool_result, notification(WORKER, "completed")])
+        self.assertDenied(self.send("implementer", transcript=genuine), "completed its assignment")
+        self.assertDenied(self.send(WORKER, transcript=genuine), "completed its assignment")
+
+    def test_the_task_id_and_status_are_read_from_the_leading_block_only(self):
+        # A genuine notification for OTHER whose result quotes WORKER's id and a status is OTHER's.
+        quoted = ("<task-notification>\n<task-id>" + OTHER + "</task-id>\n<status>completed</status>\n"
+                  "<result>see <task-id>" + WORKER + "</task-id> <status>completed</status></result>\n"
+                  "</task-notification>")
+        transcript = self.main_transcript(launch_lines("toolu_L1", "implementer", WORKER)
+                                          + [{"type": "queue-operation", "operation": "enqueue", "content": quoted}])
+        self.assertAllowed(self.send("implementer", transcript=transcript))
+        self.assertAllowed(self.send(WORKER, transcript=transcript))
+        self.assertDenied(self.send(OTHER, transcript=transcript), "completed its assignment")
+
+    def test_a_running_notification_a_notification_for_another_agent_and_no_transcript_leave_it_running(self):
+        self.launched(WORKER, name="implementer")
+        self.launched(OTHER, name="reviewer")
+        transcript = self.main_transcript([notification(WORKER, "running"), notification(OTHER, "completed"),
+                                           {"type": "user", "message": {"role": "user",
+                                                                        "content": f"mentions {WORKER} in passing"}}])
+        self.assertAllowed(self.send("implementer", transcript=transcript))
+        self.assertAllowed(self.send(WORKER, transcript=transcript))
+        self.assertDenied(self.send("reviewer", transcript=transcript), "completed")
+        self.assertAllowed(self.send("implementer", transcript=os.path.join(self.tmp, "nowhere.jsonl")))
+
+    def test_a_notification_is_read_past_unparseable_lines_in_a_large_transcript(self):
+        self.launched(WORKER, name="implementer")
+        noise = [{"type": "user", "message": {"role": "user", "content": "x" * 5000}} for _ in range(400)]
+        transcript = self.main_transcript(noise + ["{not json " + WORKER, notification(WORKER, "completed")] + noise)
+        self.assertDenied(self.send("implementer", transcript=transcript), "completed")
+
+    def test_a_main_transcript_line_nested_past_the_decoder_hides_neither_a_launch_nor_a_notification(self):
+        # 10,000 nested arrays raise RecursionError, not ValueError: the line is not a record, and the launch
+        # before it, the notification after it and a launch between the two are all still read.
+        # Each poisoned line carries the strings every reader of the transcript selects lines by (an agent id,
+        # `"agentId"`, `"SendMessage"`, a ref), so it reaches the decoder rather than being passed over.
+        deep = ('{"agentId":"' + WORKER + '","name":"SendMessage","ref":"' + self.REF + '","type":"queue-operation",'
+                '"operation":"enqueue","content":' + "[" * 10_000)
+        lines = ([deep] + launch_lines("toolu_L1", "implementer", WORKER) + [deep]
+                 + launch_lines("toolu_L2", "reviewer", OTHER) + [deep]
+                 + send_lines("toolu_S1", "implementer", WORKER, self.REF) + [deep]
+                 + [notification(WORKER, "completed")] + [deep])
+        transcript = self.main_transcript(lines)
+        self.assertDenied(self.send("implementer", transcript=transcript), "completed its assignment")
+        self.assertDenied(self.send(WORKER, transcript=transcript), "completed its assignment")
+        self.assertDenied(self.send(f"implementer [{self.REF}]", transcript=transcript), "completed its assignment")
+        self.assertAllowed(self.send("reviewer", transcript=transcript))
+        self.assertAllowed(self.send(OTHER, transcript=transcript))
+
+    def test_the_guard_decodes_json_in_one_place(self):
+        with open(GUARD, encoding="utf-8") as handle:
+            source = handle.read()
+        self.assertEqual(re.findall(r"\bjson\.loads?\(", source), ["json.loads("])
+
+    def test_a_name_is_resolved_from_the_main_transcript_when_the_ledger_never_saw_it(self):
+        lines = launch_lines("toolu_L1", "implementer", WORKER)
+        running = self.main_transcript(lines)
+        self.assertAllowed(self.send("implementer", transcript=running))
+        done = self.main_transcript(lines + [notification(WORKER, "completed")])
+        self.assertDenied(self.send("implementer", transcript=done), "completed its assignment")
+        # Two agents bore the name and one completed: the runtime picks one, so the message is denied.
+        again = self.main_transcript(lines + [notification(WORKER, "completed")]
+                                     + launch_lines("toolu_L2", "implementer", OTHER))
+        self.assertDenied(self.send("implementer", transcript=again), "completed its assignment")
+        # A launch under another name is not this one.
+        other_name = self.main_transcript(launch_lines("toolu_L3", "reviewer", WORKER)
+                                          + [notification(WORKER, "completed")])
+        self.assertAllowed(self.send("implementer", transcript=other_name))
+
+    def test_an_id_the_ledger_never_saw_is_known_from_the_main_transcript(self):
+        launched = self.main_transcript(launch_lines("toolu_L1", "implementer", WORKER))
+        self.assertAllowed(self.send(WORKER, transcript=launched))
+        finished = self.main_transcript(launch_lines("toolu_L1", "implementer", WORKER)
+                                        + [notification(WORKER, "completed")])
+        self.assertDenied(self.send(WORKER, transcript=finished), "completed its assignment")
+        # Seen nowhere, in the ledger or the transcript: still refused, fail closed.
+        self.assertDenied(self.send(STRANGER, transcript=launched), "not launched in this session")
+
+    def test_a_subagents_transcript_path_still_names_the_main_session_transcript(self):
+        # Inside a subagent the hook's transcript_path is the session's main transcript.
+        transcript = self.main_transcript(launch_lines("toolu_L1", "implementer", WORKER)
+                                          + [notification(WORKER, "completed")])
+        payload = self.in_subagent("PreToolUse", OTHER, [1_000], "SendMessage",
+                                   {"to": "implementer", "message": "m"})
+        payload["transcript_path"] = transcript
+        self.assertDenied(self.hook(payload), "completed its assignment")
+
+    def test_a_running_agents_continuation_is_allowed_by_name_and_by_id(self):
+        self.launched(WORKER, name="implementer")
+        self.assertAllowed(self.send("implementer"))
+        self.assertAllowed(self.send(WORKER))
+
+    def test_a_running_agent_is_not_confused_with_a_completed_one(self):
+        self.launched(WORKER, name="implementer")
+        self.launched(OTHER, name="reviewer")
+        self.stopped(OTHER)
+        self.assertAllowed(self.send("implementer"))
+        self.assertDenied(self.send("reviewer"), "completed")
+
+    REF = "7cedb0"
+
+    def addressed_transcript(self, running=()):
+        """A main transcript: `worker` launched and completed, a SendMessage result that pinned its ref (as
+        Claude Code 2.1.287 returns `pin: {id, name, ref}`), and any `running` names launched and not stopped."""
+        lines = launch_lines("toolu_L1", "worker", WORKER) + send_lines("toolu_S1", "worker", WORKER, self.REF) + [
+            notification(WORKER, "completed")]
+        for index, name in enumerate(running):
+            lines += launch_lines(f"toolu_R{index}", name, f"a{index:016x}")
+        return self.main_transcript(lines)
+
+    def test_the_addresses_the_runtime_resolves_reach_a_completed_agent_and_are_refused(self):
+        # Review of #677 at f3a062c: `name [ref]` resolves to the agent in the runtime, by name or by ref.
+        transcript = self.addressed_transcript()
+        for to in (f"worker [{self.REF}]",   # the displayed address: by name and by the ref it was pinned with
+                   "worker [abcdef]",        # by name alone, whatever the ref
+                   f"anything [{self.REF}]"):  # by ref alone, whatever the name
+            with self.subTest(to=to):
+                self.assertDenied(self.send(to, transcript=transcript), "completed its assignment")
+
+    def test_an_address_of_running_agents_only_is_allowed(self):
+        transcript = self.addressed_transcript(running=("reviewer", "review-two"))
+        for to in ("reviewer", "reviewer [abcdef]", "nobody", "nobody [abcdef]", "x [123456]"):
+            with self.subTest(to=to):
+                self.assertAllowed(self.send(to, transcript=transcript))
+
+    def test_an_address_that_names_a_completed_agent_through_the_ledger_is_refused(self):
+        self.launched(WORKER, name="implementer")
+        self.stopped(WORKER)
+        self.launched(OTHER, name="reviewer")
+        self.assertDenied(self.send("implementer [abcdef]"), "completed its assignment")
+        self.assertAllowed(self.send("reviewer"))
+        self.assertAllowed(self.send("nobody"))
+
+    def test_a_name_is_not_expanded_to_longer_names(self):
+        # Review of #677 at 439d127: a running `worker` stayed messageable while a completed `worker-old` existed;
+        # the runtime does not send by prefix (it asks the model to confirm a name), so the guard judges the
+        # exact name only. A prefix of a completed agent's name is allowed, and so is a name nothing bears.
+        transcript = self.main_transcript(
+            launch_lines("toolu_L1", "worker-old", WORKER) + [notification(WORKER, "completed")]
+            + launch_lines("toolu_L2", "worker", OTHER))
+        self.assertAllowed(self.send("worker", transcript=transcript))
+        self.assertAllowed(self.send(f"worker [{self.REF}]", transcript=transcript))
+        self.assertDenied(self.send("worker-old", transcript=transcript), "completed its assignment")
+        for to in ("wor", "w", "worker-o", "workers", "orker", "other", "[]", "[7cedb1]", "a0123456789abcdee [7cedb1]"):
+            with self.subTest(to=to):
+                self.assertAllowed(self.send(to, transcript=transcript))
+
+    def test_quoted_pin_json_in_a_tool_result_does_not_resolve_an_address(self):
+        # Review of #677 at 439d127: a pin quoted in a Read result completed a running `reviewer`.
+        quoted = json.dumps({"id": WORKER, "name": "old-worker", "ref": "abcdef"})
+        base = (launch_lines("toolu_L1", "old-worker", WORKER) + [notification(WORKER, "completed")]
+                + launch_lines("toolu_L2", "reviewer", OTHER))
+        genuine = send_lines("toolu_S1", "reviewer", OTHER, "abcdef")
+        read = [{"type": "assistant", "message": {"role": "assistant", "content": [
+                    {"type": "tool_use", "id": "toolu_R1", "name": "Read", "input": {"file_path": "/x"}}]}},
+                {"type": "user", "message": {"role": "user", "content": [
+                    {"type": "tool_result", "tool_use_id": "toolu_R1", "content": quoted}]},
+                 "toolUseResult": {"type": "text", "file": {"filePath": "/x", "content": quoted}}}]
+        spoofed_result = [{"type": "user", "message": {"role": "user", "content": [
+                              {"type": "tool_result", "tool_use_id": "toolu_R1", "content": quoted}]},
+                           "toolUseResult": {"pin": {"id": WORKER, "name": "old-worker", "ref": "abcdef"}}}]
+        self.assertAllowed(self.send("reviewer [abcdef]", transcript=self.main_transcript(base + genuine)))
+        self.assertAllowed(self.send("reviewer [abcdef]", transcript=self.main_transcript(base + genuine + read)))
+        # The quoted pin alone resolves nothing, and neither does a pin on a result that answers no SendMessage.
+        self.assertAllowed(self.send("reviewer [abcdef]", transcript=self.main_transcript(base + read)))
+        self.assertAllowed(self.send("reviewer [abcdef]", transcript=self.main_transcript(base + read + spoofed_result)))
+        # A genuine SendMessage pin of the completed agent does resolve to it.
+        pinned = send_lines("toolu_S2", "old-worker", WORKER, "abcdef")
+        self.assertDenied(self.send("reviewer [abcdef]", transcript=self.main_transcript(base + pinned)),
+                          "completed its assignment")
+
+    SPELLINGS = ("worker", "WORKER", "Worker", " worker ", "\tworker\n", "ｗｏｒｋｅｒ", "ＷＯＲＫＥＲ",
+                 "\u3000worker\u3000",
+                 # Review of #677 at 4ed9085: the runtime also removes control and format characters.
+                 "worker\u200b", "wor\u00adker", "work\u0007er", "\ufeffworker", "w\u200dorker\u2060")
+
+    def test_equivalent_spellings_of_a_completed_agents_name_are_refused(self):
+        # Review of #677 at 5ad72d4: the runtime resolves a name case-insensitively, under NFKC and with
+        # whitespace normalised, so `WORKER` reaches the agent `worker` and the guard must say so. One
+        # normaliser (NFKC, casefold, whitespace runs collapsed to one space, trimmed) is applied to both
+        # the launched name and the target, wherever a name is matched.
+        self.launched(WORKER, name="worker")
+        self.stopped(WORKER)
+        for spelling in self.SPELLINGS:
+            with self.subTest(ledger=spelling):
+                self.assertDenied(self.send(spelling), "completed its assignment")
+        lines = launch_lines("toolu_L1", "worker", WORKER) + [notification(WORKER, "completed")]
+        done = self.main_transcript(lines)
+        for spelling in self.SPELLINGS:
+            with self.subTest(transcript=spelling):
+                self.assertDenied(self.send(spelling, transcript=done), "completed its assignment")
+        # The launched name is normalised too, not only the target.
+        shouted = self.main_transcript(launch_lines("toolu_L1", "  WORKER ", WORKER)
+                                       + [notification(WORKER, "completed")])
+        self.assertDenied(self.send("worker", transcript=shouted), "completed its assignment")
+
+    HYPHENATED = ("review-agent", "review agent", "Review  Agent", "review\tagent", "review\nagent",
+                  "REVIEW\u3000AGENT", " review agent ", "review\u200b agent", "ｒｅｖｉｅｗ ａｇｅｎｔ")
+
+    def test_whitespace_in_a_target_is_the_hyphen_of_the_launched_name(self):
+        # Review of #677 at 4ed9085: the runtime turns every run of whitespace into `-`, so a completed
+        # `review-agent` is reached by `review agent`; the normaliser compares names in that one form.
+        self.launched(OTHER, name="review-agent")
+        self.stopped(OTHER)
+        for spelling in self.HYPHENATED:
+            with self.subTest(ledger=spelling):
+                self.assertDenied(self.send(spelling), "completed its assignment")
+        done = self.main_transcript(launch_lines("toolu_L1", "review-agent", OTHER) + [notification(OTHER, "completed")])
+        for spelling in self.HYPHENATED:
+            with self.subTest(transcript=spelling):
+                self.assertDenied(self.send(spelling, transcript=done), "completed its assignment")
+
+    def test_a_running_agent_stays_reachable_under_the_hyphen_spellings(self):
+        self.launched(OTHER, name="review-agent")
+        for spelling in self.HYPHENATED:
+            with self.subTest(spelling):
+                self.assertAllowed(self.send(spelling))
+
+    def test_the_hyphen_is_not_a_spelling_of_no_space_or_of_another_separator(self):
+        self.launched(OTHER, name="review-agent")
+        self.stopped(OTHER)
+        for other in ("reviewagent", "review_agent", "review--agent", "review.agent"):
+            with self.subTest(other):
+                self.assertAllowed(self.send(other))
+
+    def test_a_ledger_name_in_another_spelling_is_matched_to_the_target(self):
+        self.launched(OTHER, name="Review  Agent")
+        self.stopped(OTHER)
+        self.assertDenied(self.send("review agent"), "completed its assignment")
+        self.assertDenied(self.send("ＲＥＶＩＥＷ AGENT"), "completed its assignment")
+
+    def test_a_running_agent_stays_reachable_under_every_spelling_of_its_name(self):
+        self.launched(WORKER, name="worker")
+        for spelling in self.SPELLINGS:
+            with self.subTest(ledger=spelling):
+                self.assertAllowed(self.send(spelling))
+
+    def test_a_running_agent_known_only_from_the_transcript_stays_reachable_under_every_spelling(self):
+        running = self.main_transcript(launch_lines("toolu_L1", "worker", OTHER))
+        for spelling in self.SPELLINGS:
+            with self.subTest(transcript=spelling):
+                self.assertAllowed(self.send(spelling, transcript=running))
+
+    def test_a_different_name_is_not_a_spelling_of_this_one(self):
+        self.launched(WORKER, name="worker")
+        self.stopped(WORKER)
+        for other in ("workers", "work er", "worker2", "wörker"):
+            with self.subTest(other):
+                self.assertAllowed(self.send(other))
+
+    def test_a_name_borne_by_several_agents_is_denied_when_any_of_them_completed(self):
+        # Review of #677 at ff51852: the runtime picks one agent under a name, so a completed agent must not
+        # hide behind a later running one (or the other way round).
+        self.launched(WORKER, name="implementer")
+        self.stopped(WORKER)
+        self.launched(OTHER, name="implementer")
+        self.assertDenied(self.send("implementer"), "completed its assignment")
+        self.assertDenied(self.send("Implementer"), "completed its assignment")
+
+    def test_names_the_runtime_keeps_apart_are_resolved_independently(self):
+        # `ß`.lower() is `ß`, `ss` is `ss`: the runtime's lower-casing keeps them apart, casefold() merged them.
+        ledger_case = self.launched
+        ledger_case(WORKER, name="worker-ß")
+        self.stopped(WORKER)
+        ledger_case(OTHER, name="worker-ss")
+        self.assertDenied(self.send("worker-ß"), "completed its assignment")
+        self.assertAllowed(self.send("worker-ss"))
+
+    def test_names_the_runtime_keeps_apart_are_resolved_independently_in_the_main_transcript(self):
+        lines = (launch_lines("toolu_L1", "worker-ß", WORKER) + launch_lines("toolu_L2", "worker-ss", OTHER)
+                 + [notification(WORKER, "completed")])
+        transcript = self.main_transcript(lines)
+        self.assertDenied(self.send("worker-ß", transcript=transcript), "completed its assignment")
+        self.assertAllowed(self.send("worker-ss", transcript=transcript))
+        reversed_ = self.main_transcript(launch_lines("toolu_L1", "worker-ß", WORKER)
+                                         + launch_lines("toolu_L2", "worker-ss", OTHER)
+                                         + [notification(OTHER, "completed")])
+        self.assertAllowed(self.send("worker-ß", transcript=reversed_))
+        self.assertDenied(self.send("worker-ss", transcript=reversed_), "completed its assignment")
+
+    def test_main_is_always_allowed(self):
+        self.launched(WORKER, name="implementer")
+        self.stopped(WORKER)
+        self.assertAllowed(self.send("main"))
+
+    def test_an_id_never_launched_is_refused_because_it_cannot_be_shown_running(self):
+        self.assertDenied(self.send(STRANGER), "not launched in this session", "cannot show it is still running")
+
+    def test_a_name_the_ledger_never_saw_is_allowed(self):
+        self.assertAllowed(self.send("some-teammate"))
+
+    def test_the_target_falls_back_to_recipient(self):
+        self.launched(WORKER, name="implementer")
+        self.stopped(WORKER)
+        payload = self.event("PreToolUse", tool_name="SendMessage",
+                             tool_input={"recipient": "implementer", "message": "m"})
+        self.assertDenied(self.hook(payload), "completed")
+
+    def test_a_tool_other_than_sendmessage_is_not_judged(self):
+        self.launched(WORKER, name="implementer")
+        self.stopped(WORKER)
+        payload = self.event("PreToolUse", tool_name="Bash", tool_input={"command": "echo implementer"})
+        self.assertAllowed(self.hook(payload))
+
+    def test_sessions_do_not_share_a_ledger(self):
+        self.launched(WORKER, name="implementer")
+        self.stopped(WORKER)
+        other = self.event("PreToolUse", tool_name="SendMessage", tool_input={"to": "implementer", "message": "m"})
+        other["session_id"] = "another-session"
+        self.assertAllowed(self.hook(other))
+
+    def test_the_ledger_is_written_where_it_is_told_and_by_default_under_xdg_state(self):
+        self.launched(WORKER, name="implementer")
+        self.assertEqual([r["event"] for r in self.ledger_records()], ["launched"])
+        state = os.path.join(self.tmp, "state")
+        launch = self.event("PostToolUse", tool_name="Agent", tool_input={"name": "n"},
+                            tool_response={"agentId": WORKER})
+        done = run_guard(stdin=json.dumps(launch), XDG_STATE_HOME=state)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(os.listdir(os.path.join(state, "rules-agent-lifecycle")), [f"{SESSION}.jsonl"])
+
+    def test_a_hostile_session_id_cannot_leave_the_ledger_directory(self):
+        launch = self.event("PostToolUse", tool_name="Agent", tool_input={}, tool_response={"agentId": WORKER})
+        launch["session_id"] = "../../escape"
+        self.assertEqual(self.hook(launch)[:2], (0, None))
+        self.assertEqual(os.listdir(self.tmp).count("escape.jsonl"), 0)
+        (name,) = os.listdir(self.ledger)
+        self.assertNotIn("/", name)
+
+    def test_malformed_stdin_fails_closed(self):
+        for stdin in ("", "not json", "[1, 2]", "null", "[" * 100_000, '{"a":' * 100_000, "\xff"):
+            with self.subTest(stdin=stdin):
+                done = run_guard(stdin=stdin, RULES_AGENT_LEDGER_DIR=self.ledger)
+                self.assertEqual(done.returncode, 2, done.stdout)
+                self.assertIn("refuses", done.stderr)
+                self.assertNotIn("Traceback", done.stderr)
+
+    def utf8_mode_environment(self):
+        # Python's UTF-8 mode (the C locale turns it on too) reads stdin with `surrogateescape`, which is
+        # the setting under which the review reproduced the fail-open; it does not depend on the machine.
+        env = {key: value for key, value in os.environ.items() if key != "XDG_STATE_HOME"}
+        env.update(RULES_AGENT_LEDGER_DIR=self.ledger, PYTHONUTF8="1")
+        return env
+
+    def test_stdin_that_is_not_utf_8_is_refused_even_inside_a_json_string(self):
+        # Review of #677 at 5ad72d4: Python's text stdin keeps an invalid byte as a surrogate escape, and
+        # `json.loads` accepts the string, so an invalid `agent_id` produced no verdict at all and exit 0.
+        # The bytes are decoded strictly before the JSON is read.
+        good = b'{"tool_name":"Bash","tool_input":{"command":"make test"},"agent_id":"%s"}'
+        for label, stdin in (("the review's payload", good % b"\xff"),
+                             ("in the middle of a string", good % b"ab\xc3(cd"),
+                             ("in a key", b'{"tool_\xffname":"Bash"}'),
+                             ("a truncated sequence at the end of a value", good % b"\xe2\x82"),
+                             ("a byte order mark", b"\xef\xbb\xbf" + good % b"a1")):
+            with self.subTest(label):
+                env = self.utf8_mode_environment()
+                done = subprocess.run([sys.executable, GUARD], input=stdin, capture_output=True, env=env,
+                                      check=False)
+                self.assertEqual(done.returncode, 2, (done.stdout, done.stderr))
+                self.assertEqual(done.stdout, b"")
+                self.assertIn(b"refuses", done.stderr)
+                self.assertNotIn(b"Traceback", done.stderr)
+        # Valid UTF-8 beyond ASCII still reads: the refusal is for bytes that are not text.
+        env = self.utf8_mode_environment()
+        done = subprocess.run([sys.executable, GUARD], input=good % "\u00e9\u20ac".encode("utf-8"),
+                              capture_output=True, env=env, check=False)
+        self.assertEqual(done.returncode, 0, done.stderr)
+
+
+class TestTheLedgerIsNeverInsideARepository(GuardCase):
+    """RULES_AGENT_LEDGER_DIR must be absolute and outside any git work tree, or it is not used."""
+
+    def launch(self, cwd=None, **environment):
+        payload = self.event("PostToolUse", tool_name="Agent", tool_input={"name": "n"},
+                             tool_response={"agentId": WORKER})
+        return run_guard(stdin=json.dumps(payload), cwd=cwd, **environment)
+
+    def repository(self, name="checkout"):
+        repo = os.path.join(self.tmp, name)
+        os.makedirs(os.path.join(repo, ".git"))
+        return repo
+
+    def tree(self, root):
+        return sorted(os.path.join(base, name) for base, dirs, files in os.walk(root) for name in dirs + files)
+
+    def test_a_ledger_dir_inside_a_work_tree_is_refused_and_the_default_is_used(self):
+        repo = self.repository()
+        before = self.tree(repo)
+        state = os.path.join(self.tmp, "state")
+        for configured in (os.path.join(repo, "ledger"), os.path.join(repo, "a", "b", "c"), repo,
+                           os.path.join(repo, ".git", "ledger")):
+            with self.subTest(configured=configured):
+                done = self.launch(RULES_AGENT_LEDGER_DIR=configured, XDG_STATE_HOME=state)
+                self.assertEqual(done.returncode, 0, done.stderr)
+                self.assertEqual(self.tree(repo), before, "the guard wrote inside the repository")
+                self.assertIn("RULES_AGENT_LEDGER_DIR", done.stderr)
+                self.assertEqual(os.listdir(os.path.join(state, "rules-agent-lifecycle")), [f"{SESSION}.jsonl"])
+
+    def test_a_symlink_into_a_work_tree_is_inside_it(self):
+        repo = self.repository()
+        link = os.path.join(self.tmp, "link")
+        os.symlink(repo, link)
+        self.launch(RULES_AGENT_LEDGER_DIR=os.path.join(link, "ledger"), XDG_STATE_HOME=os.path.join(self.tmp, "state"))
+        self.assertEqual(os.listdir(repo), [".git"])
+
+    def test_a_relative_ledger_dir_is_refused_whatever_the_working_directory(self):
+        elsewhere = os.path.join(self.tmp, "cwd")
+        os.makedirs(elsewhere)
+        state = os.path.join(self.tmp, "state")
+        done = self.launch(cwd=elsewhere, RULES_AGENT_LEDGER_DIR="ledger", XDG_STATE_HOME=state)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(os.listdir(elsewhere), [])
+        self.assertIn("RULES_AGENT_LEDGER_DIR", done.stderr)
+        self.assertEqual(os.listdir(os.path.join(state, "rules-agent-lifecycle")), [f"{SESSION}.jsonl"])
+
+    def test_a_relative_xdg_state_home_is_ignored_as_the_xdg_specification_says(self):
+        elsewhere = os.path.join(self.tmp, "cwd")
+        home = os.path.join(self.tmp, "home")
+        os.makedirs(elsewhere)
+        done = self.launch(cwd=elsewhere, XDG_STATE_HOME="state", HOME=home)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(os.listdir(elsewhere), [])
+        self.assertEqual(os.listdir(os.path.join(home, ".local", "state", "rules-agent-lifecycle")),
+                         [f"{SESSION}.jsonl"])
+
+    def test_with_no_usable_location_nothing_is_written_and_an_unseen_id_is_still_refused(self):
+        # The default is inside a work tree too: there is no ledger, so the PreToolUse SendMessage
+        # check cannot show an id is running, and fails closed as for any id it never saw launched.
+        repo = self.repository()
+        before = self.tree(repo)
+        env = {"RULES_AGENT_LEDGER_DIR": os.path.join(repo, "ledger"), "XDG_STATE_HOME": os.path.join(repo, "state")}
+        self.assertEqual(self.launch(**env).returncode, 0)
+        self.assertEqual(self.tree(repo), before)
+        message = self.event("PreToolUse", tool_name="SendMessage", tool_input={"to": WORKER, "message": "m"})
+        done = run_guard(stdin=json.dumps(message), **env)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(json.loads(done.stdout)["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertEqual(self.tree(repo), before)
+
+    def test_an_absolute_ledger_dir_outside_any_work_tree_is_used_as_told(self):
+        done = self.launch(RULES_AGENT_LEDGER_DIR=self.ledger, XDG_STATE_HOME=os.path.join(self.tmp, "state"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(done.stderr, "")
+        self.assertEqual(os.listdir(self.ledger), [f"{SESSION}.jsonl"])
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "state")))
+
+
+    def test_a_ledger_file_that_is_a_symlink_is_not_written_through(self):
+        # Finding 6: only the directory was checked; the leaf link led into a repository.
+        repo = self.repository()
+        os.makedirs(self.ledger)
+        victim = os.path.join(repo, "victim")
+        link = os.path.join(self.ledger, f"{SESSION}.jsonl")
+        os.symlink(victim, link)
+        before = self.tree(repo)
+        done = self.launch(RULES_AGENT_LEDGER_DIR=self.ledger)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertFalse(os.path.lexists(victim), "the guard wrote through the symlink")
+        self.assertEqual(self.tree(repo), before)
+        self.assertTrue(os.path.islink(link))
+        # An existing file behind the link is left as it was.
+        with open(victim, "w", encoding="utf-8") as handle:
+            handle.write("kept\n")
+        self.launch(RULES_AGENT_LEDGER_DIR=self.ledger)
+        with open(victim, encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), "kept\n")
+
+
+    def test_a_ledger_file_that_is_a_symlink_is_not_read(self):
+        # The file behind the link says `worker` completed; a guard that followed the link would refuse the send.
+        records = (json.dumps({"event": "launched", "agent_id": WORKER, "name": "worker"}) + "\n"
+                   + json.dumps({"event": "stopped", "agent_id": WORKER}) + "\n")
+        os.makedirs(self.ledger)
+        victim = os.path.join(self.tmp, "elsewhere.jsonl")
+        with open(victim, "w", encoding="utf-8") as handle:
+            handle.write(records)
+        os.symlink(victim, os.path.join(self.ledger, f"{SESSION}.jsonl"))
+        self.assertAllowed(self.send("worker"))
+        with open(victim, encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), records)
+
+    def hard_linked_ledger(self, content=b"kept\n"):
+        """A repository file hard-linked as the session's ledger file: no symbolic link, and the same inode."""
+        repo = self.repository()
+        os.makedirs(self.ledger)
+        victim = os.path.join(repo, "victim")
+        with open(victim, "wb") as handle:
+            handle.write(content)
+        os.link(victim, os.path.join(self.ledger, f"{SESSION}.jsonl"))
+        return repo, victim
+
+    def test_a_hard_linked_ledger_file_is_not_appended_to(self):
+        # Review of #677 at a23f3c2: O_NOFOLLOW and islink() both pass a hard link, so the append reached the repository.
+        repo, victim = self.hard_linked_ledger()
+        before = self.tree(repo)
+        done = self.launch(RULES_AGENT_LEDGER_DIR=self.ledger)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        with open(victim, "rb") as handle:
+            self.assertEqual(handle.read(), b"kept\n", "the guard appended through the hard link")
+        self.assertEqual(self.tree(repo), before)
+        self.assertIn("hard link", done.stderr)
+
+    def test_a_hard_linked_ledger_file_is_not_read(self):
+        # The linked file says `worker` completed; a guard that read it would refuse the send.
+        records = (json.dumps({"event": "launched", "agent_id": WORKER, "name": "worker"}) + "\n"
+                   + json.dumps({"event": "stopped", "agent_id": WORKER}) + "\n").encode("utf-8")
+        _, victim = self.hard_linked_ledger(records)
+        self.assertAllowed(self.send("worker"))
+        with open(victim, "rb") as handle:
+            self.assertEqual(handle.read(), records)
+
+    def test_a_ledger_file_with_a_second_link_is_refused_once_it_has_one(self):
+        # An ordinary ledger file (one link) works; the same file given a second link is then refused.
+        self.assertEqual(self.launch(RULES_AGENT_LEDGER_DIR=self.ledger).returncode, 0)
+        path = os.path.join(self.ledger, f"{SESSION}.jsonl")
+        with open(path, "rb") as handle:
+            before = handle.read()
+        self.assertEqual(before.count(b"\n"), 1)
+        os.link(path, os.path.join(self.tmp, "second-name"))
+        self.assertEqual(self.launch(RULES_AGENT_LEDGER_DIR=self.ledger).returncode, 0)
+        with open(path, "rb") as handle:
+            self.assertEqual(handle.read(), before)
+
+    def test_a_ledger_file_that_is_not_a_regular_file_is_not_written(self):
+        os.makedirs(self.ledger)
+        fifo = os.path.join(self.ledger, f"{SESSION}.jsonl")
+        os.mkfifo(fifo)
+        reader = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)  # so that a write to it neither blocks nor fails
+        try:
+            done = self.launch(RULES_AGENT_LEDGER_DIR=self.ledger)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertEqual(os.read(reader, 4096), b"", "the guard wrote into a file that is not a regular file")
+            self.assertIn("not a regular file", done.stderr)
+        finally:
+            os.close(reader)
+
+
+class TestAResumeTheRuntimeReportsIsCaught(GuardCase):
+    def resumed(self, response):
+        return self.hook(self.event("PostToolUse", tool_name="SendMessage", tool_use_id="toolu_3",
+                                    tool_input={"to": "implementer", "message": "m"}, tool_response=response))
+
+    def assertBlocked(self, result):
+        code, out, _ = result
+        self.assertEqual(code, 0)
+        self.assertEqual(out["decision"], "block")
+        self.assertIn(WORKER, out["reason"])
+        self.assertIn("TaskStop", out["reason"])
+        self.assertIn("fresh agent", out["reason"])
+
+    def test_resumedagentid_in_the_result_is_a_violation(self):
+        self.assertBlocked(self.resumed({"success": True, "message": f"Resuming agent {WORKER}",
+                                         "resumedAgentId": WORKER}))
+        (violation,) = [r for r in self.ledger_records() if r["event"] == "violation"]
+        self.assertEqual((violation["reason"], violation["agent_id"]), ("completed-agent-resumed", WORKER))
+
+    def test_the_result_as_json_text_or_as_text_blocks_is_read_the_same(self):
+        as_dict = {"success": True, "message": f"Resuming agent {WORKER}", "resumedAgentId": WORKER}
+        for response in (json.dumps(as_dict), [{"type": "text", "text": json.dumps(as_dict)}],
+                         [{"type": "text", "text": f"Resuming agent {WORKER}"}], f"Resuming agent {WORKER}"):
+            with self.subTest(response=response):
+                self.assertBlocked(self.resumed(response))
+
+    def test_a_block_that_cannot_be_decoded_is_not_a_record_and_the_rest_is_still_read(self):
+        # 10,000 nested arrays exhaust the JSON decoder's recursion (RecursionError, not ValueError). One
+        # undecodable block must not discard the genuine resume evidence beside it, whichever the order.
+        poisoned = {"type": "text", "text": "[" * 10_000}
+        genuine = {"type": "text", "text": json.dumps({"resumedAgentId": WORKER})}
+        for response in ([poisoned, genuine], [genuine, poisoned], [poisoned, poisoned, genuine],
+                         [{"type": "text", "text": "{" * 10_000}, genuine]):
+            with self.subTest(blocks=[block["text"][:12] for block in response]):
+                self.assertBlocked(self.resumed(response))
+
+    def test_a_launch_result_with_an_undecodable_block_still_records_the_agent_id(self):
+        poisoned = {"type": "text", "text": "[" * 10_000}
+        genuine = {"type": "text", "text": json.dumps({"agentId": WORKER, "status": "completed"})}
+        self.launched(WORKER, name="implementer", response=[poisoned, genuine])
+        self.assertEqual([r["event"] for r in self.ledger_records()], ["launched", "stopped"])
+
+    def assertBlockedNaming(self, result, name):
+        """A resume the response does not name by id is still a violation; the correction names the target."""
+        code, out, _ = result
+        self.assertEqual(code, 0)
+        self.assertEqual(out["decision"], "block")
+        self.assertIn(name, out["reason"])
+        self.assertIn("TaskStop", out["reason"])
+        self.assertIn("fresh agent", out["reason"])
+
+    # Claude Code 2.1.287 reports a resume in five forms (checked in the installed binary); each, as a
+    # dict, as JSON text, as a list of text blocks and as bare text, is a violation naming the agent it
+    # resumed: by id when the response gives one, else by the name in the message, else by the target.
+    RUNTIME_FORMS = (
+        ("resumedAgentId", WORKER, {"success": True, "message": f"Resuming agent {WORKER}", "resumedAgentId": WORKER}),
+        ("inlineHandback, report not in the message", "implementer",
+         {"success": True, "message": "Resumed agent. Its final report is not in this message.",
+          "inlineHandback": {"displayName": "worker", "content": [{"type": "text", "text": "done"}]}}),
+        ("inlineHandback, report follows the JSON", "implementer",
+         {"success": True, "message": "Resumed agent. Its final report follows this JSON, framed by the harness.",
+          "inlineHandback": {"displayName": "worker"}}),
+        ("Resumed agent X. Result:", "worker",
+         {"success": True, "message": "Resumed agent worker. Result: done", "inlineHandback": {}}),
+        ("Resumed agent X. Result: without inlineHandback", "worker",
+         {"success": True, "message": "Resumed agent worker. Result: done"}),
+        ("was resumed but failed", "implementer",
+         {"success": False, "message": 'Agent "worker" was resumed but failed while running: error'}),
+        ("resumed it as an in-process teammate", "implementer",
+         {"success": True, "message": 'Teammate "worker" was not running; resumed it as an in-process teammate '
+                                      'and queued your message.'}),
+        ("already waking", "implementer",
+         {"success": True, "message": "worker is already waking; message queued for its next tool round."}),
+    )
+
+    def test_every_form_the_runtime_reports_a_resume_in_is_a_violation(self):
+        for form, name, response in self.RUNTIME_FORMS:
+            text = json.dumps(response)
+            for shape, value in (("dict", response), ("json", text), ("blocks", [{"type": "text", "text": text}]),
+                                 ("text", response["message"])):
+                if shape == "text" and "inlineHandback" in form:
+                    continue  # the key is the evidence there; the message alone is the next form's test
+                with self.subTest(form=form, shape=shape):
+                    self.assertBlockedNaming(self.resumed(value), name)
+
+    def test_an_inline_handback_alone_is_a_violation_naming_the_target(self):
+        self.assertBlockedNaming(self.resumed({"success": True, "inlineHandback": {"content": []}}), "implementer")
+
+    def test_the_resume_messages_alone_are_a_violation_without_the_key(self):
+        for message in ("Resumed agent. Its final report is not in this message.",
+                        "Resumed agent. Its final report follows this JSON, framed by the harness."):
+            with self.subTest(message=message):
+                self.assertBlockedNaming(self.resumed(message), "implementer")
+
+    def test_an_inline_handback_without_a_message_is_a_violation_naming_the_target(self):
+        self.assertBlockedNaming(self.resumed({"success": True, "inlineHandback": {"content": []}}), "implementer")
+
+    def test_a_violation_for_a_resume_without_an_id_is_recorded_with_the_target(self):
+        self.assertBlockedNaming(self.resumed({"success": False, "message": 'Agent "worker" was resumed but failed '
+                                                                          'while running: error'}), "implementer")
+        (violation,) = [r for r in self.ledger_records() if r["event"] == "violation"]
+        self.assertEqual((violation["reason"], violation["agent_id"]), ("completed-agent-resumed", "implementer"))
+
+    def test_a_delivery_message_naming_resume_wording_in_the_recipient_is_silent(self):
+        # Review of #677 at 4ed9085: the display name of a running agent may hold any text, so a delivery
+        # to `worker was resumed but still running` is not a resume. The forms are anchored at their start.
+        names = ("worker was resumed but still running", 'x "y" was resumed but z', "worker is already waking; message queued",
+                 'Teammate "w" was not running; resumed it as an in-process teammate', "Resumed agent", "Resuming agent a1")
+        for name in names:
+            text = f"Message queued for delivery to {name} at its next tool round."
+            for shape, response in (("dict", {"success": True, "message": text}), ("text", text),
+                                    ("blocks", [{"type": "text", "text": json.dumps({"success": True, "message": text})}])):
+                with self.subTest(name=name, shape=shape):
+                    self.assertAllowed(self.resumed(response))
+        text = "Message queued for the main conversation's next turn."
+        self.assertAllowed(self.resumed({"success": True, "message": text}))
+        self.assertFalse(os.path.exists(self.ledger), "a queued message must leave no violation behind")
+
+    def test_a_pin_that_names_the_recipient_is_not_runtime_response_text(self):
+        # Review of #677 at f3a062c: Claude Code 2.1.287 returns `pin: {id, name, ref}` with a delivery to a
+        # running agent, and `pin.name` is the recipient's display name. Only `message`, `resumedAgentId`
+        # and `inlineHandback` are read; never `pin` or any other field.
+        text = "Message queued for delivery to Resumed agent at its next tool round."
+        pin = {"id": WORKER, "name": "Resumed agent", "ref": "7cedb0"}
+        for name in ("Resumed agent", "Resuming agent a1", 'x" was resumed but', "worker is already waking; message queued for its next tool round"):
+            pinned = {"id": WORKER, "name": name, "ref": "7cedb0"}
+            for shape, response in (("dict", {"success": True, "message": text, "pin": pinned}),
+                                    ("json", json.dumps({"success": True, "message": text, "pin": pinned})),
+                                    ("blocks", [{"type": "text", "text": json.dumps({"message": text, "pin": pinned})}]),
+                                    ("other field", {"success": True, "message": text, "pin": pin, "note": name})):
+                with self.subTest(name=name, shape=shape):
+                    self.assertAllowed(self.resumed(response))
+        self.assertFalse(os.path.exists(self.ledger), "a delivery must leave no violation behind")
+
+    def test_a_resume_is_reported_whatever_the_recipient_name_begins_with(self):
+        # Review of #677 at f3a062c: `Message queued worker is already waking; ...` starts with the words of a
+        # delivery, because the recipient's display name does. The runtime's closing words are the evidence.
+        suffix = " is already waking; message queued for its next tool round (not delivered if the agent turns out to have been stopped)."
+        for name in ("Message queued worker", "Message queued", "Message queued for delivery to worker", "worker"):
+            text = name + suffix
+            for shape, response in (("text", text), ("dict", {"success": True, "message": text}),
+                                    ("blocks", [{"type": "text", "text": json.dumps({"message": text})}])):
+                with self.subTest(name=name, shape=shape):
+                    self.assertBlockedNaming(self.resumed(response), "implementer")
+
+    def test_every_exact_delivery_form_is_silent(self):
+        # The only exemptions, whole message: a delivery to a running agent, and one to the main conversation.
+        texts = ("Message queued for delivery to implementer at its next tool round.",
+                 "Message queued for delivery to Message queued worker at its next tool round.",
+                 "Message queued for delivery to a b  c at its next tool round.",
+                 'Message queued for delivery to say "hi" was resumed but x at its next tool round.',
+                 "Message queued for delivery to worker is already waking; message queued for its next tool round at its next tool round.",
+                 "Message queued for delivery to Resumed agent at its next tool round.",
+                 "Message queued for the main conversation's next turn.")
+        for text in texts:
+            for shape, response in (("text", text), ("dict", {"success": True, "message": text}),
+                                    ("blocks", [{"type": "text", "text": json.dumps({"success": True, "message": text})}])):
+                with self.subTest(text=text, shape=shape):
+                    self.assertAllowed(self.resumed(response))
+        self.assertFalse(os.path.exists(self.ledger), "a delivery must leave no violation behind")
+
+    def test_a_delivery_message_that_carries_the_resume_evidence_is_still_a_violation(self):
+        text = "Message queued for delivery to worker at its next tool round."
+        self.assertBlockedNaming(self.resumed({"success": True, "message": text, "resumedAgentId": WORKER}), WORKER)
+        self.assertBlockedNaming(self.resumed({"success": True, "message": text, "inlineHandback": {}}), "implementer")
+
+    def test_resume_wording_that_is_not_at_the_start_of_the_message_is_silent(self):
+        for text in ("Delivered. Resuming agent a0123456789abcdef", "Delivered. Resumed agent worker."):
+            with self.subTest(text=text):
+                self.assertAllowed(self.resumed({"success": True, "message": text}))
+
+    def test_a_resume_is_detected_whatever_the_display_name_holds(self):
+        # Review of #677 at ff51852: a display name keeps its spaces and quotes, and the runtime interpolates it
+        # into these messages. The fixed phrases are the evidence; the name is never matched.
+        for text in ("review agent is already waking; message queued for its next tool round.",
+                     'Agent "say "hi" now" was resumed but failed while running: x',
+                     'Teammate "a b" was not running; resumed it as an in-process teammate with 2 prior messages and '
+                     'queued your message.',
+                     "Delivered. worker is already waking; message queued for its next tool round."):
+            for shape, response in (("text", text), ("dict", {"success": True, "message": text}),
+                                    ("blocks", [{"type": "text", "text": json.dumps({"message": text})}])):
+                with self.subTest(text=text, shape=shape):
+                    self.assertBlockedNaming(self.resumed(response), "implementer")
+
+    def test_a_message_queued_for_any_recipient_is_never_a_resume(self):
+        for name in ("review agent is already waking; message queued for its next tool round.",
+                     'say "hi" was resumed but x', 'a" was not running; resumed it as an in-process teammate', "plain"):
+            text = f"Message queued for delivery to {name} at its next tool round."
+            with self.subTest(text=text):
+                self.assertAllowed(self.resumed({"success": True, "message": text}))
+        self.assertFalse(os.path.exists(self.ledger), "a queued message must leave no violation behind")
+
+    def test_a_queued_message_is_silent(self):
+        for response in ({"success": True, "message": "Message queued for delivery to implementer at its next tool round."},
+                         "Message queued for delivery to implementer at its next tool round.",
+                         {"success": True, "message": "Message queued for delivery to worker at its next tool round."},
+                         [{"type": "text", "text": "Message queued for delivery to main"}],
+                         {"success": True, "message": "Message queued for delivery to main"}):
+            with self.subTest(response=response):
+                self.assertAllowed(self.resumed(response))
+        self.assertFalse(os.path.exists(self.ledger), "a queued message must leave no violation behind")
+
+
+class TestTheContextBudget(GuardCase):
+    def post(self, agent_id, context, **extra):
+        return self.hook(self.in_subagent("PostToolUse", agent_id, [1_000, context], "Bash",
+                                          {"command": "ls"}, tool_response={"stdout": ""}, **extra))
+
+    def test_the_checkpoint_note_fires_once_at_the_checkpoint_and_not_below(self):
+        self.assertAllowed(self.post(WORKER, CHECKPOINT - 1))
+        code, out, _ = self.post(WORKER, CHECKPOINT)
+        self.assertEqual(code, 0)
+        note = out["hookSpecificOutput"]
+        self.assertEqual(note["hookEventName"], "PostToolUse")
+        for needle in (f"{CHECKPOINT:,}", "Commit what is done", "do not widen", "handoff", f"{HARD:,}"):
+            self.assertIn(needle, note["additionalContext"])
+        self.assertAllowed(self.post(WORKER, CHECKPOINT + 5_000))   # once per agent
+        self.assertEqual(out["hookSpecificOutput"]["additionalContext"].count("Context checkpoint"), 1)
+        code, again, _ = self.post(OTHER, CHECKPOINT + 5_000)       # another agent has its own
+        self.assertIn("additionalContext", again["hookSpecificOutput"])
+
+    def test_no_budget_applies_outside_a_subagent(self):
+        payload = self.event("PostToolUse", tool_name="Bash", tool_input={"command": "ls"}, tool_response={},
+                             transcript_path=self.transcript(WORKER, [HARD + 1]))
+        self.assertAllowed(self.hook(payload))
+        pre = self.event("PreToolUse", tool_name="Read", tool_input={"file_path": "/x"},
+                         transcript_path=self.transcript(WORKER, [HARD + 1]))
+        self.assertAllowed(self.hook(pre))
+
+    def test_the_hard_bound_denies_every_tool_but_git_and_handoff(self):
+        def at_hard(tool, tool_input, context=HARD, **extra):
+            return self.hook(self.in_subagent("PreToolUse", WORKER, [1_000, context], tool, tool_input, **extra))
+
+        for tool, tool_input in (("Read", {"file_path": "/x"}), ("Edit", {"file_path": "/x", "old_string": "a",
+                                                                          "new_string": "b"}),
+                                 ("Write", {"file_path": "/x", "content": "c"}), ("Grep", {"pattern": "p"}),
+                                 ("SendMessage", {"to": "main", "message": "m"}),
+                                 ("Bash", {"command": "make test"}), ("Bash", {"command": "git log | head"}),
+                                 ("Bash", {"command": "git status\nrm -rf ."}), ("Bash", {"command": "git log > out"}),
+                                 ("Bash", {"command": "git status && rm -r x"}),
+                                 # The word after an operator is itself a git command: only the
+                                 # operator tells these from two allowed commands.
+                                 ("Bash", {"command": "git log | git commit -m x"}),
+                                 ("Bash", {"command": "git log > git"}), ("Bash", {"command": "git log || git gc"}),
+                                 ("Bash", {"command": "git status & git gc"})):
+            with self.subTest(tool=tool, tool_input=tool_input):
+                self.assertDenied(at_hard(tool, tool_input), f"{HARD:,}", "git command", "handoff")
+        for command in ('git add -A', 'git add -u', 'git add --all -- tools/x.py', 'git commit -a -m "m"',
+                        'git commit -m "fix: x > y | z"', 'git commit -m "one" -m "two (see #12); done"',
+                        'git -C /work/tree status', 'git status --short', 'git status -s -b', 'git diff --stat',
+                        'git diff --cached --name-status', 'git log --oneline -5', 'git log -n 3 --stat', 'git show HEAD',
+                        'git show --stat HEAD', 'git push origin HEAD', 'git push -u origin branch-name',
+                        'git push --set-upstream origin a/b-c', 'git rev-parse HEAD',
+                        'git rev-parse --abbrev-ref HEAD', 'git rev-parse --show-toplevel',
+                        'git branch', 'git branch --show-current', 'git status\t-s', 'git  status   --short',
+                        f'python3 {GUARD} handoff', f'python3 {GUARD} handoff --base origin/main'):
+            with self.subTest(command=command):
+                self.assertAllowed(at_hard("Bash", {"command": command}))
+        # A relative path is the guard when the hook's own cwd says so.
+        self.assertAllowed(at_hard("Bash", {"command": "python3 tools/factory/recipe/rails/hooks/"
+                                                       "agent-lifecycle-guard.py handoff --base origin/main"}, cwd=REPO))
+        # Just below the bound nothing is refused.
+        self.assertAllowed(at_hard("Read", {"file_path": "/x"}, context=HARD - 1))
+
+    def at_hard_bash(self, command):
+        return self.hook(self.in_subagent("PreToolUse", WORKER, [1_000, HARD], "Bash", {"command": command}))
+
+    def test_every_bypass_found_in_review_is_refused_by_the_grammar_past_the_hard_bound(self):
+        # Findings of the reviews of #677: the bound is a strict regular grammar over the whole string,
+        # with no shell model, so none of these is read as anything. Each one ran a command in a shell.
+        for command in (
+                # a comment, a newline, a carriage return, a line continuation
+                'git --version # inspect version\npython3 -c "print(123)"', "git status # x\nrm -rf x", "git status #",
+                "git log HEAD#x", "git status;#\nrm x", "git status\ngit log", "git status\r\npython3 x.py",
+                "git log \\\npython3 x.py", "git status\n",
+                # an alias or any other config through -c, and the other global options
+                "git -c 'alias.work=!python3 -c \"print(123)\"' work", "git -c core.pager=less log",
+                "git -c alias.s=status s", "git --config-env=a=B status", "git --exec-path=/tmp/x status",
+                "git --git-dir=/x status", "git -C /x -c a=b status", "git -p status", "git --paginate log",
+                # ANSI-C quoting hands git an option the scanner never saw (finding 1 at 9df6565)
+                "git push $'--receive-pack=printf HARD_BOUND_BYPASS >&2; false' . HEAD",
+                "git push $'--exec=x' o", "git log $'\\x2d\\x2doutput=out'",
+                # options that run a program, spelt out, abbreviated or split
+                "git push --receive-pack=evil origin", "git push --exec=evil origin", "git push --receive-pack evil o",
+                "git push --upload-pack=evil origin", "git diff --ext-diff", "git show --textconv HEAD",
+                "git log --output=out", "git diff --output out", "git push '--receive-pack=evil' o",
+                'git push "--receive-pack=evil" o', "git push --rec=evil o", "git push ext::sh o",
+                "git push fd::17 o", "git push --force o HEAD", "git log -p", "git commit --amend -m \"x\"",
+                # command substitution, backticks, process substitution, expansion, globbing, braces
+                'git commit -m "$(rm x)"', 'git commit -m "`rm x`"', "git log $(rm x)", "git log `rm x`",
+                "git log <(rm x)", "(git log)", "git log ${IFS}", "git log $HOME", "git add *", "git add ?",
+                "git add {a,b}", "git add ~", "git add ~/x", 'git commit -m "${X}"', 'git commit -m "a\\b"',
+                'git commit -m "wow!"',
+                # a heredoc commit message is past the bound by design
+                'git commit -m "$(cat <<\'EOF\'\nsubject\n\nCo-Authored-By: A <a@example.invalid>\nEOF\n)"',
+                "git commit -F - <<'EOF'\nx\nEOF", 'git commit -m "a\nb"', "git commit -m 'single quoted'",
+                "git commit -m unquoted", 'git commit -m "unterminated', 'git commit -m "a" "b"',
+                # an operator, quoted or not, between two allowed commands, or after one
+                "git status && git log", "git status; git log", "git status;", "git status &", "git status || x",
+                "git status | cat", "git log > out", "git log >> out", "git log < in", "git status 2>&1",
+                # not one of the allowed subcommands, aliases, other programs, `cd`, environment
+                "git work", "git s", "git gc", "git config alias.x '!x'", "git rebase -x 'make test' main",
+                "git submodule foreach make", "git bisect run make", "git difftool -x make", "git filter-branch -f",
+                "git clean -fdx", "git reset --hard", "git checkout -- .", "git restore .", "git stash", "git fetch",
+                "git pull", "git clone x y", "git", "git -C", "git -C /x", "git -C -c status", "git -- status",
+                "git --version", "git -C a -C b status", "git branch -D main", "git branch new-branch",
+                "git branch -m a b", "git branch --delete x", "git branch --set-upstream-to=o/x",
+                "git branch --list", "cd", "cd a b", "cd /x && git status", "cd /x ; git s", "/usr/bin/git status",
+                "GIT_SSH_COMMAND=evil git push", "env git status", "command git status", "sudo git status",
+                "echo hi", "rm -rf x", "make test", "ls", "git status\x00", "git\tstatus\n"):
+            with self.subTest(command=command):
+                self.assertDenied(self.at_hard_bash(command), f"{HARD:,}", "git command", "handoff")
+
+    def test_quoted_punctuation_is_allowed_only_in_a_commit_message_and_only_without_the_forbidden_characters(self):
+        for command in ('git commit -m ">"', 'git commit -m "|"', 'git commit -m ";"', 'git commit -m "&&"',
+                        'git commit -m "&"', 'git commit -m "fix #12"', 'git commit -m "(x) <y> {z} [w] *?~"',
+                        "git commit -m \"it's fine\"", 'git commit -m "tabs\tand é ü"', 'git commit -m ""',
+                        'git commit -m "fix: x > y | z"'):
+            with self.subTest(command=command):
+                self.assertAllowed(self.at_hard_bash(command))
+        for forbidden in ('$', '`', '\\', '!', '"', '\n'):
+            with self.subTest(forbidden=forbidden):
+                self.assertDenied(self.at_hard_bash(f'git commit -m "a{forbidden}b"'), "git command")
+
+    def test_a_pathological_command_is_refused_quickly(self):
+        # A regular grammar must not be a ReDoS: a long near-miss is judged in linear-ish time.
+        for command in ("git add " + "a " * 20_000 + "!", "git add " + "a" * 200_000 + "!",
+                        "git add" + " " * 100_000 + "!", "git log " + "-1 " * 10_000 + "x'"):
+            with self.subTest(length=len(command)):
+                self.assertDenied(self.at_hard_bash(command), "git command")
+
+    def test_only_the_guard_itself_may_run_as_handoff_past_the_hard_bound(self):
+        # Finding 5: any script named agent-lifecycle-guard.py used to pass. Identity is the real path
+        # of the running file, resolved against the hook's cwd, with `python3` and `handoff [--base REF]`.
+        elsewhere = os.path.join(self.tmp, "another")
+        os.makedirs(elsewhere)
+        copy = os.path.join(elsewhere, "agent-lifecycle-guard.py")
+        shutil.copy(GUARD, copy)
+        link = os.path.join(elsewhere, "link-to-the-guard.py")
+        os.symlink(GUARD, link)
+        for command in (f"python3 {copy} handoff", "python3 /no-such-directory/agent-lifecycle-guard.py handoff",
+                        "python3 /another/agent-lifecycle-guard.py handoff",
+                        "python3 agent-lifecycle-guard.py handoff",
+                        "python3 '$CLAUDE_PROJECT_DIR/tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py' handoff",
+                        'python3 "$CLAUDE_PROJECT_DIR/tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py" handoff',
+                        f"python3 {GUARD} handoff --base", f"python3 {GUARD} handoff --base -x",
+                        f"python3 {GUARD} handoff --base x y", f"python3 {GUARD} handoff --base=x",
+                        f"python3 {GUARD} handoff extra", f"python3 {GUARD} measure", f"python3 {GUARD}",
+                        f"python3 {GUARD} check-settings x", f"python3 -c 'print(1)' {GUARD} handoff",
+                        f"python {GUARD} handoff", f"python3 -B {GUARD} handoff", f"/usr/bin/python3 {GUARD} handoff",
+                        f"sh {GUARD} handoff", f"python3 {GUARD}.bak handoff", f"cd {elsewhere} && python3 {copy} handoff",
+                        f"cd {REPO} && python3 tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py handoff",
+                        f"python3 {GUARD} handoff; rm x", f"python3 {GUARD} handoff && rm x",
+                        f"python3 {GUARD} handoff\nrm x", f"python3 {GUARD} handoff # x", f"python3 {GUARD} handoff > x"):
+            with self.subTest(command=command):
+                self.assertDenied(self.hook(self.in_subagent("PreToolUse", WORKER, [HARD], "Bash",
+                                                             {"command": command}, cwd=REPO)), "handoff")
+        for command in (f"python3 {link} handoff", f"python3 {GUARD} handoff --base origin/main",
+                        f"python3 {GUARD} handoff"):
+            with self.subTest(command=command):
+                self.assertAllowed(self.hook(self.in_subagent("PreToolUse", WORKER, [HARD], "Bash",
+                                                              {"command": command}, cwd=self.tmp)))
+        # A relative path is the guard only from the directory the hook runs in.
+        relative = "python3 tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py handoff"
+        self.assertAllowed(self.hook(self.in_subagent("PreToolUse", WORKER, [HARD], "Bash",
+                                                      {"command": relative}, cwd=REPO)))
+        self.assertDenied(self.at_hard_bash(relative), "handoff")
+        self.assertDenied(self.hook(self.in_subagent("PreToolUse", WORKER, [HARD], "Bash",
+                                                     {"command": relative}, cwd=elsewhere)), "handoff")
+
+    def test_an_agent_launch_inside_a_subagent_is_recorded_and_then_gets_the_checkpoint_note(self):
+        # Finding 7: PostToolUse of Agent returned before the checkpoint check.
+        payload = self.in_subagent("PostToolUse", WORKER, [1_000, CHECKPOINT], "Agent",
+                                   {"description": "d", "prompt": "p", "name": "child"},
+                                   tool_response={"agentId": OTHER, "status": "async_launched"})
+        code, out, _ = self.hook(payload)
+        self.assertEqual(code, 0)
+        self.assertIn("Context checkpoint", out["hookSpecificOutput"]["additionalContext"])
+        events = [(r["event"], r["agent_id"]) for r in self.ledger_records()]
+        self.assertEqual(events, [("launched", OTHER), ("checkpoint", WORKER)])
+        # Once per agent, as for any other tool.
+        again = self.in_subagent("PostToolUse", WORKER, [1_000, CHECKPOINT], "Agent", {"name": "c2"},
+                                 tool_response={"agentId": "a2222222222222222", "status": "async_launched"})
+        self.assertAllowed(self.hook(again))
+
+    def test_the_denial_is_recorded(self):
+        self.hook(self.in_subagent("PreToolUse", WORKER, [HARD], "Read", {"file_path": "/x"}))
+        (denied,) = [r for r in self.ledger_records() if r["event"] == "denied"]
+        self.assertEqual((denied["reason"], denied["agent_id"], denied["tool"], denied["tokens"]),
+                         ("context-hard-bound", WORKER, "Read", HARD))
+
+    def test_the_context_is_input_plus_cache_read_plus_cache_creation_of_the_latest_turn(self):
+        # An earlier, larger turn does not count: the latest is the context the next turn pays for.
+        payload = self.in_subagent("PreToolUse", WORKER, [HARD + 50_000, HARD - 1], "Read", {"file_path": "/x"})
+        self.assertAllowed(self.hook(payload))
+
+    def test_the_latest_turn_is_found_past_a_large_tail_of_other_lines(self):
+        payload = self.in_subagent("PreToolUse", WORKER, [HARD], "Read", {"file_path": "/x"}, padding=400_000)
+        self.assertDenied(self.hook(payload), f"{HARD:,}")
+
+    def test_a_tool_result_larger_than_any_window_does_not_release_the_hard_bound(self):
+        # Review of #677 at 439d127: a 17 MiB tool result after the 350,000-token turn ended the search.
+        payload = self.in_subagent("PreToolUse", WORKER, [HARD], "Bash",
+                                   {"command": 'python3 -c "print(123)"'}, padding=17 * 1024 * 1024)
+        self.assertDenied(self.hook(payload), f"{HARD:,}")
+        # Only the latest turn decides: a large result after a small turn is not a reason to look further back.
+        many = self.in_subagent("PreToolUse", OTHER, [HARD, 1_000], "Bash",
+                                {"command": 'python3 -c "print(123)"'}, padding=1024 * 1024)
+        self.assertAllowed(self.hook(many))  # the latest turn is small: it is the one that counts
+
+    def test_a_line_that_cannot_be_decoded_is_skipped_and_the_latest_decodable_usage_decides(self):
+        # 10,000 nested arrays exhaust the JSON decoder's recursion (RecursionError, not ValueError).
+        deep = '{"type":"user","toolUseResult":{"usage":' + "[" * 10_000 + "0" + "]" * 10_000 + "}}\n"
+        payload = self.in_subagent("PreToolUse", WORKER, [HARD], "Write", {"file_path": "/x"})
+        sub = os.path.join(os.path.dirname(payload["transcript_path"]), SESSION, "subagents",
+                           f"agent-{WORKER}.jsonl")
+        with open(sub, "a", encoding="utf-8") as handle:
+            handle.write(deep)
+        code, out, err = self.hook(payload)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny", (out, err))
+        self.assertIn(f"{HARD:,}", out["hookSpecificOutput"]["permissionDecisionReason"])
+        self.assertNotIn("RecursionError", err)
+
+    def test_without_a_readable_transcript_there_is_no_verdict_and_no_crash(self):
+        gone = self.event("PreToolUse", agent_id=WORKER, tool_name="Read", tool_input={"file_path": "/x"},
+                          transcript_path=os.path.join(self.tmp, "nowhere", f"{SESSION}.jsonl"))
+        self.assertAllowed(self.hook(gone))
+        unreadable = self.in_subagent("PreToolUse", WORKER, [HARD], "Read", {"file_path": "/x"})
+        sub = os.path.join(os.path.dirname(unreadable["transcript_path"]), SESSION, "subagents",
+                           f"agent-{WORKER}.jsonl")
+        with open(sub, "w", encoding="utf-8") as handle:
+            handle.write("{not json\n\x00\x01\n")
+        self.assertAllowed(self.hook(unreadable))
+        unsafe = self.event("PreToolUse", agent_id="../../etc", tool_name="Read", tool_input={},
+                            transcript_path=unreadable["transcript_path"])
+        self.assertAllowed(self.hook(unsafe))
+
+
+def git(cwd, *args):
+    done = subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+                           "-c", "commit.gpgsign=false", *args], cwd=cwd, capture_output=True, text=True,
+                          env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull})
+    assert done.returncode == 0, (args, done.stdout, done.stderr)
+    return done.stdout.strip()
+
+
+class TestHandoff(GuardCase):
+    def repository(self):
+        repo = os.path.join(self.tmp, "repo")
+        os.makedirs(repo)
+        git(repo, "init", "-q", "-b", "main")
+        with open(os.path.join(repo, "base.txt"), "w", encoding="utf-8") as handle:
+            handle.write("base\n")
+        git(repo, "add", "base.txt")
+        git(repo, "commit", "-q", "-m", "The base")
+        git(repo, "checkout", "-q", "-b", "the-feature-works")
+        with open(os.path.join(repo, "feature.txt"), "w", encoding="utf-8") as handle:
+            handle.write("feature\n")
+        git(repo, "add", "feature.txt")
+        git(repo, "commit", "-q", "-m", "Add the feature that the next agent continues")
+        return repo
+
+    def test_a_dirty_worktree_is_refused_because_that_work_would_not_survive(self):
+        repo = self.repository()
+        with open(os.path.join(repo, "half-done.txt"), "w", encoding="utf-8") as handle:
+            handle.write("not committed\n")
+        done = run_guard("handoff", "--base", "main", cwd=repo)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertEqual(done.stdout, "")
+        self.assertIn("uncommitted work", done.stderr)
+        self.assertIn("half-done.txt", done.stderr)
+
+    def test_a_modified_tracked_file_is_refused_too(self):
+        repo = self.repository()
+        with open(os.path.join(repo, "feature.txt"), "a", encoding="utf-8") as handle:
+            handle.write("more\n")
+        self.assertEqual(run_guard("handoff", "--base", "main", cwd=repo).returncode, 1)
+
+    def test_the_brief_from_a_committed_worktree_names_the_head_and_what_was_committed(self):
+        repo = self.repository()
+        head = git(repo, "rev-parse", "HEAD")
+        done = run_guard("handoff", "--base", "main", cwd=repo)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        brief = done.stdout
+        self.assertIn("branch: the-feature-works", brief)
+        self.assertIn(f"head: {head} Add the feature that the next agent continues", brief)
+        self.assertIn("base: main", brief)
+        self.assertIn("Add the feature that the next agent continues", brief.split("commits on the branch")[1])
+        self.assertIn("A\tfeature.txt", brief)
+        self.assertNotIn("base.txt", brief.split("files changed")[1])
+        self.assertIn("upstream: none configured", brief)
+        self.assertIn("reads the repository, not a transcript", brief)
+
+    def test_the_brief_is_bounded(self):
+        repo = self.repository()
+        for index in range(45):
+            for suffix in "ab":
+                with open(os.path.join(repo, f"f{index}{suffix}.txt"), "w", encoding="utf-8") as handle:
+                    handle.write("x\n")
+            git(repo, "add", ".")
+            git(repo, "commit", "-q", "-m", f"Commit number {index}")
+        brief = run_guard("handoff", "--base", "main", cwd=repo).stdout
+        # 46 commits against a bound of 40, and 91 files against a bound of 80.
+        self.assertIn("commits on the branch since the base (46):", brief)
+        self.assertIn("and 6 more commits", brief)
+        self.assertIn("files changed since the base (91):", brief)
+        self.assertIn("and 11 more files", brief)
+        self.assertLess(len(brief.splitlines()), 150)
+
+    def test_outside_a_repository_it_refuses(self):
+        done = run_guard("handoff", cwd=self.tmp)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("not inside a git worktree", done.stderr)
+
+
+OWN_GUARD_REL = "tools/factory/recipe/rails/hooks/agent-lifecycle-guard.py"
+ENGINE_GUARD_REL = ".claude/hooks/agent-lifecycle-guard.py"
+ENGINE_COMMAND = f'python3 "$CLAUDE_PROJECT_DIR/{ENGINE_GUARD_REL}"'
+LIFECYCLE_EVENTS = ("PreToolUse", "PostToolUse")
+
+
+class TestCheckSettings(GuardCase):
+    def check(self, settings, *extra):
+        path = os.path.join(self.tmp, "settings.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(settings, handle)
+        return run_guard("check-settings", path, *extra)
+
+    def load(self, path):
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+
+    def lifecycle_hooks(self, settings, events=LIFECYCLE_EVENTS):
+        """Every registration of the guard in `settings`, as (event, entry, hook)."""
+        return [(event, entry, hook_) for event in events for entry in settings["hooks"].get(event, [])
+                for hook_ in entry["hooks"] if "agent-lifecycle-guard" in hook_["command"]]
+
+    def with_command(self, settings, command, events=LIFECYCLE_EVENTS):
+        for _, _, hook_ in self.lifecycle_hooks(settings, events):
+            hook_["command"] = command
+        return settings
+
+    def test_the_rails_settings_and_this_repositorys_own_wire_the_guard(self):
+        for path, extra in ((RAILS_SETTINGS, ()), (OWN_SETTINGS, ("--guard-path", OWN_GUARD_REL))):
+            with self.subTest(path=path):
+                done = run_guard("check-settings", path, *extra)
+                self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+                self.assertIn("PreToolUse for SendMessage", done.stdout)
+                self.assertNotIn("SubagentStop", done.stdout)
+
+    def test_this_repositorys_own_settings_run_the_one_file_the_rails_emit(self):
+        commands = [hook["command"] for entries in self.load(OWN_SETTINGS)["hooks"].values()
+                    for entry in entries for hook in entry["hooks"]]
+        self.assertIn(f'python3 "$CLAUDE_PROJECT_DIR/{OWN_GUARD_REL}"', commands)
+        self.assertTrue(any("repo-hygiene.py --fix" in command for command in commands), "the SessionStart hook stays")
+        self.assertTrue(os.path.isfile(GUARD))
+
+    def test_no_subagentstop_registration_is_shipped_because_a_stop_hook_can_be_vetoed(self):
+        for path in (RAILS_SETTINGS, OWN_SETTINGS):
+            with self.subTest(path=path):
+                self.assertNotIn("SubagentStop", self.load(path)["hooks"])
+
+    def test_the_wrong_guard_path_fails_whichever_settings_are_checked(self):
+        # The rails settings name the engine's path; this repository's name its own.
+        self.assertEqual(run_guard("check-settings", RAILS_SETTINGS, "--guard-path", OWN_GUARD_REL).returncode, 1)
+        self.assertEqual(run_guard("check-settings", OWN_SETTINGS).returncode, 1)
+        done = run_guard("check-settings", OWN_SETTINGS, "--guard-path", ENGINE_GUARD_REL)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn(f"python3 \"$CLAUDE_PROJECT_DIR/{ENGINE_GUARD_REL}\"", done.stdout)
+
+    def test_without_a_required_entry_it_fails_and_says_which(self):
+        settings = self.load(RAILS_SETTINGS)
+        del settings["hooks"]["PostToolUse"]
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("PostToolUse for all tools", done.stdout)
+        self.assertNotIn("PreToolUse", done.stdout)
+
+    def test_the_previous_rails_settings_fail_naming_every_missing_registration(self):
+        previous = {"$schema": "https://json.schemastore.org/claude-code-settings.json",
+                    "hooks": {"PreToolUse": [{"matcher": "Bash|Edit|Write|NotebookEdit", "hooks": [
+                        {"type": "command",
+                         "command": 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/primary-checkout-guard.py"'}]}]}}
+        # This is the bytes recipe 1 of .claude/settings.json wrote, not a paraphrase of them.
+        self.assertEqual(hashlib.sha256((json.dumps(previous, indent=2) + "\n").encode()).hexdigest(),
+                         ownership.RECIPE_SHA256[".claude/settings.json"][1])
+        done = self.check(previous)
+        self.assertEqual(done.returncode, 1)
+        for event in ("PreToolUse for SendMessage", "PreToolUse for all tools", "PostToolUse for all tools"):
+            self.assertIn(event, done.stdout)
+
+    def test_a_matcher_that_covers_only_some_tools_is_not_all_tools(self):
+        settings = self.load(RAILS_SETTINGS)
+        settings["hooks"]["PostToolUse"][0]["matcher"] = "Agent|SendMessage"
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("PostToolUse for all tools", done.stdout)
+        settings["hooks"]["PostToolUse"][0]["matcher"] = "*"
+        self.assertEqual(self.check(settings).returncode, 0)
+
+    def test_a_registration_with_async_true_is_refused_because_it_cannot_enforce_a_decision(self):
+        # Finding 3: an asynchronous hook's permissionDecision and decision are ignored.
+        for key in ("async", "asyncRewake"):
+            for event in LIFECYCLE_EVENTS:
+                with self.subTest(key=key, event=event):
+                    settings = self.load(RAILS_SETTINGS)
+                    for registered, _, hook_ in self.lifecycle_hooks(settings, (event,)):
+                        hook_[key] = True
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(event, done.stdout)
+                    self.assertIn(key, done.stdout)
+        # `async: false` is no longer let through: the registration carries a key it need not.
+        settings = self.load(RAILS_SETTINGS)
+        for _, _, hook_ in self.lifecycle_hooks(settings):
+            hook_["async"] = False
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("'async'", done.stdout)
+
+    def test_a_key_that_changes_how_the_runtime_runs_the_hook_leaves_it_not_wired_and_is_named(self):
+        # Finding 2 of the review at 9df6565: `args` makes the whole command string the executable name
+        # (the guard never runs), `if` skips the hook for other tools, `once` removes it after one run.
+        on_hook = {"args": [], "if": "Bash(git *)", "once": True, "async": False, "asyncRewake": False,
+                   "shell": "bash", "statusMessage": "x", "timeout_ms": 5, "env": {"A": "b"}, "type2": "x"}
+        on_group = {"if": "Bash(git *)", "once": True, "args": [], "description": "x", "enabled": True}
+        for event in LIFECYCLE_EVENTS:
+            for where, keys in (("hook", on_hook), ("group", on_group)):
+                for key, value in keys.items():
+                    with self.subTest(event=event, where=where, key=key):
+                        settings = self.load(RAILS_SETTINGS)
+                        for _, entry, hook_ in self.lifecycle_hooks(settings, (event,)):
+                            (hook_ if where == "hook" else entry)[key] = value
+                        done = self.check(settings)
+                        self.assertEqual(done.returncode, 1, done.stdout)
+                        self.assertIn(f"'{key}'", done.stdout)
+                        self.assertIn(event, done.stdout)
+                        self.assertIn(f"on the {'hook group' if where == 'group' else 'hook'}", done.stdout)
+        # `args` on every registration at once, as the review reproduced it.
+        settings = self.load(RAILS_SETTINGS)
+        for _, _, hook_ in self.lifecycle_hooks(settings):
+            hook_["args"] = []
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        for line in ("PreToolUse for SendMessage", "PreToolUse for all tools", "PostToolUse for all tools"):
+            self.assertIn(line, done.stdout)
+        self.assertIn("'args'", done.stdout)
+
+    def test_the_hook_type_must_be_command_and_a_timeout_is_the_one_extra_key_allowed(self):
+        for hook_type in (None, "prompt", "agent", "http", "Command"):
+            with self.subTest(type=hook_type):
+                settings = self.load(RAILS_SETTINGS)
+                for _, _, hook_ in self.lifecycle_hooks(settings):
+                    if hook_type is None:
+                        del hook_["type"]
+                    else:
+                        hook_["type"] = hook_type
+                done = self.check(settings)
+                self.assertEqual(done.returncode, 1, done.stdout)
+                self.assertIn("'type'", done.stdout)
+        settings = self.load(RAILS_SETTINGS)
+        for _, _, hook_ in self.lifecycle_hooks(settings):
+            hook_["timeout"] = 30
+        self.assertEqual(self.check(settings).returncode, 0)
+
+    def test_a_timeout_that_is_not_a_positive_number_is_refused_and_named(self):
+        # The runtime's settings schema takes a positive number; True is not one, however Python counts it.
+        for timeout in (-1, 0, -0.5, True, False, "30", None, [30], {"s": 30}, float("nan"), float("inf")):
+            with self.subTest(timeout=timeout):
+                settings = self.load(RAILS_SETTINGS)
+                for _, _, hook_ in self.lifecycle_hooks(settings):
+                    hook_["timeout"] = timeout
+                done = self.check(settings)
+                self.assertEqual(done.returncode, 1, done.stdout)
+                self.assertIn("'timeout'", done.stdout)
+                self.assertIn("positive number", done.stdout)
+        for timeout in (1, 30, 0.5, 600):
+            with self.subTest(timeout=timeout):
+                settings = self.load(RAILS_SETTINGS)
+                for _, _, hook_ in self.lifecycle_hooks(settings):
+                    hook_["timeout"] = timeout
+                self.assertEqual(self.check(settings).returncode, 0)
+
+    def test_a_valid_registration_does_not_hide_an_invalid_one_of_the_guard(self):
+        # Review of #677 at ff51852: a duplicate registration of the guard with a timeout or a type the runtime's
+        # schema refuses made the settings invalid, while a valid one beside it certified them wired.
+        for event in LIFECYCLE_EVENTS:
+            for key, value, shown in (("timeout", "bad", "'timeout'"), ("timeout", -3, "'timeout'"),
+                                      ("type", "not-a-hook-type", "'type'"), ("args", [], "'args'")):
+                with self.subTest(event=event, key=key, value=value):
+                    settings = self.load(RAILS_SETTINGS)
+                    copies = [(entry, hook_) for _, entry, hook_ in self.lifecycle_hooks(settings, (event,))]
+                    self.assertTrue(copies)
+                    entry, hook_ = copies[0]
+                    duplicate = json.loads(json.dumps(entry))
+                    for twin in duplicate["hooks"]:
+                        if twin.get("command") == hook_.get("command"):
+                            twin[key] = value
+                    settings["hooks"][event].append(duplicate)
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn("not wired", done.stdout)
+                    self.assertIn(shown, done.stdout)
+                    self.assertIn(event, done.stdout)
+        # The same duplicate, valid, is still wired.
+        settings = self.load(RAILS_SETTINGS)
+        entry = settings["hooks"]["PostToolUse"][0]
+        settings["hooks"]["PostToolUse"].append(json.loads(json.dumps(entry)))
+        self.assertEqual(self.check(settings).returncode, 0)
+
+    def test_a_group_may_hold_other_hooks_but_the_guard_hook_is_judged_alone(self):
+        # The primary-checkout guard sits in a group of its own with its own keys; only the group and
+        # hook that carry THIS guard are held to the key list.
+        settings = self.load(RAILS_SETTINGS)
+        settings["hooks"]["PreToolUse"][0]["hooks"][0]["args"] = []
+        self.assertEqual(self.check(settings).returncode, 0)
+
+    def test_a_command_that_is_not_exactly_the_guard_at_the_named_path_is_refused(self):
+        guard = f"$CLAUDE_PROJECT_DIR/{ENGINE_GUARD_REL}"
+        for command in ("echo agent-lifecycle-guard.py", f'echo "{guard}"', f'cat "{guard}"',
+                        f'python3 "{guard}" handoff', f'python3 "{guard}" measure', f'python3 "{guard}" check-settings x',
+                        f'FOO=1 python3 "{guard}"', f'python3 -c "import x" "{guard}"', f'python3 "{guard}" && true',
+                        f'python3 "{guard}" | cat', f'python3 "{guard}" >/dev/null', f'python3 "{guard}" # note',
+                        f'sh -c \'python3 "{guard}"\'', f'python3 "{guard}.bak"', "python3 other/agent-lifecycle-guard.pyc",
+                        f'true; python3 "{guard}"', "", f'python3 "{guard}" "',
+                        # Finding 5: the basename alone, and the quotes that stop the expansion.
+                        "python3 /no-such-directory/agent-lifecycle-guard.py",
+                        f"python3 '{guard}'", "python3 '$CLAUDE_PROJECT_DIR/.claude/hooks/agent-lifecycle-guard.py'",
+                        f"python3 {guard}", f'python "{guard}"', f'python3 -B "{guard}"', f'/usr/bin/python3 "{guard}"',
+                        f'python3  "{guard}"', f' python3 "{guard}"', f'python3 "{guard}" ',
+                        'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/../hooks/agent-lifecycle-guard.py"',
+                        'python3 "$CLAUDE_PROJECT_DIR/other/agent-lifecycle-guard.py"',
+                        'python3 "/abs/.claude/hooks/agent-lifecycle-guard.py"',
+                        'python3 ".claude/hooks/agent-lifecycle-guard.py"'):
+            with self.subTest(command=command):
+                done = self.check(self.with_command(self.load(RAILS_SETTINGS), command))
+                self.assertEqual(done.returncode, 1, done.stdout)
+                for event in ("PreToolUse for SendMessage", "PostToolUse for all tools"):
+                    self.assertIn(event, done.stdout)
+
+    def test_only_the_exact_command_for_the_named_path_is_accepted(self):
+        done = self.check(self.with_command(self.load(RAILS_SETTINGS), ENGINE_COMMAND))
+        self.assertEqual(done.returncode, 0, done.stdout)
+        other = "tools/x/guard.py"
+        done = self.check(self.with_command(self.load(RAILS_SETTINGS), f'python3 "$CLAUDE_PROJECT_DIR/{other}"'),
+                          "--guard-path", other)
+        self.assertEqual(done.returncode, 0, done.stdout)
+        done = self.check(self.with_command(self.load(RAILS_SETTINGS), ENGINE_COMMAND), "--guard-path", other)
+        self.assertEqual(done.returncode, 1)
+
+    def test_a_finite_matcher_is_not_all_tools_however_long(self):
+        listed = "Bash|Read|Edit|Write|Glob|Grep|Agent|SendMessage|NotebookEdit|WebFetch|TodoWrite|mcp__server__tool"
+        for matcher in (listed, "Bash|Read|Edit|Write|Glob|Grep|Agent|SendMessage|NotebookEdit|WebFetch|TodoWrite|mcp__.*",
+                        "^(?!Foo$).*$", "[A-Za-z_]+", "mcp__.*", ".*"):
+            for event in ("PreToolUse", "PostToolUse"):
+                with self.subTest(matcher=matcher, event=event):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"][event][-1]["matcher"] = matcher
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(f"{event} for all tools", done.stdout)
+        for matcher in (None, "", "*"):
+            with self.subTest(unrestricted=matcher):
+                settings = self.load(RAILS_SETTINGS)
+                for event in ("PreToolUse", "PostToolUse"):
+                    if matcher is None:
+                        del settings["hooks"][event][-1]["matcher"]
+                    else:
+                        settings["hooks"][event][-1]["matcher"] = matcher
+                self.assertEqual(self.check(settings).returncode, 0)
+
+    def test_a_registration_the_runtime_would_reject_is_not_wired_whatever_it_runs(self):
+        # Claude Code 2.1.287 reads `matcher` as an optional string: null, a number, a list or an object
+        # fails validation, and the loader drops or rejects the registration. Absent is not null.
+        for bad in (None, 5, 1.5, True, ["SendMessage"], {"tool": "Bash"}):
+            for event in ("PreToolUse", "PostToolUse"):
+                with self.subTest(matcher=bad, event=event):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"][event][-1]["matcher"] = bad
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(f"hooks.{event}[{len(settings['hooks'][event]) - 1}].matcher", done.stdout)
+                    self.assertIn("not a string", done.stdout)
+        settings = self.load(RAILS_SETTINGS)
+        for event in ("PreToolUse", "PostToolUse"):
+            for entry in settings["hooks"][event]:
+                entry["matcher"] = None
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertNotIn("wires", done.stdout)
+
+    def test_hooks_that_are_not_a_non_empty_list_of_objects_are_not_wired(self):
+        for bad in (None, "x", {}, 3, [], ["python3 guard"], [None], [[{"type": "command"}]]):
+            for event in ("PreToolUse", "PostToolUse"):
+                with self.subTest(hooks=bad, event=event):
+                    settings = self.load(RAILS_SETTINGS)
+                    index = len(settings["hooks"][event]) - 1
+                    settings["hooks"][event][index]["hooks"] = bad
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(f"hooks.{event}[{index}].hooks", done.stdout)
+
+    def test_an_invalid_group_or_event_value_anywhere_under_a_lifecycle_event_is_not_wired(self):
+        for event in ("PreToolUse", "PostToolUse"):
+            for bad, path in (("a group", f"hooks.{event}[0]"), (None, f"hooks.{event}[0]"),
+                              ([{"hooks": [{"type": "command", "command": "true"}]}], f"hooks.{event}[0]")):
+                with self.subTest(group=bad, event=event):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"][event].insert(0, bad)
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(path, done.stdout)
+            with self.subTest(event_value="not a list", event=event):
+                settings = self.load(RAILS_SETTINGS)
+                settings["hooks"][event] = {"matcher": "*"}
+                done = self.check(settings)
+                self.assertEqual(done.returncode, 1, done.stdout)
+                self.assertIn(f"hooks.{event}", done.stdout)
+            with self.subTest(unrelated_group_with_a_bad_matcher=event):
+                settings = self.load(RAILS_SETTINGS)
+                settings["hooks"][event].append({"matcher": 7, "hooks": [{"type": "command", "command": "true"}]})
+                done = self.check(settings)
+                self.assertEqual(done.returncode, 1, done.stdout)
+                self.assertIn("matcher", done.stdout)
+
+    def test_a_malformed_structure_hosting_a_hook_leaves_the_guard_not_wired_and_is_named(self):
+        # Review of #677 at 5ad72d4: a registration the runtime cannot load takes its event with it. After
+        # the review at 4ed9085 the checker holds the structure that hosts every hook, not the vendor's
+        # schema for what is inside a neighbour: the event a list, each group an object, `matcher` a string
+        # if present, `hooks` a non-empty list of objects, each with a string `type`.
+        bad_entries = {
+            "no type": {"command": "true"},
+            "type null": {"type": None, "command": "true"},
+            "type number": {"type": 5, "command": "true"},
+            "type list": {"type": ["command"], "command": "true"},
+        }
+        for event in ("PreToolUse", "PostToolUse", "SessionStart", "Stop"):
+            for label, entry in bad_entries.items():
+                with self.subTest(event=event, entry=label):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"].setdefault(event, []).append({"matcher": "Bash", "hooks": [entry]})
+                    index = len(settings["hooks"][event]) - 1
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(f"hooks.{event}[{index}].hooks[0]", done.stdout)
+                    self.assertIn("'type'", done.stdout)
+                    self.assertNotIn("wires", done.stdout)
+            for label, group in (("matcher number", {"matcher": 3, "hooks": [{"type": "command", "command": "true"}]}),
+                                 ("matcher null", {"matcher": None, "hooks": [{"type": "command", "command": "true"}]}),
+                                 ("empty hooks", {"hooks": []}), ("hooks missing", {"matcher": "Bash"}),
+                                 ("hooks entry not an object", {"hooks": ["true"]})):
+                with self.subTest(event=event, group=label):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"].setdefault(event, []).append(group)
+                    index = len(settings["hooks"][event]) - 1
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 1, done.stdout)
+                    self.assertIn(f"hooks.{event}[{index}]", done.stdout)
+                    self.assertNotIn("wires", done.stdout)
+        # A bad entry beside a good one in the same group is named by its position, and every invalid item is named.
+        settings = self.load(RAILS_SETTINGS)
+        settings["hooks"]["Stop"] = [{"hooks": [{"type": "command", "command": "true"}, {"command": "true"}]},
+                                     {"matcher": 3, "hooks": []}]
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        for path in ("hooks.Stop[0].hooks[1]", "hooks.Stop[1].matcher", "hooks.Stop[1].hooks"):
+            self.assertIn(path, done.stdout)
+        self.assertNotIn("hooks.Stop[0].hooks[0]", done.stdout)
+
+    def test_a_neighbouring_hook_of_any_type_leaves_the_guard_wired(self):
+        # Review of #677 at 4ed9085: `prompt` and `agent` hooks are valid in Claude Code 2.1.287.
+        neighbours = ({"type": "prompt", "prompt": "Check whether the task is complete."},
+                      {"type": "agent", "prompt": "Verify the tests ran.", "timeout": 60},
+                      {"type": "http", "url": "http://localhost:9/hook"},
+                      {"type": "command", "command": "true"})
+        for event in ("PreToolUse", "PostToolUse", "SessionStart", "Stop", "UserPromptSubmit"):
+            for entry in neighbours:
+                with self.subTest(event=event, type=entry["type"]):
+                    settings = self.load(RAILS_SETTINGS)
+                    settings["hooks"].setdefault(event, []).append({"hooks": [entry]})
+                    done = self.check(settings)
+                    self.assertEqual(done.returncode, 0, done.stdout)
+                    self.assertIn("wires", done.stdout)
+        settings = self.load(RAILS_SETTINGS)
+        settings["hooks"]["Stop"] = [{"hooks": [{"type": "prompt", "prompt": "Check whether the task is complete."}]}]
+        self.assertEqual(self.check(settings).returncode, 0)
+        # Beside the guard, in the guard's own group.
+        for _, entry, _ in self.lifecycle_hooks(settings):
+            entry["hooks"].append({"type": "prompt", "prompt": "x"})
+        self.assertEqual(self.check(settings).returncode, 0)
+
+    def test_valid_neighbouring_hooks_leave_the_guard_wired_whatever_runtime_keys_they_use(self):
+        settings = self.load(RAILS_SETTINGS)
+        self.assertEqual(self.check(settings).returncode, 0)
+        settings["hooks"]["PreToolUse"].append({"matcher": "Bash", "hooks": [
+            {"type": "command", "command": "true", "timeout": 5, "if": "Bash(git *)", "once": True,
+             "async": False, "asyncRewake": False, "statusMessage": "x", "shell": "bash"}]})
+        settings["hooks"]["Stop"] = [{"hooks": [{"type": "command", "command": "true", "async": True}]}]
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("wires", done.stdout)
+
+    def test_a_neighbours_other_fields_are_not_validated_a_documented_limit(self):
+        # The runtime's settings schema is the vendor's and changes per release (0083): a neighbour whose
+        # `args` is 42, whose timeout is a string or whose group carries a key nobody reads is NOT detected.
+        for label, change in (
+                ("args 42", lambda s: s["hooks"]["PreToolUse"][0]["hooks"][0].update(args=42)),
+                ("timeout string", lambda s: s["hooks"]["PreToolUse"][0]["hooks"][0].update(timeout="bad")),
+                ("command list", lambda s: s["hooks"]["PreToolUse"][0]["hooks"][0].update(command=["true"])),
+                ("async string", lambda s: s["hooks"]["PreToolUse"][0]["hooks"][0].update({"async": "yes"})),
+                ("if number", lambda s: s["hooks"]["PreToolUse"][0]["hooks"][0].update({"if": 5})),
+                ("group key", lambda s: s["hooks"]["PreToolUse"][0].update(description="x")),
+                ("stop group key", lambda s: s["hooks"].update(Stop=[{"description": "x", "hooks": [
+                    {"type": "command", "command": "true", "args": 42, "timeout": 0}]}]))):
+            with self.subTest(label):
+                settings = self.load(RAILS_SETTINGS)
+                change(settings)
+                done = self.check(settings)
+                self.assertEqual(done.returncode, 0, done.stdout)
+                self.assertIn("wires", done.stdout)
+
+    def test_the_guards_own_registration_is_still_held_to_its_keys_and_types(self):
+        for label, change in (("args", {"args": 42}), ("timeout string", {"timeout": "bad"}),
+                              ("timeout zero", {"timeout": 0}), ("type prompt", {"type": "prompt"}),
+                              ("async", {"async": True}), ("if", {"if": "Bash(git *)"})):
+            with self.subTest(label):
+                settings = self.load(RAILS_SETTINGS)
+                for _, _, hook_ in self.lifecycle_hooks(settings):
+                    hook_.update(change)
+                done = self.check(settings)
+                self.assertEqual(done.returncode, 1, done.stdout)
+                self.assertIn(next(iter(change)).join("''"), done.stdout)
+                self.assertNotIn("wires", done.stdout)
+
+    def test_a_sendmessage_only_pretooluse_does_not_satisfy_the_every_tool_bound(self):
+        settings = self.load(RAILS_SETTINGS)
+        settings["hooks"]["PreToolUse"][1]["matcher"] = "SendMessage"
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("PreToolUse for all tools", done.stdout)
+        self.assertNotIn("PreToolUse for SendMessage", done.stdout)
+
+    def test_disabling_all_hooks_or_pointing_at_another_script_fails(self):
+        settings = self.load(RAILS_SETTINGS)
+        settings["disableAllHooks"] = True
+        done = self.check(settings)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("disableAllHooks", done.stdout)
+        other = self.load(RAILS_SETTINGS)
+        for entries in other["hooks"].values():
+            for entry in entries:
+                for hook in entry["hooks"]:
+                    hook["command"] = hook["command"].replace("agent-lifecycle-guard", "something-else")
+        self.assertEqual(self.check(other).returncode, 1)
+
+    def test_a_file_that_is_not_json_or_is_absent_fails(self):
+        path = os.path.join(self.tmp, "settings.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("{nope")
+        self.assertEqual(run_guard("check-settings", path).returncode, 1)
+        self.assertEqual(run_guard("check-settings", os.path.join(self.tmp, "absent.json")).returncode, 1)
+
+
+class TestMeasure(GuardCase):
+    """One session, two subagents: A is resumed once, B never is. The figures are worked by hand."""
+
+    def line(self, message_id, context, output, stamp):
+        return assistant_line(message_id, context, output, stamp)
+
+    def write(self, path, lines):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            for line in lines:
+                handle.write(json.dumps(line) + "\n")
+
+    def build(self):
+        root = os.path.join(self.tmp, "projects")
+        project = os.path.join(root, "-work-rules-engine")
+        agents = os.path.join(project, SESSION, "subagents")
+        resume = {"type": "user", "timestamp": "2026-10-15T10:00:10.000Z",
+                  "toolUseResult": {"success": True, "message": f"Resuming agent {WORKER}", "resumedAgentId": WORKER}}
+        self.write(os.path.join(project, f"{SESSION}.jsonl"), [
+            {"type": "user", "timestamp": "2026-10-15T09:59:00.000Z", "toolUseResult": {"agentId": WORKER}},
+            resume])
+        # A: first assignment 100k then 300k (peak), resumed at 10:00:10, then 320k and 340k.
+        first = self.line("m1", 100_000, 5, "2026-10-15T10:00:00.000Z")
+        partial = self.line("m2", 290_000, 1, "2026-10-15T10:00:05.000Z")      # same message id, earlier line
+        second = self.line("m2", 300_000, 10, "2026-10-15T10:00:06.000Z")
+        self.write(os.path.join(agents, f"agent-{WORKER}.jsonl"), [
+            first, partial, second,
+            self.line("m3", 320_000, 20, "2026-10-15T10:00:20.000Z"),
+            self.line("m4", 340_000, 10, "2026-10-15T10:00:30.000Z")])
+        self.write(os.path.join(agents, f"agent-{OTHER}.jsonl"), [
+            self.line("n1", 200_000, 7, "2026-10-15T10:01:00.000Z"),
+            self.line("n2", 250_000, 3, "2026-10-15T10:01:05.000Z")])
+        # A project outside --match carries an agent that must not be counted.
+        self.write(os.path.join(root, "-work-unrelated", "s", "subagents", "agent-a9999999999999999.jsonl"),
+                   [self.line("z1", 999_999, 1, "2026-10-15T11:00:00.000Z")])
+        with open(os.path.join(root, "-work-unrelated", "s.jsonl"), "w", encoding="utf-8") as handle:
+            handle.write("")
+        return root
+
+    def ledger_with_history(self):
+        os.makedirs(self.ledger)
+        records = [{"event": "denied", "reason": "completed-agent", "agent_id": WORKER},
+                   {"event": "denied", "reason": "completed-agent", "agent_id": OTHER},
+                   {"event": "denied", "reason": "context-hard-bound", "agent_id": OTHER},
+                   {"event": "violation", "reason": "completed-agent-resumed", "agent_id": WORKER},
+                   {"event": "checkpoint", "agent_id": WORKER}, {"event": "launched", "agent_id": WORKER}]
+        with open(os.path.join(self.ledger, "s.jsonl"), "w", encoding="utf-8") as handle:
+            handle.write("".join(json.dumps(r) + "\n" for r in records))
+
+    def measure(self, root, *extra):
+        return run_guard("measure", "--projects-dir", root, "--ledger-dir", self.ledger, *extra)
+
+    def test_the_report_has_the_exact_counts_and_the_reread_estimate(self):
+        root = self.build()
+        self.ledger_with_history()
+        done = self.measure(root, "--match", "rules", "--events")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        lines = done.stdout.splitlines()
+        wanted = {
+            "projects matched: 1",
+            "agents: 2",
+            "resumed agents: 1",
+            "resume events: 1",
+            "resume events without a transcript: 0",
+            # A: 100,005 + 300,010 + 320,020 + 340,010 ; B: 200,007 + 250,003
+            "tokens in all agent turns: 1510055",
+            "post-resume turns: 2",
+            "tokens in post-resume turns: 660030 (43.7% of all)",
+        }
+        for line in wanted:
+            self.assertIn(line, lines)
+        # max(0, min(320k, 300k) - 100k) + max(0, min(340k, 300k) - 100k) = 200k + 200k
+        (reread,) = [line for line in lines if line.startswith("re-read tokens beyond the first turn:")]
+        self.assertTrue(reread.startswith("re-read tokens beyond the first turn: 400000 (26.5% of all)"), reread)
+        self.assertIn("ESTIMATE of what a fresh agent would not have carried", reread)
+        self.assertIn("first-assignment peak context over 2 agents (nearest rank): p50 250000 p75 300000 "
+                      "p90 300000 p95 300000", lines)
+        self.assertIn("  2026-10-15T10:00:10.000Z " + WORKER, lines)
+        self.assertIn("guard denials: 3 (completed-agent: 2, context-hard-bound: 1)", lines)
+        self.assertIn("guard violations (a completed agent was resumed anyway): 1", lines)
+        self.assertIn("checkpoint notes issued: 1", lines)
+
+    def test_the_summary_is_the_default_and_the_event_list_is_opt_in(self):
+        root = self.build()
+        summary = self.measure(root, "--match", "rules")
+        self.assertEqual(summary.returncode, 0, summary.stderr)
+        self.assertIn("resume events: 1", summary.stdout.splitlines())
+        self.assertNotIn("resume events (time, agent):", summary.stdout)
+        self.assertNotIn(WORKER, summary.stdout)
+        self.assertIn("--events", summary.stdout)
+        listed = self.measure(root, "--match", "rules", "--events")
+        self.assertIn("resume events (time, agent):", listed.stdout)
+        without_hint = summary.stdout.splitlines()[:-1]
+        self.assertEqual(listed.stdout.splitlines()[:len(without_hint)], without_hint)
+        self.assertEqual(len(listed.stdout.splitlines()), len(without_hint) + 2)
+        self.assertNotIn("lists the", listed.stdout)
+
+    def test_a_message_id_is_counted_once_and_a_project_outside_the_match_not_at_all(self):
+        root = self.build()
+        everything = self.measure(root).stdout.splitlines()
+        self.assertIn("agents: 3", everything)
+        self.assertIn("projects matched: 2", everything)
+        matched = self.measure(root, "--match", "rules").stdout.splitlines()
+        self.assertIn("agents: 2", matched)
+
+    def test_the_report_is_deterministic(self):
+        root = self.build()
+        self.ledger_with_history()
+        self.assertEqual(self.measure(root).stdout, self.measure(root).stdout)
+
+    def test_no_ledger_is_said_rather_than_reported_as_zero(self):
+        root = self.build()
+        self.assertIn("guard ledger: none at", self.measure(root).stdout)
+
+    def test_a_missing_projects_directory_or_an_unmatched_pattern_fails(self):
+        root = self.build()
+        self.assertEqual(self.measure(os.path.join(self.tmp, "absent")).returncode, 1)
+        done = self.measure(root, "--match", "no-such-project")
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("matches", done.stderr)
+
+
+    # -- review of #677 at a23f3c2: measure uses the detector the backstop uses -------------------
+
+    def one_agent(self, main_lines, name=None):
+        """A project whose main transcript is `main_lines` and whose one subagent (WORKER) ran 100k, 300k, then
+        320k and 340k after a resume at 10:00:10."""
+        root = os.path.join(self.tmp, "projects")
+        project = os.path.join(root, "-work-rules-engine")
+        agents = os.path.join(project, SESSION, "subagents")
+        self.write(os.path.join(project, f"{SESSION}.jsonl"), main_lines)
+        self.write(os.path.join(agents, f"agent-{WORKER}.jsonl"), [
+            self.line("m1", 100_000, 5, "2026-10-15T10:00:00.000Z"),
+            self.line("m2", 300_000, 10, "2026-10-15T10:00:06.000Z"),
+            self.line("m3", 320_000, 20, "2026-10-15T10:00:20.000Z"),
+            self.line("m4", 340_000, 10, "2026-10-15T10:00:30.000Z")])
+        return root
+
+    def assertOneResumeOfWorker(self, root, stamp="2026-10-15T10:00:10.000Z"):
+        done = self.measure(root, "--events")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        lines = done.stdout.splitlines()
+        for wanted in ("resumed agents: 1", "resume events: 1", "resume events unattributed: 0",
+                       "post-resume turns: 2",
+                       "first-assignment peak context over 1 agents (nearest rank): p50 300000 p75 300000 "
+                       "p90 300000 p95 300000",
+                       f"  {stamp} " + WORKER):
+            self.assertIn(wanted, lines)
+
+    def test_a_resume_record_without_resumedagentid_is_counted_and_its_turns_leave_the_first_peak(self):
+        # The record the review reproduced: the message alone says the runtime resumed the agent.
+        record = {"type": "user", "timestamp": "2026-10-15T10:00:10Z",
+                  "toolUseResult": {"message": f"Resuming agent {WORKER}"}}
+        self.assertOneResumeOfWorker(self.one_agent([record]), stamp="2026-10-15T10:00:10Z")
+
+    def test_an_inline_handback_resume_is_attributed_by_its_pin(self):
+        record = {"type": "user", "timestamp": "2026-10-15T10:00:10.000Z",
+                  "toolUseResult": {"success": True, "inlineHandback": {"content": []},
+                                    "pin": {"id": WORKER, "name": "worker", "ref": "abcdef"}}}
+        self.assertOneResumeOfWorker(self.one_agent([record]))
+
+    def test_a_resume_that_names_no_agent_is_attributed_by_the_send_message_target(self):
+        # `worker was resumed but ...` names no id and carries no pin: the SendMessage that asked is resolved
+        # as the PreToolUse check resolves it, through the launches in the main transcript.
+        lines = launch_lines("toolu_L", "worker", WORKER) + [
+            {"type": "assistant", "message": {"role": "assistant", "content": [
+                {"type": "tool_use", "id": "toolu_S", "name": "SendMessage", "input": {"to": "worker", "message": "m"}}]}},
+            {"type": "user", "timestamp": "2026-10-15T10:00:10.000Z",
+             "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_S", "content": "x"}]},
+             "toolUseResult": {"message": 'Agent "worker" was resumed but failed while running.'}}]
+        self.assertOneResumeOfWorker(self.one_agent(lines))
+
+    def test_a_resume_whose_agent_cannot_be_identified_is_counted_as_unattributed(self):
+        record = {"type": "user", "timestamp": "2026-10-15T10:00:10.000Z",
+                  "toolUseResult": {"message": 'Teammate "nobody" was not running; resumed it as an in-process teammate.'}}
+        done = self.measure(self.one_agent([record]), "--events")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        lines = done.stdout.splitlines()
+        for wanted in ("resumed agents: 0", "resume events: 0", "resume events unattributed: 1",
+                       "post-resume turns: 0", "  2026-10-15T10:00:10.000Z unattributed"):
+            self.assertIn(wanted, lines)
+
+    def test_text_that_only_looks_like_a_resume_in_another_field_is_not_one(self):
+        # A Write result carries the written file's text in `content`: it is not the runtime's message.
+        record = {"type": "user", "timestamp": "2026-10-15T10:00:10.000Z",
+                  "toolUseResult": {"type": "create", "filePath": "/x", "content": f"Resuming agent {WORKER}"}}
+        lines = self.measure(self.one_agent([record])).stdout.splitlines()
+        for wanted in ("resume events: 0", "resume events unattributed: 0", "post-resume turns: 0"):
+            self.assertIn(wanted, lines)
+
+
+if __name__ == "__main__":
+    unittest.main()

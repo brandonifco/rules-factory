@@ -192,6 +192,43 @@ it leaves out is deliberate — the previous attempt's transcript, the earlier r
 orchestration around them — and a repair attempt handed the argument it is repairing is anchored
 by it.
 
+**What enforces this, and what does not.** The rule used to rest on the orchestrator's word, and
+orchestrators broke it: on one measurement of 502 subagents, 96 were resumed after their final
+result (169 times), and 29.2% of every token those agents processed was spent in the turns after a
+resume. `.claude/hooks/agent-lifecycle-guard.py`, wired by `.claude/settings.json`, now holds it for
+Claude agents:
+
+- a message to an agent that has **completed** is refused before it is sent, and so is one to an
+  agent id this session never launched, because that cannot be shown to be running; a message to a
+  running agent (a continuation of its assignment) and to `main` goes through. An agent counts as
+  completed only on definitive evidence: a foreground `Agent` call that returned its final result, or
+  a task notification for it that the runtime enqueued in the session's main transcript, with a status
+  other than `running` (the same text quoted in a tool result or in another agent's message is not one). A
+  `SubagentStop` event is not evidence, because another stop hook can veto it and the agent then keeps
+  running, so the guard does not register for it;
+- if the runtime reports that it resumed an agent anyway, the guard records it and tells the model to
+  stop that agent and dispatch a fresh one;
+- **a subagent has a context budget.** At 210,000 tokens (where three in four first assignments have
+  finished) it is told once to commit and, if the remaining work is separable, to return a handoff; at
+  350,000 it may only commit and return: every tool is refused but one plain command at a time, with no
+  shell syntax at all (no `cd`, `&&`, pipe, redirect, `$`, quote other than a commit message's, comment,
+  heredoc): `git` (with `-C <dir>` as the only global option, and only `add`, `commit`, `status`, `diff`,
+  `log`, `show`, `push`, `rev-parse` and `branch --show-current`, each with a short list of options; no
+  `-c`, no alias; a commit message is `-m "..."` without `$`, a backtick, a backslash, `!` or a
+  newline) and `handoff`;
+- a handoff is a brief from committed state, never a transcript:
+  `python3 .claude/hooks/agent-lifecycle-guard.py handoff` prints the branch, the head, the commits and
+  files since `origin/main` and the upstream state, and refuses a worktree with uncommitted work. The
+  next agent reads the repository, not the last one's conversation.
+
+Advisory, because no hook can see it: that an orchestrator does not copy a transcript into the next
+brief, and the checkpoint note itself. Not covered: hooks the user disables, user-level settings, the
+orchestrator's own context, an agent that stopped without leaving a result or a notification (it looks
+running), and a message to a name the session never saw launched, which is allowed and caught only
+after the fact. `tools/agent-doctor.py` reports a guard that is missing, stale or not
+wired; `python3 .claude/hooks/agent-lifecycle-guard.py measure` reports resumes and the context
+percentiles from the transcripts, so the numbers can be checked.
+
 Nothing else changes. The branch still closes exactly one issue with one `Closes #<n>`; the
 repair commit still moves the head and still ends every verdict recorded before it (§7); the new
 head is reviewed from a new packet, by a new reviewer. What the repair does not end is the
@@ -338,7 +375,14 @@ decline that names why and cites where — that is the engine working, not the e
   Matching is plain substring search on the file's text as UTF-8 with its line endings untouched:
   CR LF is two characters, so an `old` that spans a line ending must name the file's own ending,
   and an `old` of LF alone also matches the LF inside a CR LF. It refuses an empty `old`, and a
-  spec whose edits cancel out and would leave every file as it was. It runs each test unmutated first, because a test that was already red
+  spec whose edits cancel out and would leave every file as it was. The `test` of a spec names one
+  test, `Class.Method` or `Namespace.Class.Method`, and the verdict is that test's own result, read
+  from the TRX of every test project in the solution: a sibling whose name contains it, a line of
+  test output, or a project the filter matches nothing in decides nothing, and a name that fits two
+  tests is reported, not run, and the same name in two assemblies is two tests. The unmutated run
+  fixes which test is watched; a mutated run that finds another is not red. Results are read as
+  the xUnit the factory pins reports them. A build that fails is "did not compile", whatever class of error it
+  prints. It runs each test unmutated first, because a test that was already red
   proves nothing either. And it names the one failure the prose cannot — **a mutation that leaves
   its test green**, which is precisely the test nobody has watched fail — by reporting it and
   exiting non-zero. Paste its output into the pull request as the evidence, and put the specs
@@ -499,7 +543,16 @@ decline that names why and cites where — that is the engine working, not the e
   cannot be read, a record that cannot be compared, a factory update with a hand-written file in
   it, a handler renamed off the surface (the old path of a rename is read and counts as deleted).
   The surface a diff is judged by is the union of the base's policy and the head's, so a pull
-  request cannot narrow it for its own change. A new decision record is `decision-record-only` and
+  request cannot narrow it for its own change. A base policy that cannot be read is not a new
+  policy: the gate and `tools/pr-policy.py` are undecidable and `tools/review-packet.py` refuses,
+  because the surface the change began on is unknown; only a base commit that holds no policy at
+  all, and no symbolic link or submodule anywhere that a policy could be behind, lets the head's
+  stand alone. The base's surface is used in the ordinary case only: the base
+  held exactly one policy, at the path the head holds one, and it is a file, and no rename or copy
+  crosses the engine's directory. **Every other case owes a
+  semantic verdict** (an engine a pull request moves, a base with several policies, a link or
+  submodule in a base that holds no policy, a rename in or out): carrying a surface across a relocation kept opening cases, more
+  review is the safe error, and a relocation is rare. A new decision record is `decision-record-only` and
   an edit to an existing one is a `semantic-ruling`, because a tool cannot tell a typo from a
   reversal, and a reviewer can; only line endings and trailing space are cosmetic, since in a
   nested list the indentation is the meaning.

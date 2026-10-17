@@ -340,9 +340,11 @@ def owed_review(pull, patterns):
     """`(semantic verdict owed, the review class it comes from)`, decided as the gate decides it (0076).
 
     The brief must not say a change owes something the gate will not ask for (#483), nor the reverse,
-    so this reads the one review class the gate reads. Anything it cannot read -- the module, the
-    base commit, a file -- is the old answer, which is that anything on the surface owes a verdict:
-    a brief that overstates what is owed is the safe direction to be wrong in.
+    so this reads the one review class the gate reads. Anything it cannot read -- the module, a
+    file -- is the old answer, which is that anything on the surface owes a verdict. A base policy it
+    cannot read is stronger: the surface the change began on is unknown, so a verdict is owed
+    whatever the head's policy lists (#612). A brief that overstates what is owed is the safe
+    direction to be wrong in.
     """
     changed = [f["path"] for f in pull.get("files") or []]
     surface = semantic_surface(changed, patterns, engine_path())
@@ -362,14 +364,38 @@ def owed_review(pull, patterns):
         inside = {engine_relative(path, prefix): change
                   for path, change in reviewclass.changes_of(pull.get("files") or []).items()
                   if engine_relative(path, prefix) is not None}
-        base_policy = subprocess.run(["git", "show", f"{pull.get('baseRefOid')}:{where_policy}"], cwd=ROOT,
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # The base's surface is used in the ordinary case only (one policy, at the head's path, no link on the way,
+        # no rename across the engine's directory); anything else is owed a verdict, as is any failure to read the
+        # base at all -- git that will not start included (#612). The brief is advice, and one that overstates what
+        # is owed is the safe direction to be wrong in: a head that emptied its own surface must not read as owing
+        # nothing.
         try:
-            listed = json.loads(base_policy.stdout.decode("utf-8")).get("review", {}).get("semanticPaths") \
-                if base_policy.returncode == 0 else None
-        except (UnicodeDecodeError, ValueError, AttributeError):
-            listed = None
-        patterns = reviewclass.surface_patterns(patterns, listed if isinstance(listed, list) else None)
+            base_oid = pull.get("baseRefOid")
+            blobs = None
+            if base_oid:
+                done = subprocess.run(["git", "ls-tree", "-r", "-z", "--full-tree", base_oid], cwd=ROOT,
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if done.returncode == 0:
+                    blobs = []
+                    for item in done.stdout.decode("utf-8", "surrogateescape").split("\0"):
+                        meta, _, path = item.partition("\t")
+                        if item and (len(meta.split()) != 3 or not path):
+                            blobs = None
+                            break
+                        if item and meta.split()[1] != "tree":
+                            blobs.append((meta.split()[0], path))
+            path, owed = reviewclass.base_basis(blobs, where_policy, pull.get("files") or [])
+            if owed:
+                return True, "semantic-implementation"
+            if path is None:
+                base_surface = reviewclass.ABSENT
+            else:
+                shown = subprocess.run(["git", "show", f"{base_oid}:{path}"], cwd=ROOT,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                base_surface = reviewclass.base_surface(shown.stdout if shown.returncode == 0 else None)
+            patterns = reviewclass.surface_patterns(patterns, base_surface)
+        except Exception:  # noqa: BLE001  (a base that cannot be read is not a base that lists nothing)
+            return True, "semantic-implementation"
 
         def read(path, side):
             commit = pull.get("headRefOid") if side == "head" else pull.get("baseRefOid")
