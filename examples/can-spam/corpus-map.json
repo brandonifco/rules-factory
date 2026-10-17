@@ -137,13 +137,19 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
       "evidence": "§ 7702. Definitions In this chapter:",
       "status": "mapped",
-      "note": "The lead-in of section 7702, printed in the section heading passage: the definitions that follow are for this chapter. Each definition entry is enabledBy it. Reference difference 7702(2)(C)/body/1 in examples/can-spam/reference-differences.json: this entry quotes the admitted corpus text."
+      "note": "The lead-in of section 7702, printed in the section heading passage: the definitions that follow are for this chapter. Each definition entry is enabledBy it. Reference difference 7702(2)(C)/body/1 in examples/can-spam/reference-differences.json: this entry quotes the admitted corpus text.",
+      "crossReferences": [
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
+        }
+      ]
     },
     {
       "id": "affirmative-consent",
@@ -152,7 +158,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/1"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "ambiguous",
       "ambiguity": {
@@ -204,7 +210,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/2/A"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -243,7 +249,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/2/B"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -282,7 +288,10 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "commission-regulatory-authority",
+        "limit-on-identification-labeling-requirements"
+      ],
       "enabledBy": [
         "definitions-apply-in-this-chapter"
       ],
@@ -333,6 +342,10 @@
         {
           "cites": "electronic mail message",
           "resolvedBy": "electronic-mail-message-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(D) Reference to company or website The inclusion of a reference to a commercial entity or a link to the website of a commercial entity in an electronic mail message does not, by itself, cause such message to be treated as a commercial electronic mail message for purposes of this chapter if the contents or circumstances of the message indicate a primary purpose other than commercial advertisement or promotion of a commercial product or service.",
@@ -346,7 +359,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/3"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
@@ -370,7 +383,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/4"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -402,7 +415,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/5"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -439,7 +452,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/6"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
@@ -469,7 +482,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/7"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "out",
       "clarity": "clear",
       "dependsOn": [],
@@ -502,7 +515,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/8"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -544,7 +557,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/9"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -591,7 +604,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/10"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
@@ -618,7 +631,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/11"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -653,7 +666,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/12"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -694,7 +707,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/13"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
@@ -763,7 +776,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/15"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -838,6 +851,10 @@
         {
           "cites": "recipient",
           "resolvedBy": "recipient-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(16) Sender (A) In general Except as provided in subparagraph (B), the term “sender”, when used with respect to a commercial electronic mail message, means a person who initiates such a message and whose product, service, or Internet web site is advertised or promoted by the message. (B) Separate lines of business or divisions If an entity operates through separate lines of business or divisions and holds itself out to the recipient throughout the message as that particular line of business or division rather than as the entity of which such line of business or division is a part, then the line of business or the division shall be treated as the sender of such message for purposes of this chapter.",
@@ -851,9 +868,9 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7702/17/A"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
-      "clarity": "clear",
+      "clarity": "ambiguous",
       "dependsOn": [
         "electronic-mail-message-defined",
         "recipient-defined",
@@ -889,7 +906,12 @@
       ],
       "evidence": "(A) In general The term “transactional or relationship message” means an electronic mail message the primary purpose of which is— (i) to facilitate, complete, or confirm a commercial transaction that the recipient has previously agreed to enter into with the sender; (ii) to provide warranty information, product recall information, or safety or security information with respect to a commercial product or service used or purchased by the recipient; (iii) to provide— (I) notification concerning a change in the terms or features of; (II) notification of a change in the recipient’s standing or status with respect to; or (III) at regular periodic intervals, account balance information or other type of account statement with respect to, a subscription, membership, account, loan, or comparable ongoing commercial relationship involving the ongoing purchase or use by the recipient of products or services offered by the sender; (iv) to provide information directly related to an employment relationship or related benefit plan in which the recipient is currently involved, participating, or enrolled; or (v) to deliver goods or services, including product updates or upgrades, that the recipient is entitled to receive under the terms of a transaction that the recipient has previously agreed to enter into with the sender.",
       "status": "mapped",
-      "note": "The five categories of primary purpose in clauses (i)-(v), clause (iii) read with the continuation that completes it ('a subscription, membership, account, loan, ...'). The caption '(17) Transactional or relationship message' is rejected as a heading. 16 CFR 316.3(c) restates the categories as 'transactional or relationship content'. Reference difference 7702(2)(C)/body/1 in examples/can-spam/reference-differences.json: this entry quotes the admitted corpus text."
+      "note": "The five categories of primary purpose in clauses (i)-(v), clause (iii) read with the continuation that completes it ('a subscription, membership, account, loan, ...'). The caption '(17) Transactional or relationship message' is rejected as a heading. 16 CFR 316.3(c) restates the categories as 'transactional or relationship content'. Reference difference 7702(2)(C)/body/1 in examples/can-spam/reference-differences.json: this entry quotes the admitted corpus text.",
+      "ambiguity": {
+        "question": "The definition turns on 'the primary purpose of which is', while 16 CFR 316.3(b) deems the purpose transactional if the message 'consists exclusively of transactional or relationship content', and the corpus does not expressly decide every mixed message that fails 316.3(a)(2), so whether the five categories are exhaustive or other messages are also covered is unresolved; and the list extends to a 'comparable ongoing commercial relationship involving the ongoing purchase or use' of the sender's products or services, and the ongoing-purchase condition does not settle which similarities to the listed relationships are required for a relationship to be comparable.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
     },
     {
       "id": "commission-may-modify-transactional-definition",
@@ -901,7 +923,11 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "commission-regulatory-authority",
+        "limit-on-identification-labeling-requirements",
+        "transactional-or-relationship-message-defined"
+      ],
       "enabledBy": [
         "definitions-apply-in-this-chapter"
       ],
@@ -921,6 +947,10 @@
         {
           "cites": "Commission",
           "resolvedBy": "commission-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(B) Modification of definition The Commission by regulation pursuant to section 7711 of this title may modify the definition in subparagraph (A) to expand or contract the categories of messages that are treated as transactional or relationship messages for purposes of this chapter to the extent that such modification is necessary to accommodate changes in electronic mail technology or practices and accomplish the purposes of this chapter.",
@@ -958,6 +988,10 @@
         {
           "cites": "Internet",
           "resolvedBy": "internet-defined"
+        },
+        {
+          "cites": "this section",
+          "unmapped": "Names section 7703 as a whole, including its omitted subsection (a); no single reference entry represents the whole section."
         }
       ],
       "evidence": "(b) United States Sentencing Commission (1) Directive Pursuant to its authority under section 994(p) of title 28 and in accordance with this section, the United States Sentencing Commission shall review and, as appropriate, amend the sentencing guidelines and policy statements to provide appropriate penalties for violations of section 1037 of title 18 , as added by this section, and other offenses that may be facilitated by the sending of large quantities of unsolicited electronic mail. (2) Requirements In carrying out this subsection, the Sentencing Commission shall consider providing sentencing enhancements for— (A) those convicted under section 1037 of title 18 who— (i) obtained electronic mail addresses through improper means, including— (I) harvesting electronic mail addresses of the users of a website, proprietary service, or other online public forum operated by another person, without the authorization of such person; and (II) randomly generating electronic mail addresses by computer; or (ii) knew that the commercial electronic mail messages involved in the offense contained or advertised an Internet domain for which the registrant of the domain had provided false registration information; and (B) those convicted of other offenses, including offenses involving fraud, identity theft, obscenity, child pornography, and the sexual exploitation of children, if such offenses involved the sending of large quantities of electronic mail.",
@@ -1055,6 +1089,10 @@
         {
           "cites": "transactional or relationship message",
           "resolvedBy": "transactional-or-relationship-message-defined"
+        },
+        {
+          "cites": "this paragraph",
+          "unmapped": "Names paragraph 7704(a)(1) as a whole; its lead-in and subparagraphs (A), (B), and (C) are separate reference entries, with no single entry for the whole paragraph."
         }
       ],
       "evidence": "(1) Prohibition of false or misleading transmission information It is unlawful for any person to initiate the transmission, to a protected computer, of a commercial electronic mail message, or a transactional or relationship message, that contains, or is accompanied by, header information that is materially false or materially misleading. For purposes of this paragraph—",
@@ -1402,7 +1440,10 @@
         "sender-must-honor-opt-out-request",
         "agent-must-honor-opt-out-request",
         "assisting-initiation-after-opt-out-prohibition",
-        "address-transfer-after-opt-out-prohibition"
+        "address-transfer-after-opt-out-prohibition",
+        "return-address-or-mechanism-required",
+        "opt-out-menu-compliance",
+        "temporary-inability-excused"
       ],
       "enabledBy": [
         "act-effective-date"
@@ -1584,7 +1625,9 @@
         "commercial-electronic-mail-message",
         "electronic-mail-message-defined",
         "recipient-defined",
-        "sender-defined"
+        "sender-defined",
+        "sender-must-honor-opt-out-request",
+        "agent-must-honor-opt-out-request"
       ],
       "enabledBy": [
         "opt-out-request-scope-trigger",
@@ -1665,6 +1708,10 @@
         {
           "cites": "sender",
           "resolvedBy": "reg-def-sender-multiple-advertisers"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(iv) for the sender, or any other person who knows that the recipient has made such a request, to sell, lease, exchange, or otherwise transfer or release the electronic mail address of the recipient (including through any transaction or other transfer involving mailing lists bearing the electronic mail address of the recipient) for any purpose other than compliance with this chapter or other provision of law.",
@@ -1796,7 +1843,10 @@
         "unresolvedReason": "RequiresInterpretation"
       },
       "dependsOn": [
-        "sender-defined"
+        "sender-defined",
+        "return-address-or-mechanism-required",
+        "opt-out-menu-compliance",
+        "temporary-inability-excused"
       ],
       "enabledBy": [
         "act-effective-date"
@@ -1924,7 +1974,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7704/a/6"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "ambiguous",
       "ambiguity": {
@@ -1972,6 +2022,10 @@
         {
           "cites": "recipient",
           "resolvedBy": "recipient-defined"
+        },
+        {
+          "cites": "this section",
+          "unmapped": "Names section 7704 as a whole; its rules are separate reference entries and no single entry represents the whole section."
         }
       ],
       "evidence": "(6) Materially For purposes of paragraph (1), the term “materially”, when used with respect to false or misleading header information, includes the alteration or concealment of header information in a manner that would impair the ability of an Internet access service processing the message on behalf of a recipient, a person alleging a violation of this section, or a law enforcement agency to identify, locate, or respond to a person who initiated the electronic mail message or to investigate the alleged violation, or the ability of a recipient of the message to respond to a person who initiated the electronic message.",
@@ -2087,7 +2141,13 @@
       "dependsOn": [],
       "evidence": "(B) Disclaimer Nothing in this paragraph creates an ownership or proprietary interest in such electronic mail addresses.",
       "status": "declined",
-      "note": "A disclaimer: nothing in paragraph (1) creates an ownership or proprietary interest in such addresses. A disclaimer of property rights in addresses: relation to other law."
+      "note": "A disclaimer: nothing in paragraph (1) creates an ownership or proprietary interest in such addresses. A disclaimer of property rights in addresses: relation to other law.",
+      "crossReferences": [
+        {
+          "cites": "this paragraph",
+          "unmapped": "Names paragraph 7704(b)(1) as a whole, including its address-harvesting and dictionary-attack rule and disclaimer; no single reference entry represents the whole paragraph."
+        }
+      ]
     },
     {
       "id": "automated-multiple-account-registration-prohibition",
@@ -2251,7 +2311,10 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "commission-regulatory-authority",
+        "limit-on-identification-labeling-requirements"
+      ],
       "crossReferences": [
         {
           "cites": "section 7711 of this title",
@@ -2420,6 +2483,10 @@
         {
           "cites": "sexually oriented material",
           "resolvedBy": "sexually-oriented-material-defined"
+        },
+        {
+          "cites": "this subsection",
+          "unmapped": "Names subsection 7704(d) as a whole, whose warning, exception, prescription, definition, and penalty are separate reference entries."
         }
       ],
       "evidence": "(1) In general No person may initiate in or affecting interstate commerce the transmission, to a protected computer, of any commercial electronic mail message that includes sexually oriented material and— (A) fail to include in subject heading for the electronic mail message the marks or notices prescribed by the Commission under this subsection; or (B) fail to provide that the matter in the message that is initially viewable to the recipient, when the message is opened by any recipient and absent any further actions by the recipient, includes only— (i) to the extent required or authorized pursuant to paragraph (2), any such marks or notices; (ii) the information required to be included in the message pursuant to subsection (a)(5); and (iii) instructions on how to access, or a mechanism to access, the sexually oriented material.",
@@ -2476,7 +2543,10 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "recipient-defined",
+        "sexually-oriented-material-defined"
+      ],
       "crossReferences": [
         {
           "cites": "Commission",
@@ -2502,7 +2572,7 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7704/d/4"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
@@ -2520,7 +2590,13 @@
       ],
       "evidence": "(4) Definition In this subsection, the term “sexually oriented material” means any material that depicts sexually explicit conduct (as that term is defined in section 2256 of title 18 ), unless the depiction constitutes a small and insignificant part of the whole, the remainder of which is not primarily devoted to sexual matters.",
       "status": "mapped",
-      "note": "Material that depicts sexually explicit conduct as defined in section 2256 of title 18 (not admitted), unless the depiction is a small and insignificant part of the whole and the remainder is not primarily devoted to sexual matters. Reference difference 7704(d)(3)/body/1 in examples/can-spam/reference-differences.json: this entry quotes the admitted corpus text."
+      "note": "Material that depicts sexually explicit conduct as defined in section 2256 of title 18 (not admitted), unless the depiction is a small and insignificant part of the whole and the remainder is not primarily devoted to sexual matters. Reference difference 7704(d)(3)/body/1 in examples/can-spam/reference-differences.json: this entry quotes the admitted corpus text.",
+      "crossReferences": [
+        {
+          "cites": "this subsection",
+          "unmapped": "Names subsection 7704(d) as a whole, whose warning, exception, prescription, definition, and penalty are separate reference entries."
+        }
+      ]
     },
     {
       "id": "warning-label-violation-penalty",
@@ -2532,7 +2608,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "sexually-oriented-warning-label-prohibition"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (1)",
@@ -2560,7 +2638,8 @@
       "dependsOn": [
         "commercial-electronic-mail-message",
         "electronic-mail-message-defined",
-        "no-reasonable-action-to-prevent-or-report"
+        "no-reasonable-action-to-prevent-or-report",
+        "false-header-information-prohibition"
       ],
       "enabledBy": [
         "act-effective-date"
@@ -2622,7 +2701,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "promotion-of-business-in-header-violating-message"
+      ],
       "crossReferences": [
         {
           "cites": "Except as provided in paragraph (2)",
@@ -2635,7 +2716,10 @@
       ],
       "evidence": "(1) In general Except as provided in paragraph (2), a person (hereinafter referred to as the “third party”) that provides goods, products, property, or services to another person that violates subsection (a) shall not be held liable for such violation.",
       "status": "declined",
-      "note": "The general rule of paragraph (1), subject to paragraph (2). The caption '(b) Limited enforcement against third parties' is rejected as a heading. Liability, enforcement and savings rules: enforcement and relation to other provisions."
+      "note": "The general rule of paragraph (1), subject to paragraph (2). The caption '(b) Limited enforcement against third parties' is rejected as a heading. Liability, enforcement and savings rules: enforcement and relation to other provisions.",
+      "suspendedBy": [
+        "third-party-liability-imputed"
+      ]
     },
     {
       "id": "third-party-liability-imputed",
@@ -2647,7 +2731,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "promotion-of-business-in-header-violating-message"
+      ],
       "crossReferences": [
         {
           "cites": "subsection (a)",
@@ -2697,6 +2783,10 @@
         {
           "cites": "Subsections (f) and (g) of section 7706 of this title",
           "resolvedBy": "isp-civil-action"
+        },
+        {
+          "cites": "this section",
+          "unmapped": "Names section 7705 as a whole; its promotion, third-party, enforcement, and savings rules are separate reference entries."
         }
       ],
       "evidence": "(c) Exclusive enforcement by FTC Subsections (f) and (g) of section 7706 of this title do not apply to violations of this section.",
@@ -2713,11 +2803,21 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "state-action-barred-while-federal-action-pending"
+      ],
       "crossReferences": [
         {
           "cites": "Except as provided in section 7706(f)(8) of this title",
           "resolvedBy": "state-action-barred-while-federal-action-pending"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
+        },
+        {
+          "cites": "this section",
+          "unmapped": "Names section 7705 as a whole; its promotion, third-party, enforcement, and savings rules are separate reference entries."
         }
       ],
       "evidence": "(d) Savings provision Except as provided in section 7706(f)(8) of this title , nothing in this section may be construed to limit or prevent any action that may be taken under this chapter with respect to any violation of any other section of this chapter.",
@@ -2751,11 +2851,18 @@
         {
           "cites": "Commission",
           "resolvedBy": "commission-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(a) Violation is unfair or deceptive act or practice Except as provided in subsection (b), this chapter shall be enforced by the Commission as if the violation of this chapter were an unfair or deceptive act or practice proscribed under section 18(a)(1)(B) of the Federal Trade Commission Act ( 15 U.S.C. 57a(a)(1)(B) ).",
       "status": "declined",
-      "note": "Except as provided in subsection (b), the chapter is enforced as if a violation were an unfair or deceptive act or practice proscribed under section 18(a)(1)(B) of the FTC Act. Enforcement, remedies or agency procedure."
+      "note": "Except as provided in subsection (b), the chapter is enforced as if a violation were an unfair or deceptive act or practice proscribed under section 18(a)(1)(B) of the FTC Act. Enforcement, remedies or agency procedure.",
+      "suspendedBy": [
+        "enforcement-by-other-agencies"
+      ]
     },
     {
       "id": "enforcement-by-other-agencies",
@@ -2840,6 +2947,10 @@
         {
           "cites": "Commission",
           "resolvedBy": "commission-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(b) Enforcement by certain other agencies Compliance with this chapter shall be enforced— (1) under section 8 of the Federal Deposit Insurance Act ( 12 U.S.C. 1818 ), in the case of— (A) national banks, and Federal branches and Federal agencies of foreign banks, by the Office of the Comptroller of the Currency; (B) member banks of the Federal Reserve System (other than national banks), branches and agencies of foreign banks (other than Federal branches, Federal agencies, and insured State branches of foreign banks), commercial lending companies owned or controlled by foreign banks, organizations operating under section 25 or 25A of the Federal Reserve Act ( 12 U.S.C. 601 and 611), and bank holding companies, by the Board; (C) banks insured by the Federal Deposit Insurance Corporation (other than members of the Federal Reserve System) and insured State branches of foreign banks, by the Board of Directors of the Federal Deposit Insurance Corporation; and (D) savings associations the deposits of which are insured by the Federal Deposit Insurance Corporation, by the Director of the Office of Thrift Supervision; (2) under the Federal Credit Union Act ( 12 U.S.C. 1751 et seq.) by the Board of the National Credit Union Administration with respect to any Federally insured credit union; (3) under the Securities Exchange Act of 1934 ( 15 U.S.C. 78a et seq.) by the Securities and Exchange Commission with respect to any broker or dealer; (4) under the Investment Company Act of 1940 ( 15 U.S.C. 80a–1 et seq.) by the Securities and Exchange Commission with respect to investment companies; (5) under the Investment Advisers Act of 1940 ( 15 U.S.C. 80b–1 et seq.) by the Securities and Exchange Commission with respect to investment advisers registered under that Act; (6) under State insurance law in the case of any person engaged in providing insurance, by the applicable State insurance authority of the State in which the person is domiciled, subject to section 104 of the Gramm-Bliley-Leach Act ( 15 U.S.C. 6701 ), except that in any State in which the State insurance authority elects not to exercise this power, the enforcement authority pursuant to this chapter shall be exercised by the Commission in accordance with subsection (a); (7) under part A of subtitle VII of title 49 by the Secretary of Transportation with respect to any air carrier or foreign air carrier subject to that part; (8) under the Packers and Stockyards Act, 1921 ( 7 U.S.C. 181 et seq.) (except as provided in section 406 of that Act ( 7 U.S.C. 226 , 227)), by the Secretary of Agriculture with respect to any activities subject to that Act; (9) under the Farm Credit Act of 1971 ( 12 U.S.C. 2001 et seq.) by the Farm Credit Administration with respect to any Federal land bank, Federal land bank association, Federal intermediate credit bank, or production credit association; and (10) under the Communications Act of 1934 ( 47 U.S.C. 151 et seq.) by the Federal Communications Commission with respect to any person subject to the provisions of that Act.",
@@ -2856,7 +2967,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "enforcement-by-other-agencies"
+      ],
       "crossReferences": [
         {
           "cites": "subsection (b)",
@@ -2869,6 +2982,10 @@
         {
           "cites": "Commission",
           "resolvedBy": "commission-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(c) Exercise of certain powers For the purpose of the exercise by any agency referred to in subsection (b) of its powers under any Act referred to in that subsection, a violation of this chapter is deemed to be a violation of a Federal Trade Commission trade regulation rule. In addition to its powers under any provision of law specifically referred to in subsection (b), each of the agencies referred to in that subsection may exercise, for the purpose of enforcing compliance with any requirement imposed under this chapter, any other authority conferred on it by law.",
@@ -2894,6 +3011,10 @@
         {
           "cites": "Commission",
           "resolvedBy": "commission-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(d) Actions by the Commission The Commission shall prevent any person from violating this chapter in the same manner, by the same means, and with the same jurisdiction, powers, and duties as though all applicable terms and provisions of the Federal Trade Commission Act ( 15 U.S.C. 41 et seq.) were incorporated into and made a part of this chapter. Any entity that violates any provision of that subtitle 1 1 So in original. is subject to the penalties and entitled to the privileges and immunities provided in the Federal Trade Commission Act in the same manner, by the same means, and with the same jurisdiction, power, and duties as though all applicable terms and provisions of the Federal Trade Commission Act were incorporated into and made a part of that subtitle. 1",
@@ -2910,7 +3031,20 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "enforcement-as-unfair-or-deceptive-practice",
+        "enforcement-by-other-agencies",
+        "other-agencies-powers-for-enforcement",
+        "header-hides-origin-by-relay-materially-misleading",
+        "deceptive-subject-heading-prohibition",
+        "opt-out-request-scope-trigger",
+        "address-harvesting-and-dictionary-attack-prohibition",
+        "relay-through-unauthorized-access-prohibition",
+        "agent-must-honor-opt-out-request",
+        "assisting-initiation-after-opt-out-prohibition",
+        "address-transfer-after-opt-out-prohibition",
+        "commission-actions-under-ftc-act"
+      ],
       "crossReferences": [
         {
           "cites": "subsection (a), (b), (c), or (d)",
@@ -2959,6 +3093,10 @@
         {
           "cites": "Commission",
           "resolvedBy": "commission-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(e) Availability of cease-and-desist orders and injunctive relief without showing of knowledge Notwithstanding any other provision of this chapter, in any proceeding or action pursuant to subsection (a), (b), (c), or (d) of this section to enforce compliance, through an order to cease and desist or an injunction, with section 7704(a)(1)(C) of this title , section 7704(a)(2) of this title , clause (ii), (iii), or (iv) of section 7704(a)(4)(A) of this title , section 7704(b)(1)(A) of this title , or section 7704(b)(3) of this title , neither the Commission nor the Federal Communications Commission shall be required to allege or prove the state of mind required by such section or subparagraph.",
@@ -2975,7 +3113,15 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "false-header-information-prohibition",
+        "deceptive-subject-heading-prohibition",
+        "return-address-or-mechanism-required",
+        "opt-out-menu-compliance",
+        "temporary-inability-excused",
+        "opt-out-request-scope-trigger",
+        "subsequent-affirmative-consent-lifts-opt-out-prohibition"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (1) or (2) of section 7704(a)",
@@ -3040,7 +3186,17 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "state-civil-action",
+        "header-hides-origin-by-relay-materially-misleading",
+        "deceptive-subject-heading-prohibition",
+        "opt-out-request-scope-trigger",
+        "address-harvesting-and-dictionary-attack-prohibition",
+        "relay-through-unauthorized-access-prohibition",
+        "agent-must-honor-opt-out-request",
+        "assisting-initiation-after-opt-out-prohibition",
+        "address-transfer-after-opt-out-prohibition"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (1)(A)",
@@ -3073,6 +3229,10 @@
         {
           "cites": "section 7704(b)(3) of this title",
           "resolvedBy": "relay-through-unauthorized-access-prohibition"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(2) Availability of injunctive relief without showing of knowledge Notwithstanding any other provision of this chapter, in a civil action under paragraph (1)(A) of this subsection, the attorney general, official, or agency of the State shall not be required to allege or prove the state of mind required by section 7704(a)(1)(C) of this title , section 7704(a)(2) of this title , clause (ii), (iii), or (iv) of section 7704(a)(4)(A) of this title , section 7704(b)(1)(A) of this title , or section 7704(b)(3) of this title .",
@@ -3138,7 +3298,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "state-civil-action"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (1)",
@@ -3159,7 +3321,10 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "state-civil-action",
+        "enforcement-by-other-agencies"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (1)",
@@ -3188,11 +3353,17 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "state-civil-action"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (1)",
           "resolvedBy": "state-civil-action"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(6) Construction For purposes of bringing any civil action under paragraph (1), nothing in this chapter shall be construed to prevent an attorney general of a State from exercising the powers conferred on the attorney general by the laws of that State to— (A) conduct investigations; (B) administer oaths or affirmations; or (C) compel the attendance of witnesses or the production of documentary and other evidence.",
@@ -3209,7 +3380,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "state-civil-action"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (1)",
@@ -3238,7 +3411,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "enforcement-by-other-agencies"
+      ],
       "crossReferences": [
         {
           "cites": "subsection (b)",
@@ -3247,6 +3422,14 @@
         {
           "cites": "Commission",
           "resolvedBy": "commission-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
+        },
+        {
+          "cites": "this subsection",
+          "unmapped": "Names subsection 7706(f) as a whole; its State-enforcement provisions are separate reference entries and no single entry represents all of it."
         }
       ],
       "evidence": "(8) Limitation on State action while Federal action is pending If the Commission, or other appropriate Federal agency under subsection (b), has instituted a civil action or an administrative action for violation of this chapter, no State attorney general, or official or agency of a State, may bring an action under this subsection during the pendency of that action against any defendant named in the complaint of the Commission or the other agency for any violation of this chapter alleged in the complaint.",
@@ -3263,7 +3446,16 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "header-hides-origin-by-relay-materially-misleading",
+        "deceptive-subject-heading-prohibition",
+        "opt-out-request-scope-trigger",
+        "address-harvesting-and-dictionary-attack-prohibition",
+        "relay-through-unauthorized-access-prohibition",
+        "agent-must-honor-opt-out-request",
+        "assisting-initiation-after-opt-out-prohibition",
+        "address-transfer-after-opt-out-prohibition"
+      ],
       "crossReferences": [
         {
           "cites": "Except as provided in section 7704(a)(1)(C) of this title",
@@ -3292,6 +3484,10 @@
         {
           "cites": "section 7704(b)(3) of this title",
           "resolvedBy": "relay-through-unauthorized-access-prohibition"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(9) Requisite scienter for certain civil actions Except as provided in section 7704(a)(1)(C) of this title , section 7704(a)(2) of this title , clause (ii), (iii), or (iv) of section 7704(a)(4)(A) of this title , section 7704(b)(1)(A) of this title , or section 7704(b)(3) of this title , in a civil action brought by a State attorney general, or an official or agency of a State, to recover monetary damages for a violation of this chapter, the court shall not grant the relief sought unless the attorney general, official, or agency establishes that the defendant acted with actual knowledge, or knowledge fairly implied on the basis of objective circumstances, of the act or omission that constitutes the violation.",
@@ -3308,7 +3504,15 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "deceptive-subject-heading-prohibition",
+        "return-address-or-mechanism-required",
+        "opt-out-menu-compliance",
+        "temporary-inability-excused",
+        "opt-out-request-scope-trigger",
+        "subsequent-affirmative-consent-lifts-opt-out-prohibition",
+        "internet-access-service-defined"
+      ],
       "crossReferences": [
         {
           "cites": "section 7704(a)(1), (b), or (d) of this title",
@@ -3390,7 +3594,8 @@
       "scope": "out",
       "clarity": "clear",
       "dependsOn": [
-        "procure-defined"
+        "procure-defined",
+        "isp-civil-action"
       ],
       "crossReferences": [
         {
@@ -3404,6 +3609,10 @@
         {
           "cites": "procure",
           "resolvedBy": "procure-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(2) Special definition of “procure” In any action brought under paragraph (1), this chapter shall be applied as if the definition of the term “procure” in section 7702(12) of this title contained, after “behalf” the words “with actual knowledge, or by consciously avoiding knowing, whether such person is engaging, or will engage, in a pattern or practice that violates this chapter”.",
@@ -3420,7 +3629,11 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "address-harvesting-and-dictionary-attack-prohibition",
+        "internet-access-service-defined",
+        "electronic-mail-address-defined"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (1)(B)(ii)",
@@ -3493,7 +3706,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "isp-civil-action"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (1)",
@@ -3527,6 +3742,10 @@
         {
           "cites": "title 18",
           "unmapped": "Not admitted: title 18 of the United States Code. This corpus's manifest `references` lists it as usc-18."
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(1) Nothing in this chapter shall be construed to impair the enforcement of section 223 or 231 of title 47, chapter 71 (relating to obscenity) or 110 (relating to sexual exploitation of children) of title 18, or any other Federal criminal statute.",
@@ -3543,7 +3762,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "ftc-act-defined"
+      ],
       "crossReferences": [
         {
           "cites": "Commission",
@@ -3556,6 +3777,10 @@
         {
           "cites": "materially",
           "resolvedBy": "materially-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(2) Nothing in this chapter shall be construed to affect in any way the Commission’s authority to bring enforcement actions under FTC Act for materially false or deceptive representations or unfair practices in commercial electronic mail messages.",
@@ -3571,13 +3796,10 @@
       },
       "kind": "operation",
       "scope": "out",
-      "clarity": "ambiguous",
-      "ambiguity": {
-        "question": "The chapter does not supersede a State rule 'to the extent that any such statute, regulation, or rule prohibits falsity or deception in any portion of a commercial electronic mail message', and the corpus does not say whether that reaches falsity or deception that is not material, as sections 7704(a)(1) and (a)(6) distinguish.",
-        "fate": "unresolved",
-        "unresolvedReason": "OutsideCurrentScope"
-      },
-      "dependsOn": [],
+      "clarity": "clear",
+      "dependsOn": [
+        "commercial-electronic-mail-message"
+      ],
       "crossReferences": [
         {
           "cites": "commercial electronic mail message",
@@ -3586,11 +3808,18 @@
         {
           "cites": "electronic mail message",
           "resolvedBy": "electronic-mail-message-defined"
+        },
+        {
+          "cites": "This chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(1) In general This chapter supersedes any statute, regulation, or rule of a State or political subdivision of a State that expressly regulates the use of electronic mail to send commercial messages, except to the extent that any such statute, regulation, or rule prohibits falsity or deception in any portion of a commercial electronic mail message or information attached thereto.",
       "status": "declined",
-      "note": "The chapter supersedes a State statute, regulation or rule that expressly regulates the use of electronic mail to send commercial messages, except to the extent it prohibits falsity or deception in any portion of a message or information attached to it. The caption '(b) State law' is rejected as a heading. Whether a State rule is superseded depends on the State rule, and State law is an excluded product feature."
+      "note": "The chapter supersedes a State statute, regulation or rule that expressly regulates the use of electronic mail to send commercial messages, except to the extent it prohibits falsity or deception in any portion of a message or information attached to it. The caption '(b) State law' is rejected as a heading. Whether a State rule is superseded depends on the State rule, and State law is an excluded product feature.",
+      "suspendedBy": [
+        "state-law-not-specific-to-email-preserved"
+      ]
     },
     {
       "id": "state-law-not-specific-to-email-preserved",
@@ -3605,7 +3834,13 @@
       "dependsOn": [],
       "evidence": "(2) State law not specific to electronic mail This chapter shall not be construed to preempt the applicability of— (A) State laws that are not specific to electronic mail, including State trespass, contract, or tort law; or (B) other State laws to the extent that those laws relate to acts of fraud or computer crime.",
       "status": "declined",
-      "note": "The chapter does not preempt State laws not specific to electronic mail (trespass, contract, tort) or State laws relating to acts of fraud or computer crime. Whether a State law is preempted depends on the State law, and State law is an excluded product feature."
+      "note": "The chapter does not preempt State laws not specific to electronic mail (trespass, contract, tort) or State laws relating to acts of fraud or computer crime. Whether a State law is preempted depends on the State law, and State law is an excluded product feature.",
+      "crossReferences": [
+        {
+          "cites": "This chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
+        }
+      ]
     },
     {
       "id": "isp-message-policies-unaffected",
@@ -3617,7 +3852,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "internet-access-service-defined"
+      ],
       "crossReferences": [
         {
           "cites": "Internet",
@@ -3626,6 +3863,10 @@
         {
           "cites": "Internet access service",
           "resolvedBy": "internet-access-service-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(c) No effect on policies of providers of Internet access service Nothing in this chapter shall be construed to have any effect on the lawfulness or unlawfulness, under any other provision of law, of the adoption, implementation, or enforcement by a provider of Internet access service of a policy of declining to transmit, route, relay, handle, or store certain types of electronic mail messages.",
@@ -3689,6 +3930,10 @@
         {
           "cites": "Commission",
           "resolvedBy": "commission-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(a) In general Not later than 24 months after December 16, 2003 , the Commission, in consultation with the Department of Justice and other appropriate agencies, shall submit a report to the Congress that provides a detailed analysis of the effectiveness and enforcement of the provisions of this chapter and the need (if any) for the Congress to modify such provisions.",
@@ -3705,7 +3950,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "commercial-email-effects-report"
+      ],
       "crossReferences": [
         {
           "cites": "subsection (a)",
@@ -3714,6 +3961,10 @@
         {
           "cites": "Commission",
           "resolvedBy": "commission-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(b) Required analysis The Commission shall include in the report required by subsection (a)— (1) an analysis of the extent to which technological and marketplace developments, including changes in the nature of the devices through which consumers access their electronic mail messages, may affect the practicality and effectiveness of the provisions of this chapter; (2) analysis and recommendations concerning how to address commercial electronic mail that originates in or is transmitted through or to facilities or computers in other nations, including initiatives or policy positions that the Federal Government could pursue through international negotiations, fora, organizations, or institutions; and (3) analysis and recommendations concerning options for protecting consumers, including children, from the receipt and viewing of commercial electronic mail that is obscene or pornographic.",
@@ -3739,6 +3990,10 @@
         {
           "cites": "Internet",
           "resolvedBy": "internet-defined"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "The Commission shall transmit to the Senate Committee on Commerce, Science, and Transportation and the House of Representatives Committee on Energy and Commerce— (1) a report, within 9 months after December 16, 2003 , that sets forth a system for rewarding those who supply information about violations of this chapter, including— (A) procedures for the Commission to grant a reward of not less than 20 percent of the total civil penalty collected for a violation of this chapter to the first person that— (i) identifies the person in violation of this chapter; and (ii) supplies information that leads to the successful collection of a civil penalty by the Commission; and (B) procedures to minimize the burden of submitting a complaint to the Commission concerning violations of this chapter, including procedures to allow the electronic submission of complaints to the Commission; and (2) a report, within 18 months after December 16, 2003 , that sets forth a plan for requiring commercial electronic mail to be identifiable from its subject line, by means of compliance with Internet Engineering Task Force Standards, the use of the characters “ADV” in the subject line, or other comparable identifier, or an explanation of any concerns the Commission has that cause the Commission to recommend against the plan.",
@@ -3768,6 +4023,10 @@
         {
           "cites": "Commission",
           "resolvedBy": "commission-defined"
+        },
+        {
+          "cites": "this Act",
+          "unmapped": "Names the CAN-SPAM Act as a whole, classified principally to chapter 103; no single reference entry represents the entire Act."
         }
       ],
       "evidence": "(a) In general The Commission may issue regulations to implement the provisions of this Act (not including the amendments made by sections 4 and 12). Any such regulations shall be issued in accordance with section 553 of title 5 .",
@@ -3784,7 +4043,11 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "commission-regulatory-authority",
+        "identifier-opt-out-and-address-required",
+        "commercial-electronic-mail-message"
+      ],
       "crossReferences": [
         {
           "cites": "Subsection (a)",
@@ -3834,6 +4097,10 @@
         {
           "cites": "section 6102 of this title",
           "unmapped": "Not admitted: section 6102 of title 15. This corpus's manifest `references` lists it as usc-15-6102."
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(a) Effect on other law Nothing in this chapter shall be interpreted to preclude or override the applicability of section 227 of title 47 or the rules prescribed under section 6102 of this title .",
@@ -3850,7 +4117,9 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "fcc-considers-sender-ability-to-identify-mobile-message"
+      ],
       "crossReferences": [
         {
           "cites": "subsection (c)",
@@ -3875,6 +4144,10 @@
         {
           "cites": "sender",
           "resolvedBy": "reg-def-sender-multiple-advertisers"
+        },
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
         }
       ],
       "evidence": "(b) FCC rulemaking The Federal Communications Commission, in consultation with the Federal Trade Commission, shall promulgate rules within 270 days to protect consumers from unwanted mobile service commercial messages. The Federal Communications Commission, in promulgating the rules, shall, to the extent consistent with subsection (c)— (1) provide subscribers to commercial mobile services the ability to avoid receiving mobile service commercial messages unless the subscriber has provided express prior authorization to the sender, except as provided in paragraph (3); (2) allow recipients of mobile service commercial messages to indicate electronically a desire not to receive future mobile service commercial messages from the sender; (3) take into consideration, in determining whether to subject providers of commercial mobile services to paragraph (1), the relationship that exists between providers of such services and their subscribers, but if the Commission determines that such providers should not be subject to paragraph (1), the rules shall require such providers, in addition to complying with the other provisions of this chapter, to allow subscribers to indicate a desire not to receive future mobile service commercial messages from the provider— (A) at the time of subscribing to such service; and (B) in any billing mechanism; and (4) determine how a sender of mobile service commercial messages may comply with the provisions of this chapter, considering the unique technical aspects, including the functional and character limitations, of devices that receive such messages.",
@@ -3891,7 +4164,10 @@
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "commercial-electronic-mail-message",
+        "sender-defined"
+      ],
       "crossReferences": [
         {
           "cites": "Commission",
@@ -3929,10 +4205,12 @@
         "sourceId": "usc-15-ch103",
         "citation": "/us/usc/t15/s7712/d"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "out",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "commercial-electronic-mail-message"
+      ],
       "definedElsewhere": {
         "reference": "usc-47-332-d"
       },
@@ -3950,6 +4228,10 @@
         {
           "cites": "electronic mail message",
           "resolvedBy": "electronic-mail-message-defined"
+        },
+        {
+          "cites": "this section",
+          "unmapped": "Names section 7712 as a whole, across which this definition applies; its provisions are separate reference entries."
         }
       ],
       "evidence": "(d) Mobile service commercial message defined In this section, the term “mobile service commercial message” means a commercial electronic mail message that is transmitted directly to a wireless device that is utilized by a subscriber of commercial mobile service (as such term is defined in section 332(d) of title 47 ) in connection with such service.",
@@ -3969,7 +4251,13 @@
       "dependsOn": [],
       "evidence": "§ 7713. Separability If any provision of this chapter or the application thereof to any person or circumstance is held invalid, the remainder of this chapter and the application of such provision to other persons or circumstances shall not be affected.",
       "status": "declined",
-      "note": "The undivided section's text: invalidity of a provision or application does not affect the remainder. Its source credit and OLRC notes, in the same unit, are not read. A severability clause: it decides nothing about a message."
+      "note": "The undivided section's text: invalidity of a provision or application does not affect the remainder. Its source credit and OLRC notes, in the same unit, are not read. A severability clause: it decides nothing about a message.",
+      "crossReferences": [
+        {
+          "cites": "this chapter",
+          "unmapped": "Names chapter 103 as a whole; its provisions are mapped separately and no single reference entry represents the whole chapter."
+        }
+      ]
     },
     {
       "id": "part-316-scope",
@@ -3978,7 +4266,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.1"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "out",
       "clarity": "clear",
       "dependsOn": [],
@@ -3986,6 +4274,10 @@
         {
           "cites": "15 U.S.C. 7701-7713",
           "unmapped": "The whole of 15 U.S.C. 7701-7713, which is the admitted chapter; its rules are the entries of its parts."
+        },
+        {
+          "cites": "This part",
+          "unmapped": "Names Part 316 as a whole; its provisions are separate reference entries and no single entry represents the whole part."
         }
       ],
       "evidence": "This part implements the Controlling the Assault of Non-Solicited Pornography and Marketing Act of 2003 (“CAN-SPAM Act”), 15 U.S.C. 7701-7713.",
@@ -3999,7 +4291,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(a)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4026,7 +4318,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(b)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
@@ -4047,7 +4339,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(c)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4078,7 +4370,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(d)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4105,7 +4397,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(e)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4132,7 +4424,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(f)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4159,7 +4451,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(g)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4186,7 +4478,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(h)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
@@ -4207,7 +4499,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(i)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4234,7 +4526,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(j)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4261,7 +4553,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(k)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4288,7 +4580,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(l)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4324,7 +4616,9 @@
         "deceptive-subject-heading-prohibition",
         "return-address-or-mechanism-required",
         "identifier-opt-out-and-address-required",
-        "sexually-oriented-message-requirements"
+        "sexually-oriented-message-requirements",
+        "sexually-oriented-prior-consent-exception",
+        "reg-def-person"
       ],
       "defines": [
         {
@@ -4364,6 +4658,10 @@
         {
           "cites": "electronic mail message",
           "resolvedBy": "electronic-mail-message-defined"
+        },
+        {
+          "cites": "person",
+          "resolvedBy": "reg-def-person"
         }
       ],
       "evidence": "(m) The definition of the term “sender” is the same as the definition of that term in the CAN-SPAM Act, 15 U.S.C. 7702(16), provided that, when more than one person's products, services, or Internet website are advertised or promoted in a single electronic mail message, each such person who is within the Act's definition will be deemed to be a “sender,” except that, only one person will be deemed to be the “sender” of that message if such person: (A) is within the Act's definition of “sender”; (B) is identified in the “from” line as the sole sender of the message; and (C) is in compliance with 15 U.S.C. 7704(a)(1), 15 U.S.C. 7704(a)(2), 15 U.S.C. 7704(a)(3)(A)(i), 15 U.S.C. 7704(a)(5)(A), and 16 CFR 316.4.",
@@ -4377,7 +4675,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(n)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4404,7 +4702,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(o)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -4431,7 +4729,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(p)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
@@ -4462,7 +4760,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(p)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
@@ -4487,7 +4785,7 @@
         "sourceId": "cfr-16-316",
         "citation": "§ 316.2(p)"
       },
-      "kind": "operation",
+      "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
@@ -4521,7 +4819,9 @@
       "dependsOn": [
         "primary-purpose-exclusively-commercial",
         "primary-purpose-mixed-transactional-content",
-        "primary-purpose-mixed-other-content"
+        "primary-purpose-mixed-other-content",
+        "primary-purpose-transactional-criteria",
+        "electronic-mail-message-defined"
       ],
       "crossReferences": [
         {
@@ -4567,7 +4867,9 @@
       "kind": "operation",
       "scope": "in",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "electronic-mail-message-defined"
+      ],
       "crossReferences": [
         {
           "cites": "electronic mail message",
@@ -4591,7 +4893,8 @@
       "dependsOn": [
         "subject-line-would-suggest-commercial-content",
         "transactional-content-not-at-beginning",
-        "transactional-or-relationship-content"
+        "transactional-or-relationship-content",
+        "electronic-mail-message-defined"
       ],
       "crossReferences": [
         {
@@ -4620,7 +4923,10 @@
       "assertedBy": [
         "caller"
       ],
-      "dependsOn": [],
+      "dependsOn": [
+        "transactional-or-relationship-content",
+        "electronic-mail-message-defined"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (c) of this section",
@@ -4654,7 +4960,10 @@
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
       },
-      "dependsOn": [],
+      "dependsOn": [
+        "transactional-or-relationship-content",
+        "electronic-mail-message-defined"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (c) of this section",
@@ -4682,7 +4991,8 @@
       "dependsOn": [
         "subject-line-would-suggest-commercial-content-other-content",
         "body-would-suggest-commercial-primary-purpose",
-        "transactional-or-relationship-content"
+        "transactional-or-relationship-content",
+        "electronic-mail-message-defined"
       ],
       "crossReferences": [
         {
@@ -4711,7 +5021,10 @@
       "assertedBy": [
         "caller"
       ],
-      "dependsOn": [],
+      "dependsOn": [
+        "transactional-or-relationship-content",
+        "electronic-mail-message-defined"
+      ],
       "crossReferences": [
         {
           "cites": "paragraph (c) of this section",
@@ -4765,7 +5078,8 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
-        "transactional-or-relationship-content"
+        "transactional-or-relationship-content",
+        "electronic-mail-message-defined"
       ],
       "crossReferences": [
         {
@@ -4802,7 +5116,7 @@
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "clear",
+      "clarity": "ambiguous",
       "dependsOn": [],
       "crossReferences": [
         {
@@ -4820,7 +5134,12 @@
       ],
       "evidence": "(c) Transactional or relationship content of email messages under the CAN-SPAM Act is content: (1) To facilitate, complete, or confirm a commercial transaction that the recipient has previously agreed to enter into with the sender; (2) To provide warranty information, product recall information, or safety or security information with respect to a commercial product or service used or purchased by the recipient; (3) With respect to a subscription, membership, account, loan, or comparable ongoing commercial relationship involving the ongoing purchase or use by the recipient of products or services offered by the sender, to provide — (i) Notification concerning a change in the terms or features; (ii) Notification of a change in the recipient's standing or status; or (iii) At regular periodic intervals, account balance information or other type of account statement; (4) To provide information directly related to an employment relationship or related benefit plan in which the recipient is currently involved, participating, or enrolled; or (5) To deliver goods or services, including product updates or upgrades, that the recipient is entitled to receive under the terms of a transaction that the recipient has previously agreed to enter into with the sender.",
       "status": "mapped",
-      "note": "Paragraph (c) and its five categories (1)-(5), (3) with its clauses (i)-(iii), as one span: content to facilitate, complete or confirm a transaction; warranty, recall, safety or security information; subscription, membership, account or loan notices; employment-related information; delivery of goods or services the recipient is entitled to."
+      "note": "Paragraph (c) and its five categories (1)-(5), (3) with its clauses (i)-(iii), as one span: content to facilitate, complete or confirm a transaction; warranty, recall, safety or security information; subscription, membership, account or loan notices; employment-related information; delivery of goods or services the recipient is entitled to.",
+      "ambiguity": {
+        "question": "Paragraph (c)(3) extends the enumerated relationships to a 'comparable ongoing commercial relationship involving the ongoing purchase or use' of the sender's products or services, and ongoing purchase or use limits the category but the text does not settle which features must make an unlisted relationship comparable to the listed types.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
     },
     {
       "id": "sexually-oriented-message-requirements",
@@ -4835,7 +5154,12 @@
       "dependsOn": [
         "sexually-oriented-subject-heading-exclusion",
         "sexually-explicit-subject-prefix",
-        "sexually-oriented-initially-viewable-content"
+        "sexually-oriented-initially-viewable-content",
+        "reg-def-initiate",
+        "reg-def-person",
+        "commercial-electronic-mail-message",
+        "protected-computer-defined",
+        "sexually-oriented-material-defined"
       ],
       "suspendedBy": [
         "sexually-oriented-prior-consent-exception"
@@ -4856,6 +5180,14 @@
         {
           "cites": "sexually oriented material",
           "resolvedBy": "sexually-oriented-material-defined"
+        },
+        {
+          "cites": "initiate",
+          "resolvedBy": "reg-def-initiate"
+        },
+        {
+          "cites": "person",
+          "resolvedBy": "reg-def-person"
         }
       ],
       "evidence": "(a) Any person who initiates, to a protected computer, the transmission of a commercial electronic mail message that includes sexually oriented material must:",
@@ -4872,7 +5204,10 @@
       "kind": "operation",
       "scope": "in",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "reg-def-sexually-oriented-material",
+        "electronic-mail-message-defined"
+      ],
       "suspendedBy": [
         "sexually-oriented-prior-consent-exception"
       ],
@@ -4904,7 +5239,13 @@
       ],
       "evidence": "include in the subject heading the phrase “SEXUALLY-EXPLICIT: ” in capital letters as the first nineteen (19) characters at the beginning of the subject line",
       "status": "mapped",
-      "note": "The second obligation of paragraph (a)(1): the phrase, in capital letters, as the first nineteen characters of the subject line. The nineteen characters are the 17 of the phrase plus the colon and the space, as the footnote counts them."
+      "note": "The second obligation of paragraph (a)(1): the phrase, in capital letters, as the first nineteen characters of the subject line. The nineteen characters are the 17 of the phrase plus the colon and the space, as the footnote counts them.",
+      "crossReferences": [
+        {
+          "cites": "character",
+          "resolvedBy": "reg-def-character"
+        }
+      ]
     },
     {
       "id": "sexually-oriented-initially-viewable-content",
@@ -4922,7 +5263,8 @@
         "opt-out-notice-in-viewable-content",
         "return-address-in-viewable-content",
         "postal-address-in-viewable-content",
-        "access-instructions-in-viewable-content"
+        "access-instructions-in-viewable-content",
+        "recipient-defined"
       ],
       "suspendedBy": [
         "sexually-oriented-prior-consent-exception"
@@ -4998,7 +5340,9 @@
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
       },
-      "dependsOn": [],
+      "dependsOn": [
+        "recipient-defined"
+      ],
       "suspendedBy": [
         "sexually-oriented-prior-consent-exception"
       ],
@@ -5033,9 +5377,12 @@
       "ambiguity": {
         "question": "The content must include 'A functioning return electronic mail address or other Internet-based mechanism, clearly and conspicuously displayed', and the corpus states no measure of 'functioning' or of what makes the display clear and conspicuous.",
         "fate": "unresolved",
-        "unresolvedReason": "RequiresInterpretation"
+        "unresolvedReason": "MissingRulesData"
       },
-      "dependsOn": [],
+      "dependsOn": [
+        "internet-defined",
+        "electronic-mail-address-defined"
+      ],
       "suspendedBy": [
         "sexually-oriented-prior-consent-exception"
       ],
@@ -5131,9 +5478,12 @@
       "ambiguity": {
         "question": "The instructions must be 'preceded by a clear and conspicuous statement that to avoid viewing the sexually oriented material, a recipient should delete the email message', and the corpus states no measure of what is clear and conspicuous.",
         "fate": "unresolved",
-        "unresolvedReason": "RequiresInterpretation"
+        "unresolvedReason": "MissingRulesData"
       },
-      "dependsOn": [],
+      "dependsOn": [
+        "recipient-defined",
+        "sexually-oriented-material-defined"
+      ],
       "suspendedBy": [
         "sexually-oriented-prior-consent-exception"
       ],
@@ -5161,7 +5511,9 @@
       "kind": "operation",
       "scope": "in",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "affirmative-consent"
+      ],
       "crossReferences": [
         {
           "cites": "affirmative consent",
@@ -5174,6 +5526,10 @@
         {
           "cites": "recipient",
           "resolvedBy": "recipient-defined"
+        },
+        {
+          "cites": "Paragraph (a)",
+          "resolvedBy": "sexually-oriented-message-requirements"
         }
       ],
       "evidence": "(b) Prior affirmative consent. Paragraph (a) does not apply to the transmission of an electronic mail message if the recipient has given prior affirmative consent to receipt of the message.",
@@ -5191,7 +5547,8 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
-        "reg-def-sender-multiple-advertisers"
+        "reg-def-sender-multiple-advertisers",
+        "reg-def-person"
       ],
       "crossReferences": [
         {
@@ -5241,6 +5598,14 @@
         {
           "cites": "sender",
           "resolvedBy": "reg-def-sender-multiple-advertisers"
+        },
+        {
+          "cites": "commercial electronic mail message",
+          "resolvedBy": "reg-def-commercial-electronic-mail-message"
+        },
+        {
+          "cites": "person",
+          "resolvedBy": "reg-def-person"
         }
       ],
       "evidence": "Neither a sender nor any person acting on behalf of a sender may require that any recipient pay any fee, provide any information other than the recipient's electronic mail address and opt-out preferences, or take any other steps except sending a reply electronic mail message or visiting a single Internet Web page, in order to: (a) Use a return electronic mail address or other Internet-based mechanism, required by 15 U.S.C. 7704(a)(3), to submit a request not to receive future commercial electronic mail messages from a sender; or (b) Have such a request honored as required by 15 U.S.C. 7704(a)(3)(B) and (a)(4).",
@@ -5262,6 +5627,10 @@
         {
           "cites": "Commission",
           "resolvedBy": "commission-defined"
+        },
+        {
+          "cites": "this part",
+          "unmapped": "Names Part 316 as a whole; its provisions are separate reference entries and no single entry represents the whole part."
         }
       ],
       "evidence": "The provisions of this part are separate and severable from one another. If any provision is stayed or determined to be invalid, it is the Commission's intention that the remaining provisions shall continue in effect.",
