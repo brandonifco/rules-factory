@@ -109,6 +109,10 @@ class JointCheck(Fixture):
             "which no corpus this map cites contains": broken(lambda d: d["extent"]["sections"].append("Rule 99")),
             "not a corpus this map's entries cite": broken(lambda d: d["extent"].update(unreachable=[
                 {"sourceId": "usc-1-1", "opensWith": "x", "reason": "no-unit-for-element", "requires": "x"}])),
+            "does not read such a declaration": broken(lambda d: d["extent"].update(unreachable=[
+                {"sourceId": "frcp-6-12-81", "opensWith": "THIS DOES NOT EXIST", "reason": "no-unit-for-element",
+                 "requires": "x"}])),
+            "is not a ecfr-xml designation and nothing else": broken(lambda d: d["extent"]["sections"].append("ignored § 107.1")),
         }
         for why, document in cases.items():
             with self.subTest(why=why):
@@ -117,6 +121,18 @@ class JointCheck(Fixture):
                 self.assertIn("NOT VERIFIED", done.stdout)
                 self.assertIn(why, done.stdout)
 
+
+    def test_a_section_two_cited_corpora_hold_is_not_verified(self):
+        second = dict(corpus_row("faa-part-107", "cfr-14-107"), sourceId="cfr-14-107-copy")
+        manifest = self.write("corpus-manifest.json", {"schemaVersion": 1, "corpora": [
+            corpus_row("faa-part-107", "cfr-14-107"), second, corpus_row("frcp-6-12-81", "frcp-6-12-81")]})
+        document = json.loads(json.dumps(self.document))
+        copy = json.loads(json.dumps(document["entries"][0]))
+        copy["id"], copy["locator"]["sourceId"] = "altitude-limit-copy", "cfr-14-107-copy"
+        document["entries"].append(copy)
+        done = run(JOINT, self.write("corpus-map.json", document), "--manifest", manifest)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("which more than one corpus this map cites contains", done.stdout)
 
 class JointPack(Fixture):
     """pack-map.py packs a map citing an eCFR and a USLM corpus, each rebuilt by rules-corpus (0048)."""

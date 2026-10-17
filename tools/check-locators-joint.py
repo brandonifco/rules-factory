@@ -16,7 +16,13 @@ share, unchanged:
     (`portion_of`, the division `mapper inventory` already walks by, #660 and #674). A section no
     cited corpus holds, or two hold, is refused, exactly as the inventory refuses it.
   * **`extent.unreachable`** items go to the corpus their `sourceId` names; one naming no cited
-    corpus is refused. Every other key of `extent` is kept on every share.
+    corpus is refused, and so is one for a grammar whose checker does not read the declaration
+    (UNREACHABLE_READ: the USLM checker reads none, because every USLM passage has an identifier),
+    since a declaration nothing verifies would pass by being ignored. Every other key of `extent`
+    is kept on every share.
+  * **Every extent section** must be exactly its grammar's designation (DESIGNATION); an item that
+    only contains one -- `ignored § 107.1` -- is refused rather than handed to a checker that reads
+    the part it recognises.
 
 Each adapter's share is written to a private temporary directory as a map of its own and checked by
 `LOCATOR_CHECKERS[adapter]` (the table `tools/pack-map.py` holds) against that adapter's corpora,
@@ -44,6 +50,17 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, TOOLS)
 from mapper import corpus as corpus_step  # noqa: E402  (each adapter's portion_of: the inventory's own division)
 from mapper.protocol import Refused  # noqa: E402
+
+import re  # noqa: E402
+
+#: Grammars whose locator checker verifies `extent.unreachable` declarations (`check-locators-section.py` holds each one's
+#: `opensWith` to the unit it names). A declaration for any other grammar is refused, not ignored.
+UNREACHABLE_READ = {"ecfr-xml"}
+#: The whole of an extent item, per grammar: what `portion_of` finds inside an item must be all the item is.
+DESIGNATION = {
+    "ecfr-xml": re.compile(r"§ \d+\.\d+[a-z]?"),
+    "uslm-xml": re.compile(r"Rule \d+(?:\.\d+)?|/us/usc/t\d+[a-z]*/s[0-9A-Za-z-]+"),
+}
 
 
 def _pack_map():
@@ -82,7 +99,11 @@ def shares(document, manifest, manifest_dir):
             raise Refused(f"the {corpora[source].get('adapter')!r} adapter of {source} makes no claim about "
                           f"which extent sections it holds, so the extent cannot be divided")
         mine_of[source] = (portion, mine)
+        form = DESIGNATION.get(corpora[source].get("adapter"))
         for item in mine:
+            if form is None or not form.fullmatch(item):
+                raise Refused(f"the extent item {item!r} is not a {corpora[source].get('adapter')} designation and nothing "
+                              f"else: {source}'s grammar would read only part of it")
             claimed.setdefault(item, []).append(source)
     listed = [item for item in extent["sections"] if isinstance(item, str)]
     orphan = [item for item in listed if item not in claimed]
@@ -100,6 +121,9 @@ def shares(document, manifest, manifest_dir):
             if not isinstance(item, dict) or item.get("sourceId") not in by_source:
                 raise Refused(f"an extent.unreachable item names {item.get('sourceId') if isinstance(item, dict) else item!r}, "
                               f"which is not a corpus this map's entries cite")
+            if corpora[item["sourceId"]].get("adapter") not in UNREACHABLE_READ:
+                raise Refused(f"an extent.unreachable item names {item['sourceId']}, whose {corpora[item['sourceId']].get('adapter')} "
+                              f"checker does not read such a declaration, so nothing would verify it")
 
     checkers = _pack_map()
     groups = {}
