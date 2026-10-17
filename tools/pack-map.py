@@ -25,9 +25,11 @@ The gate, in order:
   * `check-map.py --phase publish` -- every check, structural and status-dependent, against that snapshot;
   * the locator checker for the corpus's adapter -- every citation resolves in the
     committed corpus, every absence is searched for, every page of the extent is reached.
-    An adapter with no checker here, a corpus that is not `committed-copy`, a map citing
-    corpora read by two different adapters, or a map citing several corpora whose adapter's
-    checker reads one per run, is refused as NOT VERIFIED: none of those is a pass.
+    A map citing corpora read by two different adapters is divided by
+    `tools/check-locators-joint.py`, and each adapter's checker reads its own share (#681).
+    An adapter with no checker here, a corpus that is not `committed-copy`, or a map citing
+    several corpora whose single adapter's checker reads one per run, is refused as NOT
+    VERIFIED: none of those is a pass.
 
 The package, and why it is byte-for-byte deterministic:
 
@@ -140,6 +142,9 @@ LOCATOR_CHECKERS = {
     # it is what four committed SRD manifests and every published SRD package declare.
     "page-marked-text": os.path.join(REPO, "examples", "srd-52-combat", "check-locators-pdf-text.py"),
 }
+
+# A map citing corpora read by more than one adapter: each grammar's checker above, on its share (#681).
+JOINT_CHECKER = os.path.join(TOOLS, "check-locators-joint.py")
 
 MAP_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$")
@@ -429,16 +434,16 @@ def gate(inputs, repo_root, publishing):
                       f"(docs/decisions/0068)")
 
     adapters = {corpora[source_id].get("adapter") for source_id in cited}
-    if len(adapters) != 1:
-        raise Refused(f"NOT VERIFIED -- the map cites corpora read by {len(adapters)} adapters "
-                      f"({', '.join(sorted(map(str, adapters)))}); one locator run reads one "
-                      f"grammar, so these citations cannot all be checked in it")
+    for adapter in sorted(map(str, adapters)):
+        if adapter not in LOCATOR_CHECKERS:
+            raise Refused(f"NOT VERIFIED -- no locator checker for adapter {adapter!r}; "
+                          f"known: {', '.join(sorted(LOCATOR_CHECKERS))}")
+    # A map citing corpora read by two grammars is divided by tools/check-locators-joint.py, and each
+    # grammar's checker reads its own share (#681). One grammar is checked in one run, as before.
+    joint = len(adapters) > 1
     adapter = next(iter(adapters))
-    checker = LOCATOR_CHECKERS.get(adapter)
-    if checker is None:
-        raise Refused(f"NOT VERIFIED -- no locator checker for adapter {adapter!r}; "
-                      f"known: {', '.join(sorted(LOCATOR_CHECKERS))}")
-    if len(cited) > 1 and adapter not in MULTI_CORPUS_ADAPTERS:
+    checker = JOINT_CHECKER if joint else LOCATOR_CHECKERS[adapter]
+    if not joint and len(cited) > 1 and adapter not in MULTI_CORPUS_ADAPTERS:
         raise Refused(f"NOT VERIFIED -- the map cites {cited} and {os.path.basename(checker)} reads "
                       f"one corpus per run, so these citations cannot all be checked")
 
@@ -510,10 +515,16 @@ def gate(inputs, repo_root, publishing):
             # against one, and "nothing was compared" has to be as visible as a comparison.
             print(f"   no previous version compared: {where}")
         run_step("check-map.py --phase publish", publish_argv)
-        argv = ([f"{source_id}={staged_corpora[source_id]}" for source_id in cited]
-                if len(cited) > 1 else [staged_corpora[cited[0]]])
-        run_step(f"{os.path.relpath(checker, REPO)} ({adapter})",
-                 [sys.executable, checker, stage_map, *argv])
+        if joint:
+            # The staged manifest's committedPath values resolve to the staged corpora above, so the
+            # joint check reads the same snapshot bytes every other gate step reads (0048).
+            run_step(f"{os.path.relpath(checker, REPO)} ({', '.join(sorted(adapters))})",
+                     [sys.executable, checker, stage_map, "--manifest", stage_manifest])
+        else:
+            argv = ([f"{source_id}={staged_corpora[source_id]}" for source_id in cited]
+                    if len(cited) > 1 else [staged_corpora[cited[0]]])
+            run_step(f"{os.path.relpath(checker, REPO)} ({adapter})",
+                     [sys.executable, checker, stage_map, *argv])
     return verified
 
 
