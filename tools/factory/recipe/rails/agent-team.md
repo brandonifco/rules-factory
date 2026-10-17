@@ -165,7 +165,13 @@ Five things follow, in the order they are worth acting on:
    into implementers, and its worst single implementer spent about 45M effective tokens over
    roughly eight review rounds it stayed alive through. One instance is one attempt
    (`AGENTS.md` §4), and the next attempt reads the repository rather than the last one's
-   transcript.
+   transcript. This was a rule on the orchestrator's word until it was measured: across 502
+   subagents, 96 were resumed after returning their final result, 169 times in all, and 29.2% of
+   every token those agents processed (2.27B of 7.77B) was spent in the turns after a resume, 20.8%
+   of it re-reading the earlier assignment's context. The first assignment's peak context was 157k
+   tokens at the median, 211k at the 75th percentile and 348k at the 95th, which are the checkpoint
+   and the hard bound `.claude/hooks/agent-lifecycle-guard.py` holds a subagent to; that guard also
+   refuses the message that would resume a completed agent.
 
 5. **Review what changed, not everything again.** The fourth point ended the implementer at the
    review boundary; the same arithmetic applies to the reviewer. A full semantic reread after every
