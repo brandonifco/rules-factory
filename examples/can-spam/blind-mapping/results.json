@@ -1,5 +1,6 @@
 {
   "reference": {
+    "commit": "34ab993d90857a26e89d5dc3d2f336975fecc010",
     "path": "examples/can-spam/corpus-map.json",
     "entries": 141
   },
