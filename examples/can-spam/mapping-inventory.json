@@ -1,0 +1,275 @@
+{
+  "inventoryVersion": 2,
+  "rejected": [
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7701 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 7701. Congressional findings and policy”. It names the subject of the subsections below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7703 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 7703. Prohibition against predatory and abusive commercial e-mail”. It names the subject of the subsections below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7704 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 7704. Other protections for users of commercial electronic mail”. It names the subject of the subsections below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7705 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 7705. Businesses knowingly promoted by electronic mail with false or misleading transmission information”. It names the subject of the subsections below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7706 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 7706. Enforcement generally”. It names the subject of the subsections below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7707 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 7707. Effect on other laws”. It names the subject of the subsections below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7708 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 7708. Do-Not-E-Mail registry”. It names the subject of the subsections below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7709 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 7709. Study of effects of commercial electronic mail”. It names the subject of the subsections below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7711 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 7711. Regulations”. It names the subject of the subsections below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7712 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 7712. Application to wireless”. It names the subject of the subsections below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7702/2",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(2) Commercial electronic mail message” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7702/17",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(17) Transactional or relationship message” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7704/a",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(a) Requirements for transmission of messages” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7704/a/3",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(3) Inclusion of return address or comparable mechanism in commercial electronic mail” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7704/a/4",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(4) Prohibition of transmission of commercial electronic mail after objection” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7704/a/5",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(5) Inclusion of identifier, opt-out, and physical address in commercial electronic mail” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7704/b",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(b) Aggravated violations relating to commercial electronic mail” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7704/b/1",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(1) Address harvesting and dictionary attacks” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7704/d",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(d) Requirement to place warning labels on commercial electronic mail containing sexually oriented material” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7705/b",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(b) Limited enforcement against third parties” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7706/f",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(f) Enforcement by States” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7706/g",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(g) Action by provider of Internet access service” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7707/a",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(a) Federal law” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7707/b",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “(b) State law” and opens paragraphs that carry the whole of what it is about. It states no period, condition, party or consequence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7703/a",
+      "ground": "out-of-extent",
+      "note": "The codifier's marker “(a) Omitted”: subsection (a) of section 4 of the Act is not printed in this chapter. The OLRC's Codification note under the section says it enacted section 1037 of title 18, so the text it replaced is in a title this map does not admit, and there is nothing here to quote."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7702 closing",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's apparatus after the section: the source credit of the section (the Public Law, section and Statutes at Large citation of the enactment), an Editorial Notes block (References in Text) and the Effective Date note, which points at the note printed under section 7701. It is printed inside the section element and outside every subsection, and is the OLRC's commentary and cross-reference rather than a passage of the codified section. The mapping protocol of this chapter reads codified text and rests on no source credit and no Editorial Note (decision 0082 leaves that open, and the protocol answers it). The Effective Date pointer restates the note under section 7701, which the entry act-effective-date quotes."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7703 closing",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's apparatus after the section: the source credit of the section (the Public Law, section and Statutes at Large citation of the enactment), an Editorial Notes block (Codification) and the Effective Date note, which points at the note printed under section 7701. It is printed inside the section element and outside every subsection, and is the OLRC's commentary and cross-reference rather than a passage of the codified section. The mapping protocol of this chapter reads codified text and rests on no source credit and no Editorial Note (decision 0082 leaves that open, and the protocol answers it). The Effective Date pointer restates the note under section 7701, which the entry act-effective-date quotes."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7704 closing",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's apparatus after the section: the source credit of the section (the Public Law, section and Statutes at Large citation of the enactment), an Editorial Notes block (References in Text) and the Effective Date note, which points at the note printed under section 7701. It is printed inside the section element and outside every subsection, and is the OLRC's commentary and cross-reference rather than a passage of the codified section. The mapping protocol of this chapter reads codified text and rests on no source credit and no Editorial Note (decision 0082 leaves that open, and the protocol answers it). The Effective Date pointer restates the note under section 7701, which the entry act-effective-date quotes."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7705 closing",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's apparatus after the section: the source credit of the section (the Public Law, section and Statutes at Large citation of the enactment), an Editorial Notes block (References in Text) and the Effective Date note, which points at the note printed under section 7701. It is printed inside the section element and outside every subsection, and is the OLRC's commentary and cross-reference rather than a passage of the codified section. The mapping protocol of this chapter reads codified text and rests on no source credit and no Editorial Note (decision 0082 leaves that open, and the protocol answers it). The Effective Date pointer restates the note under section 7701, which the entry act-effective-date quotes."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7706 closing",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's apparatus after the section: the source credit of the section (the Public Law, section and Statutes at Large citation of the enactment), an Editorial Notes block (References in Text) and the Effective Date note, which points at the note printed under section 7701. It is printed inside the section element and outside every subsection, and is the OLRC's commentary and cross-reference rather than a passage of the codified section. The mapping protocol of this chapter reads codified text and rests on no source credit and no Editorial Note (decision 0082 leaves that open, and the protocol answers it). The Effective Date pointer restates the note under section 7701, which the entry act-effective-date quotes."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7707 closing",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's apparatus after the section: the source credit of the section (the Public Law, section and Statutes at Large citation of the enactment), an Editorial Notes block (References in Text) and the Effective Date note, which points at the note printed under section 7701. It is printed inside the section element and outside every subsection, and is the OLRC's commentary and cross-reference rather than a passage of the codified section. The mapping protocol of this chapter reads codified text and rests on no source credit and no Editorial Note (decision 0082 leaves that open, and the protocol answers it). The Effective Date pointer restates the note under section 7701, which the entry act-effective-date quotes."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7708 closing",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's apparatus after the section: the source credit of the section (the Public Law, section and Statutes at Large citation of the enactment). It is printed inside the section element and outside every subsection, and is the OLRC's commentary and cross-reference rather than a passage of the codified section. The mapping protocol of this chapter reads codified text and rests on no source credit and no Editorial Note (decision 0082 leaves that open, and the protocol answers it)."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7709 closing",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's apparatus after the section: the source credit of the section (the Public Law, section and Statutes at Large citation of the enactment), an Editorial Notes block (References in Text) and the Effective Date note, which points at the note printed under section 7701. It is printed inside the section element and outside every subsection, and is the OLRC's commentary and cross-reference rather than a passage of the codified section. The mapping protocol of this chapter reads codified text and rests on no source credit and no Editorial Note (decision 0082 leaves that open, and the protocol answers it). The Effective Date pointer restates the note under section 7701, which the entry act-effective-date quotes."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7710 closing",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's apparatus after the section: the source credit of the section (the Public Law, section and Statutes at Large citation of the enactment), an Editorial Notes block (References in Text) and the Effective Date note, which points at the note printed under section 7701. It is printed inside the section element and outside every subsection, and is the OLRC's commentary and cross-reference rather than a passage of the codified section. The mapping protocol of this chapter reads codified text and rests on no source credit and no Editorial Note (decision 0082 leaves that open, and the protocol answers it). The Effective Date pointer restates the note under section 7701, which the entry act-effective-date quotes."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7711 closing",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's apparatus after the section: the source credit of the section (the Public Law, section and Statutes at Large citation of the enactment), an Editorial Notes block (References in Text) and the Effective Date note, which points at the note printed under section 7701. It is printed inside the section element and outside every subsection, and is the OLRC's commentary and cross-reference rather than a passage of the codified section. The mapping protocol of this chapter reads codified text and rests on no source credit and no Editorial Note (decision 0082 leaves that open, and the protocol answers it). The Effective Date pointer restates the note under section 7701, which the entry act-effective-date quotes."
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "unit": "/us/usc/t15/s7712 closing",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's apparatus after the section: the source credit of the section (the Public Law, section and Statutes at Large citation of the enactment), an Editorial Notes block (References in Text) and the Effective Date note, which points at the note printed under section 7701. It is printed inside the section element and outside every subsection, and is the OLRC's commentary and cross-reference rather than a passage of the codified section. The mapping protocol of this chapter reads codified text and rests on no source credit and no Editorial Note (decision 0082 leaves that open, and the protocol answers it). The Effective Date pointer restates the note under section 7701, which the entry act-effective-date quotes."
+    },
+    {
+      "sourceId": "cfr-16-316",
+      "unit": "§ 316.1 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 316.1 Scope.”. It names the subject of the paragraphs below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the paragraph that states it."
+    },
+    {
+      "sourceId": "cfr-16-316",
+      "unit": "§ 316.2 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 316.2 Definitions.”. It names the subject of the paragraphs below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the paragraph that states it."
+    },
+    {
+      "sourceId": "cfr-16-316",
+      "unit": "§ 316.3 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 316.3 Primary purpose.”. It names the subject of the paragraphs below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the paragraph that states it."
+    },
+    {
+      "sourceId": "cfr-16-316",
+      "unit": "§ 316.4 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 316.4 Requirement to place warning labels on commercial electronic mail that contains sexually oriented material.”. It names the subject of the paragraphs below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the paragraph that states it."
+    },
+    {
+      "sourceId": "cfr-16-316",
+      "unit": "§ 316.5 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 316.5 Prohibition on charging a fee or imposing other requirements on recipients who wish to opt out.”. It names the subject of the paragraphs below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the paragraph that states it."
+    },
+    {
+      "sourceId": "cfr-16-316",
+      "unit": "§ 316.6 heading",
+      "ground": "heading",
+      "note": "The section's own number and title, “§ 316.6 Severability.”. It names the subject of the paragraphs below and states none of it: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the paragraph that states it."
+    },
+    {
+      "sourceId": "cfr-16-316",
+      "unit": "§ 316.3 ¶2",
+      "ground": "beyond-adapter",
+      "note": "A footnote printed at the top level of its section, after paragraph (a), which carries its reference mark. The walk has no unit for a footnote at the top level of a section, so it has no address and no quote of it can be located; it is declared in extent.unreachable. Its words: “1 The Commission does not intend for these criteria to treat as a “commercial electronic mail message” anything that is not commercial speech.”"
+    },
+    {
+      "sourceId": "cfr-16-316",
+      "unit": "§ 316.4 ¶3",
+      "ground": "beyond-adapter",
+      "note": "A footnote printed at the top level of its section, after paragraph (a)(1), which carries its reference mark. The walk has no unit for a footnote at the top level of a section, so it has no address and no quote of it can be located; it is declared in extent.unreachable. Its words: “2 The phrase “SEXUALLY-EXPLICIT” comprises 17 characters, including the dash between the two words. The colon (:) and the space following the phrase are the 18 th and 19 th characters.”"
+    },
+    {
+      "sourceId": "cfr-16-316",
+      "unit": "§ 316.4 ¶6",
+      "ground": "beyond-adapter",
+      "note": "A footnote printed at the top level of its section, after paragraph (a)(2)(i), which carries its reference mark. The walk has no unit for a footnote at the top level of a section, so it has no address and no quote of it can be located; it is declared in extent.unreachable. Its words: “3 This phrase consists of nineteen (19) characters and is identical to the phrase required in 316.5(a)(1) of this Rule.”"
+    }
+  ]
+}

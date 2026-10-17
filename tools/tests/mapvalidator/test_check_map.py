@@ -3114,12 +3114,12 @@ class TestSuperposition(MapCase):
         self.assertEqual(code, 0, output)
 
     def test_every_committed_adjudication_record_is_of_the_one_shape(self):
-        # #273's acceptance: four committed records, one shape, and each declares the
-        # vocabulary its own verdicts are written in.
+        # #273's acceptance: the committed records (five, with CAN-SPAM's), one shape, and each
+        # declares the vocabulary its own verdicts are written in.
         repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
         records = sorted(glob.glob(os.path.join(repo, "examples", "*", "blind-mapping",
                                                 "resolutions.json")))
-        self.assertEqual(len(records), 4, records)
+        self.assertEqual(len(records), 5, records)
         for path in records:
             with self.subTest(record=os.path.relpath(path, repo)):
                 with open(path, encoding="utf-8") as handle:

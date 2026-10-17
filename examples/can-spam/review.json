@@ -1,0 +1,17 @@
+{
+  "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
+  "reviews": {
+    "corpus-map.json": {
+      "sha256": "14acf85a69df71a777044a3dad33f772c4adafbe50960e0ece67ebce45038645",
+      "method": "blind-second-mapping",
+      "comparison": "blind-mapping/results.json",
+      "resolutions": "blind-mapping/resolutions.json",
+      "staged": "blind-mapping/staged-inputs.json",
+      "compared": {
+        "commit": "34ab993d90857a26e89d5dc3d2f336975fecc010",
+        "sha256": "95bdf1f33d53ddf70babb2ea82394e9143282d20e130268d2a6c1792478d3196"
+      },
+      "note": "Issue #683. compare.py read the map at 34ab993 (141 entries) and flagged 629 disagreements with the blind second map; each flag has a row in resolutions.json (192 blind-right, 12 corpus-does-not-settle, 159 reference-right, 266 not-a-disagreement). sha256 is the map corrected to those rows; compared.sha256 is the map before correction. Of the 192 blind-right rows, 186 were applied as written and 6 were not: each adds a dependsOn edge that closes a dependsOn cycle (check-map no-cycles), so the entry is left as it was. Of the 12 unsettled rows, 6 were already recorded in the map as ambiguous with fate unresolved, and 6 made two further entries ambiguous (transactional-or-relationship-message-defined, transactional-or-relationship-content). The unresolvedReason of two entries that took a dependsOn edge to a definition in a corpus that was not admitted became MissingRulesData, as the correspondence table requires. The comparison's reference gained the commit it read, which check-map-review.py requires it to name. The blind mapper worked from staged inputs recorded in blind-mapping/staged-inputs.json."
+    }
+  }
+}

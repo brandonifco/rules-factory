@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "corpora": [
+    {
+      "sourceId": "cfr-16-316",
+      "title": "16 CFR Part 316 — CAN-SPAM Rule",
+      "adapter": "ecfr-xml",
+      "locatorGrammar": "section-designation",
+      "contentHash": "45bf26b68a06dc81f55388a06eb4e376ceb061a490e3858fb6105143d1d583b0",
+      "hashDerivation": "ecfr-versioner-xml",
+      "asOf": "2026-10-01",
+      "boundaryPolicy": "pin-in-repo",
+      "licence": "public-domain-us-government",
+      "verification": "committed-copy",
+      "committedPath": "part316.xml",
+      "quotation": "verbatim",
+      "randomness": "none",
+      "retrievedFrom": "https://www.ecfr.gov/api/versioner/v1/full/2026-10-01/title-16.xml?part=316",
+      "pointerPhrases": [
+        {
+          "regex": "\\bparagraphs? \\([a-z0-9]+\\)(?:\\([a-z0-9]+\\))*(?:(?:,|,? (?:and|or|through)) \\([a-z0-9]+\\)(?:\\([a-z0-9]+\\))*)* of this section"
+        },
+        {
+          "regex": "\\b15 U\\.S\\.C\\. \\d+(?:\\([A-Za-z0-9]+\\))*(?:-\\d+)?(?:,? (?:and|or) \\([A-Za-z0-9]+\\)(?:\\([A-Za-z0-9]+\\))*)*"
+        },
+        {
+          "regex": "\\b16 CFR \\d+\\.\\d+(?:\\([a-z0-9]+\\))*"
+        },
+        {
+          "regex": "\\b\\d+\\.\\d+(?:\\([a-z0-9]+\\))* of this Rule"
+        }
+      ],
+      "references": [
+        {
+          "sourceId": "usps-regulations",
+          "citation": "United States Postal Service regulations",
+          "admitted": false
+        }
+      ]
+    },
+    {
+      "sourceId": "usc-15-ch103",
+      "title": "15 U.S.C. chapter 103 — Controlling the Assault of Non-Solicited Pornography and Marketing",
+      "adapter": "uslm-xml",
+      "locatorGrammar": "section-designation",
+      "contentHash": "be849fb57eb2c2aa914f7369ec5ec3f52091ebbee7ae0e6ef0fc270772449d89",
+      "hashDerivation": "olrc-uslm-chapter-slice-verbatim",
+      "asOf": "2026-10-07",
+      "boundaryPolicy": "pin-in-repo",
+      "licence": "public-domain-us-government",
+      "verification": "committed-copy",
+      "committedPath": "usc15-ch103.xml",
+      "quotation": "verbatim",
+      "randomness": "none",
+      "retrievedFrom": "https://uscode.house.gov/download/releasepoints/us/pl/119/120/xml_usc15@119-120.zip",
+      "pointerPhrases": [
+        {
+          "regex": "\\bsections? \\d+[A-Za-z]?(?:\\([A-Za-z0-9]+\\))*(?: or \\d+[A-Za-z]?)?(?: of (?:this title|title \\d+))?"
+        },
+        {
+          "regex": "\\b(?:subsections?|paragraphs?|subparagraphs?|clauses?) \\([A-Za-z0-9]+\\)(?:\\([A-Za-z0-9]+\\))*(?:(?:,| or| and|,? (?:or|and)) \\([A-Za-z0-9]+\\)(?:\\([A-Za-z0-9]+\\))*)*(?: of section \\d+[A-Za-z]?(?:\\([A-Za-z0-9]+\\))*(?: of this title)?)?"
+        },
+        {
+          "regex": "\\b\\d+ U\\.S\\.C\\. \\d+[A-Za-z]?(?:\\u2013\\d+)?(?:\\([A-Za-z0-9]+\\))*(?: et seq\\.| nt)?(?:(?: and|\\s*,) \\d+(?:\\([A-Za-z0-9]+\\))*)?"
+        },
+        {
+          "regex": "\\bchapters? \\d+[A-Za-z]?(?:(?:,| and| or) \\d+[A-Za-z]?)*(?: of title \\d+)?"
+        },
+        {
+          "regex": "\\b(?:part [A-Z] of subtitle [IVX]+ of )?title \\d+\\b"
+        }
+      ],
+      "references": [
+        {
+          "sourceId": "usc-47-151nt",
+          "citation": "47 U.S.C. 151 nt",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-47-231-e-4",
+          "citation": "section 231(e)(4) of title 47",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-18-1030-e-2-B",
+          "citation": "section 1030(e)(2)(B) of title 18",
+          "admitted": false
+        },
+        {
+          "sourceId": "ftc-act",
+          "citation": "15 U.S.C. 41 et seq.",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-15-45",
+          "citation": "section 45 of this title",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-18-2256",
+          "citation": "section 2256 of title 18",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-47-332-d",
+          "citation": "section 332(d) of title 47",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-15-57a",
+          "citation": "15 U.S.C. 57a(a)(1)(B)",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-5-553",
+          "citation": "section 553 of title 5",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-12",
+          "citation": "title 12",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-18",
+          "citation": "title 18",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-28",
+          "citation": "title 28",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-47",
+          "citation": "title 47",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-49",
+          "citation": "title 49",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-7",
+          "citation": "title 7",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-15-78a",
+          "citation": "15 U.S.C. 78a et seq.",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-15-80a-1",
+          "citation": "15 U.S.C. 80a-1 et seq.",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-15-80b-1",
+          "citation": "15 U.S.C. 80b-1 et seq.",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-15-6701",
+          "citation": "15 U.S.C. 6701",
+          "admitted": false
+        },
+        {
+          "sourceId": "usc-15-6102",
+          "citation": "section 6102 of this title",
+          "admitted": false
+        }
+      ]
+    }
+  ]
+}

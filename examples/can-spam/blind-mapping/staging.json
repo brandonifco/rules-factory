@@ -1,0 +1,100 @@
+{
+  "stagingVersion": 1,
+  "about": "What is removed from the method documents before a second mapper of examples/can-spam/ reads them (docs/method.md, *Before the map is used*; decision 0014). Run: python3 tools/mapper stage examples/can-spam/blind-mapping/staging.json",
+  "map": "../corpus-map.json",
+  "documents": [
+    "../../../docs/method.md",
+    "../../../docs/corpus-map.md",
+    "../../../docs/mapper.md",
+    "../../../docs/decisions/0082-a-chapter-of-the-united-states-code-is-admitted-as-a-verbatim-slice-and-cited-by-its-uslm-identifier.md"
+  ],
+  "flattenLinks": true,
+  "edits": [
+    {
+      "document": "0082-a-chapter-of-the-united-states-code-is-admitted-as-a-verbatim-slice-and-cited-by-its-uslm-identifier.md",
+      "why": "names the statute chapter that forced the decision, by its U.S.C. range",
+      "find": "it: 15 U.S.C. 7701-7713.",
+      "replace": "it: the Federal Rules of Civil Procedure slice (Rule 6)."
+    },
+    {
+      "document": "0082-a-chapter-of-the-united-states-code-is-admitted-as-a-verbatim-slice-and-cited-by-its-uslm-identifier.md",
+      "why": "names the title the chapter sits in, with its size",
+      "find": "`usc<NN>.xml`, 30 MB for Title 15.",
+      "replace": "`usc<NN>.xml`, a whole title's text."
+    },
+    {
+      "document": "0082-a-chapter-of-the-united-states-code-is-admitted-as-a-verbatim-slice-and-cited-by-its-uslm-identifier.md",
+      "why": "repeats the size of that title",
+      "find": "a 30 MB corpus cannot say",
+      "replace": "a whole-title corpus cannot say"
+    },
+    {
+      "document": "0082-a-chapter-of-the-united-states-code-is-admitted-as-a-verbatim-slice-and-cited-by-its-uslm-identifier.md",
+      "why": "example USLM identifier of a section and subdivision of the chapter",
+      "find": "`/us/usc/t15/s7704/a/1`, or a list of them",
+      "replace": "`/us/usc/t28a/courtRules/Civil/rule6/a/1`, or a list of them"
+    },
+    {
+      "document": "0082-a-chapter-of-the-united-states-code-is-admitted-as-a-verbatim-slice-and-cited-by-its-uslm-identifier.md",
+      "why": "example USLM identifier of a section of the chapter, as the extent item",
+      "find": "(`/us/usc/t15/s7704`, the extent item)",
+      "replace": "(`/us/usc/t28a/courtRules/Civil/rule6`, the extent item)"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "example USLM identifier of a section and subdivision of the chapter",
+      "find": "`/us/usc/t15/s7704/a/1` is the\n  top-level designation `/us/usc/t15/s7704` and a path below it;",
+      "replace": "`/us/usc/t28a/courtRules/Civil/rule6/a/1` is the\n  top-level designation `/us/usc/t28a/courtRules/Civil/rule6` and a path below it;"
+    },
+    {
+      "document": "mapper.md",
+      "why": "example USLM identifier of a section of the chapter",
+      "find": "`UslmXml` claims the items that are USLM identifiers its document prints, a\nsection of the Code (`/us/usc/t15/s7704`) or a rule of a court (`Rule 6`)",
+      "replace": "`UslmXml` claims the items that are USLM identifiers its document prints, spelled\nin full (`/us/usc/t28a/courtRules/Civil/rule6`) or as a rule of a court (`Rule 6`)"
+    },
+    {
+      "document": "mapper.md",
+      "why": "extent-item example identifier of a section of the chapter, in the adapter table",
+      "find": "the section's USLM identifier, `/us/usc/t15/s7704` |",
+      "replace": "the section's USLM identifier, `/us/usc/t28a/courtRules/Civil/rule6` |"
+    },
+    {
+      "document": "mapper.md",
+      "why": "citation example identifier of a section and subdivision of the chapter, in the adapter table",
+      "find": "or `/us/usc/t15/s7704/a/1`.",
+      "replace": "or `/us/usc/t28a/courtRules/Civil/rule6/a/1`."
+    }
+  ],
+  "acknowledged": [
+    {
+      "document": "0082-a-chapter-of-the-united-states-code-is-admitted-as-a-verbatim-slice-and-cited-by-its-uslm-identifier.md",
+      "term": "usc",
+      "reason": "The path prefix `/us/usc/` of a USLM identifier and the `usc<NN>.xml` member name: the grammar's own spelling, here in the identifier of a court rule (`/us/usc/t28a/courtRules/Civil/rule6/a/1`) that the edits substituted. It is a word of the corpus id only because the corpus is cut from the same Code."
+    },
+    {
+      "document": "corpus-map.md",
+      "term": "usc",
+      "reason": "The path prefix `/us/usc/` of a USLM identifier and the `usc<NN>.xml` member name: the grammar's own spelling, here in the identifier of a court rule (`/us/usc/t28a/courtRules/Civil/rule6/a/1`) that the edits substituted. It is a word of the corpus id only because the corpus is cut from the same Code."
+    },
+    {
+      "document": "mapper.md",
+      "term": "usc",
+      "reason": "The path prefix `/us/usc/` of a USLM identifier and the `usc<NN>.xml` member name: the grammar's own spelling, here in the identifier of a court rule (`/us/usc/t28a/courtRules/Civil/rule6/a/1`) that the edits substituted. It is a word of the corpus id only because the corpus is cut from the same Code."
+    },
+    {
+      "document": "corpus-map.md",
+      "term": "person",
+      "reason": "The ordinary English noun, and the regulated party of 14 CFR Part 107 (`No person may operate ...`) in the assertion examples drawn from that corpus: a person who could report a fact, a person's judgement, a reasonable person. Not a term of any map."
+    },
+    {
+      "document": "method.md",
+      "term": "person",
+      "reason": "The ordinary English noun, and the regulated party of 14 CFR Part 107 (`No person may operate ...`) in the assertion examples drawn from that corpus: a person who could report a fact, a person's judgement, a reasonable person. Not a term of any map."
+    },
+    {
+      "document": "corpus-map.md",
+      "term": "character",
+      "reason": "\"a player character\" in the rendered-reading example drawn from the SRD corpus: the English noun for a role in a game, not a term of this corpus."
+    }
+  ]
+}

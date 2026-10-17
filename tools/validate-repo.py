@@ -200,6 +200,19 @@ FIXTURES = (
             "examples/frcp-6-12-81/frcp-6-12-81.xml",
         ),),
     ),
+    # The first map that cites two corpora of two grammars: 16 CFR Part 316 (eCFR XML) and 15 U.S.C.
+    # chapter 103 (USLM XML). tools/check-locators-joint.py reads the manifest and runs each
+    # grammar's checker on its share (#681).
+    Fixture(
+        map="examples/can-spam/corpus-map.json",
+        corpora=("examples/can-spam",),
+        locators=((
+            "tools/check-locators-joint.py",
+            "examples/can-spam/corpus-map.json",
+            "--manifest",
+            "examples/can-spam/corpus-manifest.json",
+        ),),
+    ),
     # A third grammar: page markers over text extracted from a PDF. extract.py first holds the
     # committed text to the manifest's contentHash and the committed PDF to sourcePdf.sha256, and
     # re-derives the text from the PDF where the pinned pdftotext is installed (NOT VERIFIED,
