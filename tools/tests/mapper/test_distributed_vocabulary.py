@@ -589,12 +589,14 @@ class TheDeclarationIsAnchoredOrItIsRefused(ValidatorCase):
     #: distributed over the entries that define them exactly as a corpus with no index would be
     #: (#433); and the map of the rest of that chapter, pp. 16-18, for the same reason and with a
     #: vocabulary of its own, because a term this slice defines cannot be resolved out of trial
-    #: 12's (#434). Every other map predates the field, so its verdict is `NOT VERIFIED -- no
+    #: 12's (#434); and the CAN-SPAM map, whose two corpora share one vocabulary of defined
+    #: terms (`can-spam-defined-terms`). Every other map predates the field, so its verdict is `NOT VERIFIED -- no
     #: entry declares `defines``, a skip with no subject that fails nothing.
     DECLARING = {os.path.join("examples", "hazmat-172-table", "corpus-map.json"),
              os.path.join("examples", "frcp-6-12-81", "corpus-map.json"),
              os.path.join("examples", "srd-52-playing-the-game", "corpus-map.json"),
-             os.path.join("examples", "srd-52-damage-and-healing", "corpus-map.json")}
+             os.path.join("examples", "srd-52-damage-and-healing", "corpus-map.json"),
+             os.path.join("examples", "can-spam", "corpus-map.json")}
 
     def test_only_the_map_that_forced_the_field_carries_defines(self):
         """A map gaining `defines` is a change to how a vocabulary is read, and it is named here.
