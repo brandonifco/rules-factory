@@ -928,6 +928,7 @@ class TestNoBytecodeReachesTheCheckout(unittest.TestCase):
             "examples/injection-trial/run-trial.py",
             "examples/injection-trial/score.py",
             "examples/srd-52-combat/check-locators-pdf-text.py",
+            "tools/check-locators-joint.py",
             "tools/check-readme-status.py",
             "tools/factory/__main__.py",
             "tools/factory/acceptance.py",

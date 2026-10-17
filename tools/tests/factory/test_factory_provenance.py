@@ -844,8 +844,8 @@ class TestRefuses(ProvenanceCase):
         # Named, so a new tool that starts importing the factory fails here rather than being
         # skipped by a check that examined whatever it happened to find.
         self.assertEqual(sorted(suppressors),
-                         ["tools/check-readme-status.py", "tools/factory/__main__.py", "tools/pack-map.py",
-                          "tools/validate-engine.py"])
+                         ["tools/check-locators-joint.py", "tools/check-readme-status.py", "tools/factory/__main__.py",
+                          "tools/pack-map.py", "tools/validate-engine.py"])
 
     def test_a_factory_outside_git(self):
         loose = os.path.join(self.tmp, "loose")
