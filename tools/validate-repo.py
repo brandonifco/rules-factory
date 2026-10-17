@@ -88,7 +88,8 @@ class Fixture:
     # The locator invocation(s) for this map. A citation is a promise, and three grammars check
     # three kinds of promise: page markers over a Gutenberg text, containment in the section tree
     # of eCFR XML, and page markers over PDF-extracted text. None generalises to the others, so
-    # the argv is written per map rather than derived.
+    # the argv is written per map rather than derived. A map citing corpora of two grammars names
+    # tools/check-locators-joint.py with --manifest, which runs each grammar's checker on its share (#681).
     locators: tuple[tuple[str, ...], ...]
 
     @property
