@@ -12,6 +12,10 @@
     },
     {
       "mechanism": "section-designation"
+    },
+    {
+      "mechanism": "defined-term-use",
+      "vocabulary": "can-spam-defined-terms"
     }
   ],
   "requiredSweeps": [
