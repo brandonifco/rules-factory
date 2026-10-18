@@ -4,6 +4,27 @@ This directory holds the texts of the CAN-SPAM Act's regulation and statute, as 
 factory can build and verify. [REFERENCE-CHECK.md](REFERENCE-CHECK.md) compares each with the
 reference text it claims to be.
 
+## The map, and its package
+
+`corpus-map.json` is the reviewed map of both texts: 141 entries, citing `cfr-16-316` and
+`usc-15-ch103` (both `licence` `public-domain-us-government` in `corpus-manifest.json`).
+`review.json` binds it by SHA-256 to its blind second mapping in `blind-mapping/`.
+
+| File | What it is |
+|---|---|
+| `map-package.json` | the map declares package version `1.0.0` ([0015](../../docs/decisions/0015-a-map-is-published-as-a-versioned-package.md)) and `held`: the version is deliberately not published ([0073](../../docs/decisions/0073-a-map-held-from-publication-declares-why-in-the-file-that-declares-its-version.md)), so `tools/pack-map.py --tag` refuses it until a reviewed commit removes `held` |
+| `CORPUS-LICENCE.txt` | the corpus terms the package carries ([0023](../../docs/decisions/0023-a-map-package-is-licensed-as-its-corpus-and-the-factory-are.md)): both corpora are named with their `sourceId` and `retrievedFrom`, and the manifest's `licence` is restated verbatim |
+
+Every pull request now gates and packs the map (`tools/pack-map.py examples/can-spam`), as it does
+the other maps that declare a package.
+
+What the map still leaves open, as the map records it:
+
+- 17 entries are `clarity: ambiguous`, and every one has `fate: unresolved`.
+- `blind-mapping/resolutions.json` has 192 `blind-right` rows. 186 were applied as written, and 6
+  were not: each adds a `dependsOn` edge that closes a `dependsOn` cycle (`check-map`'s
+  `no-cycles`), so the entry is left as it was (the note in `review.json`).
+
 ## The regulation: 16 CFR Part 316
 
 | File | What it is |

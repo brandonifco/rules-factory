@@ -562,15 +562,15 @@ class DescribeExample(unittest.TestCase):
     resolved against the map directory. Taking the basename assumed every map owns its corpus
     copy, which stopped being true when four maps of SRD 5.2.1 came to share one (#446)."""
 
-    def package(self, committed_path):
+    def package(self, committed_path, extra=None, entries=()):
         path = os.path.join(self.tmp, "x.nupkg")
         with zipfile.ZipFile(path, "w") as archive:
             archive.writestr("x.nuspec", "<package><metadata><id>RulesFactory.Maps.Demo</id>"
                                          "</metadata></package>")
-            archive.writestr("map/corpus-map.json", json.dumps({"corpus": "demo"}))
+            archive.writestr("map/corpus-map.json", json.dumps({"corpus": "demo", "entries": list(entries)}))
             archive.writestr("map/corpus-manifest.json", json.dumps({"corpora": [
                 {"sourceId": "demo", "verification": "committed-copy",
-                 "committedPath": committed_path}]}))
+                 "committedPath": committed_path}, *(extra or [])]}))
         return path
 
     def setUp(self):
@@ -578,15 +578,31 @@ class DescribeExample(unittest.TestCase):
         self.addCleanup(__import__("shutil").rmtree, self.tmp, True)
 
     def test_a_corpus_in_the_map_directory(self):
-        name, corpus, source = engine.describe_example(
+        name, corpora, sources = engine.describe_example(
             self.package("demo.txt"), os.path.join("examples", "demo"))
-        self.assertEqual(("Demo", os.path.join("examples", "demo", "demo.txt"), "demo"),
-                         (name, corpus, source))
+        self.assertEqual(("Demo", [os.path.join("examples", "demo", "demo.txt")], ["demo"]),
+                         (name, corpora, sources))
 
     def test_a_corpus_committed_beside_the_map(self):
-        _, corpus, _ = engine.describe_example(
+        _, corpora, _ = engine.describe_example(
             self.package("../shared/demo.txt"), os.path.join("examples", "demo"))
-        self.assertEqual(os.path.join("examples", "shared", "demo.txt"), corpus)
+        self.assertEqual([os.path.join("examples", "shared", "demo.txt")], corpora)
+
+    def test_a_map_citing_two_corpora_is_given_both(self):
+        """CAN-SPAM cites the CFR rule and the statute; intake refuses a map with either missing."""
+        other = {"sourceId": "other", "verification": "committed-copy", "committedPath": "other.xml"}
+        unread = {"sourceId": "unread", "verification": "local-copy"}
+        entries = [{"locator": {"sourceId": "other", "section": "1"}}, {"locator": {"sourceId": "demo"}}]
+        _, corpora, sources = engine.describe_example(
+            self.package("demo.xml", [other, unread], entries), os.path.join("examples", "demo"))
+        self.assertEqual(["demo", "other"], sources)
+        self.assertEqual([os.path.join("examples", "demo", "demo.xml"),
+                          os.path.join("examples", "demo", "other.xml")], corpora)
+
+    def test_a_cited_corpus_the_manifest_lacks_is_refused(self):
+        entries = [{"locator": {"sourceId": "absent"}}]
+        with self.assertRaises(engine.Refused):
+            engine.describe_example(self.package("demo.xml", None, entries), os.path.join("examples", "demo"))
 
     def test_a_corpus_that_is_not_committed_is_refused(self):
         path = os.path.join(self.tmp, "y.nupkg")

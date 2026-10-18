@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "46cb3df89596040a4316b242b2027e606c6af473",
+  "measuredAt": "f7833a25b8c248dd7d75100c4a681bfd988f93d1",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,8 +17,8 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 591,
-    "trackedBytes": 26078554
+    "trackedFiles": 596,
+    "trackedBytes": 26498533
   },
   "artifacts": [
     {
@@ -160,9 +160,19 @@
       "archive": null
     },
     {
+      "path": "examples/can-spam/CORPUS-LICENCE.txt",
+      "sha256": "4f9d0a2bdb3692db427e7d6b83e782df560b224542992a2246c8da27a826602f",
+      "bytes": 1234,
+      "role": "release",
+      "readBy": [
+        "package"
+      ],
+      "archive": null
+    },
+    {
       "path": "examples/can-spam/README.md",
-      "sha256": "848d9dce1e4759bb7c6dc7fb8a1de64fca39418ba9ab1e26036da7f3245eab06",
-      "bytes": 9272,
+      "sha256": "d4fb2b9880037ec9e49c0527392e1e0992499f1369ab0238363efc85236d2416",
+      "bytes": 10811,
       "role": "active",
       "readBy": [
         "links"
@@ -295,9 +305,10 @@
       "path": "examples/can-spam/corpus-manifest.json",
       "sha256": "ca2055697de82e8b417517e2e6e43fe7a7af326c5d1d55ff0e738a90028a9029",
       "bytes": 5665,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
       ],
       "archive": null
     },
@@ -305,9 +316,20 @@
       "path": "examples/can-spam/corpus-map.json",
       "sha256": "14acf85a69df71a777044a3dad33f772c4adafbe50960e0ece67ebce45038645",
       "bytes": 268505,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/can-spam/map-package.json",
+      "sha256": "3a09fa17e74ce91fdd2164291fca9495437630469f73ea8f1546ec289bc2f38b",
+      "bytes": 207,
+      "role": "release",
+      "readBy": [
+        "package"
       ],
       "archive": null
     },
@@ -345,25 +367,32 @@
       "path": "examples/can-spam/part316.corpus.build.json",
       "sha256": "d85d62d04d369f8482fe11d5ac544e74f6a0ca290de38580ee74a3c8c2ded114",
       "bytes": 731,
-      "role": "archived",
-      "readBy": [],
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
       "archive": null
     },
     {
       "path": "examples/can-spam/part316.corpus.expect.json",
       "sha256": "cb350f41601a38a1e82d0c54c5b6190ab0077e095ab98e68e43044afb3647230",
       "bytes": 30,
-      "role": "archived",
-      "readBy": [],
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
       "archive": null
     },
     {
       "path": "examples/can-spam/part316.xml",
       "sha256": "45bf26b68a06dc81f55388a06eb4e376ceb061a490e3858fb6105143d1d583b0",
       "bytes": 13487,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
       ],
       "archive": null
     },
@@ -401,9 +430,10 @@
       "path": "examples/can-spam/usc15-ch103.corpus.build.json",
       "sha256": "8669978d76eeda5bcebb6508bd13f0ac36a989a58bbdb3c593d63fc488582aec",
       "bytes": 2566,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
       ],
       "archive": null
     },
@@ -411,9 +441,10 @@
       "path": "examples/can-spam/usc15-ch103.corpus.expect.json",
       "sha256": "8c0f1a4b481cb23afda03fb651d20c855d97bbeadf7c0a676f7c68d87ccadd52",
       "bytes": 106,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
       ],
       "archive": null
     },
@@ -421,9 +452,10 @@
       "path": "examples/can-spam/usc15-ch103.xml",
       "sha256": "be849fb57eb2c2aa914f7369ec5ec3f52091ebbee7ae0e6ef0fc270772449d89",
       "bytes": 141128,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
       ],
       "archive": null
     },

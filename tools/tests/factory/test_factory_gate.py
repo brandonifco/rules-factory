@@ -1738,17 +1738,15 @@ class TestCorpusPosture(GateCase):
                         files[label] = os.path.join(work, os.path.basename(member))
                         with open(files[label], "wb") as handle:
                             handle.write(archive.read(member))
-                with open(files["map"], encoding="utf-8") as handle:
-                    cited = json.load(handle)["corpus"]
                 with open(files["manifest"], encoding="utf-8") as handle:
-                    (corpus,) = [c for c in json.load(handle)["corpora"] if c["sourceId"] == cited]
+                    corpora = json.load(handle)["corpora"]  # the package carries exactly the corpora the map cites
                 name = package_id.rsplit(".", 1)[-1]
                 engine = os.path.join(work, "engine")
                 buffer = io.StringIO()
                 with redirect_stdout(buffer), redirect_stderr(buffer):
-                    code = factory.main(["produce", "--package", nupkg, "--corpus",
-                                         os.path.join(map_dir, corpus["committedPath"]), "--name", name, "--out", engine,
-                                         "--allow-dirty", "--no-verify"])
+                    code = factory.main(["produce", "--package", nupkg, *[arg for corpus in corpora for arg in
+                                         ("--corpus", os.path.join(map_dir, corpus["committedPath"]))],
+                                         "--name", name, "--out", engine, "--allow-dirty", "--no-verify"])
                 self.assertEqual(code, factory.NOT_VERIFIED, buffer.getvalue())  # `--no-verify`: NOT VERIFIED (3), never 0
                 merged = os.path.join(work, "merged.json")
                 code, output = self.script(engine, "map-overlay.py", "merge", "--package-map", files["map"],
@@ -1757,7 +1755,8 @@ class TestCorpusPosture(GateCase):
                 code, output = self.script(engine, "engine-gate.py", "posture", "--manifest", files["manifest"],
                                            "--map", merged, "--name", name)
                 self.assertEqual(code, 0, output)
-                self.assertIn(f"verified: {cited} (committed-copy", output)
+                for corpus in corpora:
+                    self.assertIn(f"verified: {corpus['sourceId']} (committed-copy", output)
 
 
 # --- the whole gate, with dotnet -------------------------------------------------------------

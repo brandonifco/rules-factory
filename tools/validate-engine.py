@@ -2468,22 +2468,31 @@ class Refused(Exception):
 
 
 def describe_example(package, directory):
-    """(engine name, corpus path, corpus source id) for an example's package.
+    """(engine name, corpus paths, corpus source ids) for an example's package.
 
-    The engine name is the package id's last segment; the corpus is the committed copy the manifest
-    names, resolved **against the map directory** and not assumed to sit in it. Four maps of
-    SRD 5.2.1 read one committed copy of a 6 MB PDF and its extraction, each naming it
-    `../srd-52-combat/srd-5.2.1.txt`, and taking the basename looked for a file that is not there
-    (#446)."""
+    The engine name is the package id's last segment. The corpora are every one the map cites, in
+    the manifest's order: its envelope's `corpus` and each entry's locator's `sourceId`, as intake
+    reads them. Each is the committed copy the manifest names, resolved **against the map
+    directory** and not assumed to sit in it. Four maps of SRD 5.2.1 read one committed copy of a
+    6 MB PDF and its extraction, each naming it `../srd-52-combat/srd-5.2.1.txt`, and taking the
+    basename looked for a file that is not there (#446). A map citing two corpora is produced with
+    both, because intake verifies every cited corpus and refuses a map with one of them missing."""
     with zipfile.ZipFile(package) as archive:
         package_id = re.search(r"<id>([^<]+)</id>", nuspec_text(archive)).group(1)
-        cited = json.loads(archive.read("map/corpus-map.json"))["corpus"]
-        corpora = [c for c in json.loads(archive.read("map/corpus-manifest.json"))["corpora"] if c.get("sourceId") == cited]
-    if len(corpora) != 1 or corpora[0].get("verification") != "committed-copy":
-        raise Refused(f"{directory}: {cited} is not one committed-copy corpus, so CI cannot produce its engine")
+        document = json.loads(archive.read("map/corpus-map.json"))
+        cited = {document["corpus"]}
+        for item in document.get("entries") or []:
+            locator = item.get("locator") if isinstance(item, dict) else None
+            if isinstance(locator, dict) and isinstance(locator.get("sourceId"), str):
+                cited.add(locator["sourceId"])
+        manifest = json.loads(archive.read("map/corpus-manifest.json"))["corpora"]
+    corpora = [c for c in manifest if c.get("sourceId") in cited]
+    if {c["sourceId"] for c in corpora} != cited or any(c.get("verification") != "committed-copy" for c in corpora):
+        raise Refused(f"{directory}: {', '.join(sorted(cited))} is not a set of committed-copy corpora, "
+                      f"so CI cannot produce its engine")
     return (package_id.rsplit(".", 1)[-1],
-            os.path.normpath(os.path.join(directory, str(corpora[0]["committedPath"]))),
-            cited)
+            [os.path.normpath(os.path.join(directory, str(c["committedPath"]))) for c in corpora],
+            [c["sourceId"] for c in corpora])
 
 
 def an_example_engine_passes_its_gate(r, directory):
@@ -2496,7 +2505,7 @@ def an_example_engine_passes_its_gate(r, directory):
         fail(f"expected exactly one .nupkg from pack-map.py {directory}, found {len(packages)}")
     package = packages[0]
     try:
-        name, corpus, source = describe_example(package, directory)
+        name, corpora, sources = describe_example(package, directory)
     except Refused as refusal:
         print(refusal, file=sys.stderr, flush=True)
         fail(f"cannot read what {package} produces")
@@ -2505,23 +2514,25 @@ def an_example_engine_passes_its_gate(r, directory):
         fail(f"cannot read what {package} produces")
     engine = r.s("examples", slug)
     log = r.s(f"example-{slug}.log")
-    if unverified_produce_to(log, ["--package", package, "--corpus", corpus, "--name", name, "--out", engine], both=True) != 0:
+    corpus_args = [arg for corpus in corpora for arg in ("--corpus", corpus)]
+    if unverified_produce_to(log, ["--package", package, *corpus_args, "--name", name, "--out", engine], both=True) != 0:
         tail(log, 40)
         fail(f"producing {name} from {directory} failed")
     r.repin_sdk(engine)
     add_local_feed(os.path.join(engine, "NuGet.config"), feed)
-    if run_to(log, verified_produce_command(["--package", package, "--corpus", corpus, "--name", name, "--out", engine,
+    if run_to(log, verified_produce_command(["--package", package, *corpus_args, "--name", name, "--out", engine,
                                              *r.adopt()]), env=verified_produce_env(), both=True) != 0:
         tail(log, 60)
         fail(f"{name}, produced from {directory}, did not pass verify (its gate's output is above)")
     if not last_line_verified(log):
         tail(log, 40)
         fail(f"producing {name} did not end verified")
-    if not grep_fixed(log, f"verified: {source} (committed-copy"):
-        tail(log, 60)
-        fail(f"{name}'s gate did not recompute the {source} baseline")
+    for source in sources:
+        if not grep_fixed(log, f"verified: {source} (committed-copy"):
+            tail(log, 60)
+            fail(f"{name}'s gate did not recompute the {source} baseline")
     check_restored_package(engine, package, os.environ["NUGET_PACKAGES"])
-    ok(f"{name} ({directory}): verified, its gate recomputed the {source} baseline")
+    ok(f"{name} ({directory}): verified, its gate recomputed the {', '.join(sources)} baseline")
 
 
 #: The three maps of SRD 5.2.1 a composed engine is produced from (#446, rules-factory 0067).
