@@ -68,7 +68,7 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `46cb3df`, over a gate run that failed no step (`measuredOver` in the lock says so,
+Measured at `f7833a2`, over a gate run that failed no step (`measuredOver` in the lock says so,
 and `--measure` refuses a run with a failing step unless it is told to record that it was
 partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)). It is the branch commit
 `--measure` recorded. A squash merge destroys a branch commit, and #404's check is then right to

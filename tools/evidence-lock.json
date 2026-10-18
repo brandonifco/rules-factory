@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "f85f6a9bfb168fe1c3e95e8614b060b30e019a82",
+  "measuredAt": "f7833a25b8c248dd7d75100c4a681bfd988f93d1",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -18,7 +18,7 @@
   },
   "repository": {
     "trackedFiles": 596,
-    "trackedBytes": 26496265
+    "trackedBytes": 26498533
   },
   "artifacts": [
     {
@@ -171,8 +171,8 @@
     },
     {
       "path": "examples/can-spam/README.md",
-      "sha256": "848d9dce1e4759bb7c6dc7fb8a1de64fca39418ba9ab1e26036da7f3245eab06",
-      "bytes": 9272,
+      "sha256": "d4fb2b9880037ec9e49c0527392e1e0992499f1369ab0238363efc85236d2416",
+      "bytes": 10811,
       "role": "active",
       "readBy": [
         "links"
