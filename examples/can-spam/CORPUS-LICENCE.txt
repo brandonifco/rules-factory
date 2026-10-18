@@ -1,0 +1,19 @@
+Corpora: cfr-16-316, 16 CFR Part 316 (CAN-SPAM Rule), as the eCFR versioner serves it
+(https://www.ecfr.gov/api/versioner/v1/full/2026-10-01/title-16.xml?part=316); and usc-15-ch103,
+15 U.S.C. chapter 103 (Controlling the Assault of Non-Solicited Pornography and Marketing), as the
+Office of the Law Revision Counsel publishes it in the USLM XML of release point 119-120
+(https://uscode.house.gov/download/releasepoints/us/pl/119/120/xml_usc15@119-120.zip).
+
+Terms: public domain in the United States. The Code of Federal Regulations and the United States
+Code are works of the United States Government, and 17 U.S.C. 105 provides that copyright
+protection is not available for any work of the United States Government. No licence is needed to
+copy either there, and none is granted here: rules-factory claims no rights in the quoted text.
+This statement is about United States law only; the quotations are not placed under CC0 or any
+other licence, and a user outside the United States should check the law where they are.
+
+No SPDX licence identifier states this, which is why the package's licence is this file rather
+than an expression.
+
+As the manifest's `licence` field records it, for both corpora:
+
+public-domain-us-government
