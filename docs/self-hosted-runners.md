@@ -17,7 +17,7 @@ installs. Nothing in it is a credential.
 | Every run of a private repository (since 2026-10-09: reykholt, reykholt-web, reykholt-art, hallertau) | `factory-ci` VM, standing registration | The variable `FACTORY_RUNS_ON` ([0079](decisions/0079-a-repository-chooses-its-runner-through-factory-runs-on.md)). Only the owner and the owner's agents can start a run there, and GitHub runs no fork pull request of a private repository while its Actions setting for that stays off (keep it off). |
 | The owner's own runs of a public repository (since 2026-10-10: see [Repositories](#repositories)) | `factory-ci` VM, one one-job runner per job | The variable `FACTORY_RUNS_ON_TRUSTED` routes them; the **trusted dispatcher** admits each one and starts its runner ([The boundary](#the-boundary-for-public-repositories)). |
 | Everything else in a public repository: fork pull requests, bots (Dependabot), a re-run of either | GitHub-hosted `ubuntu-24.04` | The runner line sends them there unmodified. A fork that rewrites its `runs-on` gets a job that is never served and is cancelled. Hosted runs are free on public repositories. |
-| Publishing (`publish-map.yml`, a library's `publish.yml`) and manual maintenance workflows | GitHub-hosted `ubuntu-24.04` | Pinned in the file. The NuGet key is never on the VM. |
+| Publishing (`publish-map.yml`, a library's `publish.yml`) and manual maintenance workflows | GitHub-hosted `ubuntu-24.04` | Pinned in the file, and declared in `runners.json` `hosted_jobs` (public repositories only; see Adding a repository). The NuGet key is never on the VM. |
 
 Every factory workflow, and this repository's own CI jobs, carry the one line `repository.py` holds
 as `RUNS_ON_LINE`. `FACTORY_RUNS_ON_TRUSTED` takes a run only when its actor and triggering actor
@@ -244,9 +244,18 @@ workflow job and its `runs-on`, the findings and a `pass`/`fail` verdict). A fin
   label is a silent fallback; a reusable-workflow job with no `runs-on` is reported, not failed), or no
   workflow at all.
 
-There is no exemption list: a job that deliberately stays hosted (publishing holds the NuGet key, so
-`publish-map.yml` and `judge-rebuild.yml` in this repository do) is a finding, and `onboard-check` on
-a repository with such jobs fails until the owner decides how they are to be recorded.
+A job that stays hosted on purpose is declared, not assumed. Decision 0080 point 8 keeps two kinds on
+`ubuntu-24.04`: workflows that hold publication credentials (the NuGet key is never on the VM) and
+manual maintenance workflows. [`runners.json`](../tools/ci-runner/runners.json) lists each as one
+`hosted_jobs` entry naming the repository, the workflow path, the job id, the exact `runs-on` it must
+have (`ubuntu-24.04`) and its reason (`0080 point 8: publication credentials` or `manual maintenance`);
+adding one is a reviewed change to that file. `onboard-check` records a listed job as deliberately hosted
+(the record's `ok` is `"hosted"`, with the reason, and a note is printed), and it is not a finding, only
+when the repository is public and the job's `runs-on` is exactly the listed one. These are findings: any
+other literal `runs-on`, a listed job whose `runs-on` has changed (the contract line included), an
+entry for a private repository (a private repository has no hosted job, and the job is a finding too),
+and an entry whose workflow or job no longer exists. A blanket allowance of `ubuntu-24.04` would let a new
+`validate` job run hosted unnoticed, so there is none.
 
 A second host adds a line to `runners.json`; its runners then count beside this one's and are never
 touched by this host's `onboard`. `factory rails --check` has a `Self-hosted CI route` row from the

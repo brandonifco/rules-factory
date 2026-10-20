@@ -28,7 +28,15 @@ and onboarding was three manual commands (`setup`, `register`, `enable`) that no
    (private), routing exact (private: `FACTORY_RUNS_ON`, no `FACTORY_RUNS_ON_TRUSTED`; public: trusted
    dispatch, no standing runner), and every job of every workflow on the default branch on
    `RUNS_ON_LINE`. It writes JSON evidence (`factory-ci/onboarding/1`) and exits non-zero on any
-   finding; a GitHub read that fails is exit 2 naming what could not be read, never a pass.
+   finding; a GitHub read that fails is exit 2 naming what could not be read, never a pass. The one
+   exception to "every job on `RUNS_ON_LINE`" is a job that [0080](0080-execution-trust-not-visibility-decides-whether-a-run-reaches-the-self-hosted-runner.md)
+   point 8 keeps hosted (publication credentials, manual maintenance), and only when it is declared: an
+   entry of `runners.json`'s `hosted_jobs` names the repository, workflow path, job id, the exact
+   `runs-on` (`ubuntu-24.04`) and the reason. The check records such a job as deliberately hosted, not a
+   finding, only when the repository is public and the job's `runs-on` is exactly the listed one. A
+   private repository may have none (its entry is a finding); any other literal `runs-on`, a changed
+   listed one and an entry whose job no longer exists are findings. There is no blanket allowance of
+   `ubuntu-24.04`.
 2. **Enforced at the provisioning boundary, not in `produce`.** `produce` stays deterministic and
    offline: it writes files and cannot know what runners a repository has. The boundary where the
    fact is knowable is the host that runs the VM, and the repository settings the factory already
@@ -58,8 +66,9 @@ and onboarding was three manual commands (`setup`, `register`, `enable`) that no
 
 - The guest gains two subcommands of `dispatch-guest` (`held`, `register`); the next `factory-ci
   setup` installs them, and `onboard` says so if the guest is older.
-- A repository that deliberately keeps hosted runners now fails `rails --check` until it is onboarded
-  or the owner decides otherwise: that is the point, and hosted compute for owner-authorized runs is
-  the owner's decision, not a default.
+- A private repository that keeps a hosted job fails `rails --check` until it is onboarded: that is the
+  point, and hosted compute for owner-authorized runs is the owner's decision, not a default. A public
+  repository's publication and manual maintenance jobs are declared in `hosted_jobs`, so they do not fail
+  it, and a new hosted job that is not declared does.
 - `onboard-check` needs a `gh` login with repository administration (runners, variables) and contents
   read. Without it the row is NOT VERIFIED and `--check` exits 1.

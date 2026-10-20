@@ -55,7 +55,8 @@ are in place on a repository whose jobs can execute nowhere are not rails: its r
 would sit queued. `--check` has a `Self-hosted CI route` row, OK only when `onboard.verify`
 (`tools/ci-runner/onboard.py`, the same verification as `factory-ci onboard-check`) passes: an
 authorized runner online with factory-ci's labels, the routing variables, and every workflow job on
-the contract `runs-on` line. `--apply` registers no runner -- that is the KVM host's `factory-ci
+the contract `runs-on` line, bar a public repository's job declared as hosted on purpose in
+`runners.json`. `--apply` registers no runner -- that is the KVM host's `factory-ci
 onboard` -- and says so. The row reads through the same `gh`; where it cannot read, it is NOT
 VERIFIED, never OK.
 

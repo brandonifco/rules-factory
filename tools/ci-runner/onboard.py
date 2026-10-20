@@ -19,7 +19,11 @@ because no runner was registered for it. Two commands close that:
 
 `verify` is what `factory rails --check` calls for its "Self-hosted CI route" row. It reads
 GitHub through any object with `get(path)`, so the rails read through `gh` and the host through
-`dispatch.GitHub`. The list of authorized runners is `runners.json`, a reviewed file.
+`dispatch.GitHub`. The list of authorized runners is `runners.json`, a reviewed file; so is its list of
+the jobs that deliberately stay on a GitHub-hosted runner (decision 0080 point 8: publication
+credentials, manual maintenance), each named by repository, workflow, job and exact `runs-on`. Such a job
+is reported as deliberately hosted, not as a finding, only in a public repository and only while it is
+exactly as listed.
 Standard library only.
 """
 import base64
@@ -91,6 +95,13 @@ def load_runners(path=RUNNERS):
 
 def authorized_names():
     return [entry["name"] for entry in load_runners()]
+
+
+def load_hosted_jobs(path=RUNNERS):
+    """The reviewed list of jobs that stay on a hosted runner on purpose: [{repository, workflow, job,
+    runs_on, reason}]. No list is no job."""
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle).get("hosted_jobs", [])
 
 
 def is_jit(name):
@@ -298,8 +309,9 @@ def variable_value(variables, name):
     return True, value if isinstance(value, list) and all(isinstance(v, str) for v in value) else None
 
 
-def verify(repository, github, now=None):
+def verify(repository, github, now=None, hosted_jobs=None):
     """The onboarding record for `repository`: read-only, GitHub only. See the module's note.
+    `hosted_jobs` is runners.json's list of deliberately hosted jobs unless a caller gives another.
 
     Raises Unreadable when anything it needs could not be read: there is no verdict then."""
     check_repository(repository)
@@ -357,11 +369,28 @@ def verify(repository, github, now=None):
         mode = "dispatch"
     if not paths:
         findings.append(f"no workflow on {branch}: nothing in the repository asks for a runner")
+    listed_jobs = [item for item in (load_hosted_jobs() if hosted_jobs is None else hosted_jobs)
+                   if str(item.get("repository")).casefold() == repository.casefold()]
+    for item in listed_jobs:
+        path, job = item.get("workflow"), item.get("job")
+        where = f"runners.json lists {path} job {job} as deliberately hosted ({item.get('reason')})"
+        found = next((e for e in workflows if e["path"] == path and e["job"] == job), None)
+        if private:
+            findings.append(f"{where}, but {repository} is private: only a public repository may have a hosted job "
+                            f"(decision 0084), and a private one's jobs run on the VM")
+        elif found is None:
+            findings.append(f"{where}, but there is no such job on {branch}: remove the entry (a stale entry would "
+                            f"exempt whatever is written there next)")
+        elif found["runs_on"] != item.get("runs_on"):
+            findings.append(f"{where} with runs-on {item.get('runs_on')!r}, but it now has runs-on {found['runs_on']!r}")
+        else:
+            found["ok"], found["hosted"] = "hosted", item.get("reason")
     for entry in workflows:
         if entry["ok"] is False:
             where = f"{entry['path']}: " + (f"job {entry['job']}" if entry["job"] else "no job could be read")
             findings.append(f"{where} has runs-on {entry['runs_on']!r}, not the contract line (RUNS_ON_LINE): a literal "
-                            f"label bypasses the repository's variables, and a hosted one is a silent fallback")
+                            f"label bypasses the repository's variables, and a hosted one is a silent fallback "
+                            f"(a job that stays hosted on purpose is listed in runners.json)")
     return {
         "schema": SCHEMA, "repository": repository, "visibility": visibility, "default_branch": branch,
         "checked_at": now() if callable(now) else (now or now_utc()),
@@ -488,6 +517,10 @@ def report(record, out=None):
         if entry["ok"] is None:
             print(f"  note {entry['path']}: job {entry['job']} uses {entry['uses']} and names no runner of its own: "
                   f"the called workflow decides", file=out)
+    for entry in record["workflows"]:
+        if entry["ok"] == "hosted":
+            print(f"  note {entry['path']}: job {entry['job']} stays on {entry['runs_on']} on purpose "
+                  f"({entry['hosted']}; listed in runners.json)", file=out)
     print(f"onboarding of {record['repository']} ({record['visibility']}): {record['verdict']}, "
           f"{len(record['findings'])} finding(s)", file=out)
 

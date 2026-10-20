@@ -269,6 +269,98 @@ class TestVerify(unittest.TestCase):
         self.assertEqual(verify(github), verify(github))
 
 
+class TestADeliberatelyHostedJobIsDeclaredNotAssumed(unittest.TestCase):
+    """Decision 0080 point 8: publication and manual maintenance stay on `ubuntu-24.04`. runners.json lists
+    each such job by repository, workflow, job and exact runs-on; nothing else literal passes."""
+
+    PUBLISH = "    runs-on: ubuntu-24.04"
+    FILES = {"validate.yml": workflow(("validate", GOOD, "")), "publish.yml": workflow(("publish", PUBLISH, ""))}
+    PATH = ".github/workflows/publish.yml"
+
+    def item(self, **kw):
+        return {"repository": REPO, "workflow": self.PATH, "job": "publish", "runs_on": "ubuntu-24.04",
+                "reason": "0080 point 8: publication credentials", **kw}
+
+    def public(self, files=None):
+        return FakeGitHub(private=False, variables={"FACTORY_RUNS_ON_TRUSTED": EXACT}, workflows=files or self.FILES)
+
+    def test_a_listed_job_of_a_public_repository_is_in_the_record_and_not_a_finding(self):
+        record = verify(self.public(), hosted_jobs=[self.item()])
+        self.assertEqual([], record["findings"])
+        self.assertEqual("pass", record["verdict"])
+        hosted = [w for w in record["workflows"] if w["job"] == "publish"][0]
+        self.assertEqual(("hosted", "0080 point 8: publication credentials"), (hosted["ok"], hosted["hosted"]))
+        self.assertEqual([True, "hosted"], [w["ok"] for w in sorted(record["workflows"], key=lambda w: w["job"] == "publish")])
+        out = io.StringIO()
+        onboard.report(record, out)
+        self.assertIn("job publish stays on ubuntu-24.04 on purpose (0080 point 8: publication credentials", out.getvalue())
+        json.dumps(record)
+
+    def test_without_the_list_the_same_job_is_a_finding(self):
+        record = verify(self.public(), hosted_jobs=[])
+        self.assertEqual("fail", record["verdict"])
+        self.assertIn("publish.yml: job publish has runs-on 'ubuntu-24.04'", "\n".join(record["findings"]))
+
+    def test_a_listed_job_whose_runs_on_changed_is_a_finding(self):
+        for line in ("    runs-on: ubuntu-latest", "    runs-on: ubuntu-22.04", '    runs-on: "ubuntu-24.04"',
+                     "    runs-on: [self-hosted, linux, x64, factory-ci]", GOOD):
+            files = dict(self.FILES, **{"publish.yml": workflow(("publish", line, ""))})
+            record = verify(self.public(files), hosted_jobs=[self.item()])
+            self.assertEqual("fail", record["verdict"], line)
+            self.assertIn("as deliberately hosted", "\n".join(record["findings"]), line)
+            self.assertIn("but it now has runs-on", "\n".join(record["findings"]), line)
+
+    def test_a_literal_runs_on_that_is_not_listed_is_a_finding_beside_a_listed_one(self):
+        files = dict(self.FILES, **{"publish.yml": workflow(("publish", self.PUBLISH, ""), ("validate", self.PUBLISH, ""))})
+        record = verify(self.public(files), hosted_jobs=[self.item()])
+        self.assertEqual("fail", record["verdict"])
+        self.assertEqual(1, len(record["findings"]), record["findings"])
+        self.assertIn("publish.yml: job validate has runs-on 'ubuntu-24.04'", record["findings"][0])
+        self.assertEqual(["hosted", False], [w["ok"] for w in record["workflows"] if w["path"] == self.PATH])
+
+    def test_the_same_job_name_in_another_workflow_or_repository_is_not_listed(self):
+        files = dict(self.FILES, **{"other.yml": workflow(("publish", self.PUBLISH, ""))})
+        record = verify(self.public(files), hosted_jobs=[self.item(), self.item(repository="brandonifco/elsewhere", workflow=".github/workflows/other.yml")])
+        self.assertEqual("fail", record["verdict"])
+        self.assertEqual(1, len(record["findings"]), record["findings"])
+        self.assertIn("other.yml: job publish has runs-on", record["findings"][0])
+
+    def test_a_listed_job_in_a_private_repository_is_a_finding_and_the_job_is_not_exempt(self):
+        github = FakeGitHub(private=True, runners=[runner()], workflows=self.FILES)
+        record = verify(github, hosted_jobs=[self.item()])
+        text = "\n".join(record["findings"])
+        self.assertEqual("fail", record["verdict"])
+        self.assertIn(f"but {REPO} is private: only a public repository may have a hosted job", text)
+        self.assertIn("publish.yml: job publish has runs-on 'ubuntu-24.04'", text)
+        self.assertEqual([True, False], [w["ok"] for w in sorted(record["workflows"], key=lambda w: w["job"] == "publish")])
+
+    def test_a_listed_job_that_no_longer_exists_is_a_finding(self):
+        for files in ({"validate.yml": workflow(("validate", GOOD, ""))},                                 # the file is gone
+                      {"validate.yml": workflow(("validate", GOOD, "")), "publish.yml": workflow(("release", self.PUBLISH, ""))}):
+            record = verify(self.public(files), hosted_jobs=[self.item()])
+            text = "\n".join(record["findings"])
+            self.assertEqual("fail", record["verdict"])
+            self.assertIn("there is no such job on main: remove the entry", text)
+
+    def test_the_entry_is_matched_to_its_repository_whatever_the_case(self):
+        record = verify(self.public(), hosted_jobs=[self.item(repository=REPO.upper())])
+        self.assertEqual("pass", record["verdict"], record["findings"])
+
+    def test_the_committed_list_is_read_when_no_list_is_given(self):
+        with open(os.path.join(KIT, "runners.json"), encoding="utf-8") as handle:
+            committed = json.load(handle)["hosted_jobs"]
+        self.assertEqual(committed, onboard.load_hosted_jobs())
+        record = onboard.verify("brandonifco/rules-factory", self.rules_factory(), now=lambda: NOW)
+        self.assertEqual("pass", record["verdict"], record["findings"])
+
+    def rules_factory(self):
+        github = self.public({"publish-map.yml": workflow(("gate", self.PUBLISH, ""), ("publish", self.PUBLISH, "")),
+                              "judge-rebuild.yml": workflow(("judge", self.PUBLISH, ""))})
+        get = github.get
+        github.get = lambda path, cache=False: get(path.replace("brandonifco/rules-factory", REPO), cache)
+        return github
+
+
 class TestAReadThatFailsIsAnErrorNeverAPass(unittest.TestCase):
     def check(self, fail):
         github = FakeGitHub(runners=[runner()], fail=fail)
@@ -557,6 +649,19 @@ class TestTheKitAgreesWithItself(unittest.TestCase):
         for entry in document["runners"]:
             self.assertEqual(sorted(dispatch.LABELS), sorted(label.casefold() for label in entry["labels"]), entry["name"])
             self.assertTrue(onboard.exact(entry["labels"]))
+
+    def test_runners_json_declares_hosted_jobs_only_as_publication_or_manual_maintenance_in_public_repositories(self):
+        jobs = json.loads(self.read("runners.json"))["hosted_jobs"]
+        self.assertTrue(jobs)
+        keys = [(j["repository"], j["workflow"], j["job"]) for j in jobs]
+        self.assertEqual(len(keys), len(set(keys)), "an entry is listed once")
+        for job in jobs:
+            self.assertEqual({"repository", "workflow", "job", "runs_on", "reason"}, set(job), job)
+            self.assertEqual("ubuntu-24.04", job["runs_on"])
+            self.assertIn(job["reason"], ("0080 point 8: publication credentials", "manual maintenance"))
+            self.assertRegex(job["workflow"], r"^\.github/workflows/[^/]+\.ya?ml$")
+        self.assertEqual({"brandonifco/rules-factory", "brandonifco/faa-part-107", "brandonifco/rules-kernel"},
+                         {j["repository"] for j in jobs})  # public repositories the dispatcher serves; no private one
 
     def test_register_sh_registers_exactly_those_labels(self):
         script = self.read("guest", "register.sh")
