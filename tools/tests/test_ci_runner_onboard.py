@@ -257,6 +257,24 @@ class TestVerify(unittest.TestCase):
         onboard.report(record, out)
         self.assertIn("note .github/workflows/call.yml: job call uses ./.github/workflows/other.yml", out.getvalue())
 
+    def test_a_callee_in_the_same_repository_is_a_note_and_one_in_another_repository_is_a_finding(self):
+        for uses in ("./.github/workflows/other.yml", "'./.github/workflows/other.yml'  # ours"):
+            record = verify(FakeGitHub(runners=[runner()], workflows={"c.yml": f"on: push\njobs:\n  call:\n    uses: {uses}\n"}))
+            self.assertEqual("pass", record["verdict"], (uses, record["findings"]))
+            self.assertEqual([None], [w["ok"] for w in record["workflows"]])
+            out = io.StringIO()
+            onboard.report(record, out)
+            self.assertIn("note .github/workflows/c.yml: job call uses", out.getvalue())
+            self.assertIn("other.yml", out.getvalue())
+        for uses in ("someone/else/.github/workflows/ci.yml@main", "brandonifco/engine/.github/workflows/ci.yml@" + "a" * 40,
+                     "'other/repo/.github/workflows/x.yaml@v1'"):
+            record = verify(FakeGitHub(runners=[runner()], workflows={"c.yml": f"on: push\njobs:\n  call:\n    uses: {uses}\n    secrets: inherit\n"}))
+            self.assertEqual("fail", record["verdict"], uses)
+            self.assertEqual([False], [w["ok"] for w in record["workflows"]])
+            self.assertEqual(1, len(record["findings"]), record["findings"])
+            self.assertIn("c.yml: job call calls " + uses, record["findings"][0])
+            self.assertIn("another repository", record["findings"][0])
+
     def test_a_job_the_scan_cannot_read_fails_rather_than_passes(self):
         for text in ("jobs:\n  build: {runs-on: ubuntu-24.04}\n",           # flow style
                      "jobs:\n  build:\n    runs-on:\n      group: big\n",     # block value
@@ -655,6 +673,7 @@ class TestOnboard(unittest.TestCase):
             self.go(github, guest)
         self.assertIn("the guest could not be asked `held`", str(caught.exception))
         self.assertIn("factory-ci status", str(caught.exception))
+        self.assertIn("factory-ci setup", str(caught.exception), "a guest older than `held` fails closed, naming setup")
         self.assertEqual([], github.posts)
 
     def test_a_runner_that_takes_a_moment_to_come_online_is_waited_for_only_after_a_change(self):

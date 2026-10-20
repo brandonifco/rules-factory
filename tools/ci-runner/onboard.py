@@ -279,11 +279,17 @@ def jobs_of(text):
     return found
 
 
+def local_callee(uses):
+    """Whether a job's `uses:` names a workflow file of the same repository (`./.github/workflows/x.yml`)."""
+    value = strip_comment(uses).strip().strip("'\"")
+    return value.startswith("./")
+
+
 def scan_workflows(github, repository, branch, private=False):
     """[{path, job, runs_on, ok}] for every job of every workflow file on the default branch, and the
     paths read. ok is True (the contract line), "0079" (decision 0079's line, on a private repository only),
-    False, or None (a reusable-workflow job with no
-    `runs-on` of its own: reported, not failed). No workflow directory is no entries."""
+    False, or None (a job with no `runs-on` of its own that calls a workflow file of the same repository,
+    which is scanned itself: reported, not failed; a callee in another repository is False). No workflow directory is no entries."""
     ref = urllib.parse.quote(branch, safe="")
     listing = read(github, "the workflow directory", f"/repos/{repository}/contents/.github/workflows?ref={ref}", missing_ok=True)
     if listing is None:
@@ -308,7 +314,9 @@ def scan_workflows(github, repository, branch, private=False):
                 if not ok and private and job["line"] == RUNS_ON_LINE_0079.strip():
                     ok = "0079"
             else:
-                ok = None if job["uses"] and not job["unreadable"] else False
+                # A callee in this repository is a file this scan reads itself; one in another repository
+                # (owner/repo/...@ref) could run hosted, unseen.
+                ok = None if job["uses"] and not job["unreadable"] and local_callee(job["uses"]) else False
             entries.append({"path": path, "job": job["job"], "runs_on": job["runs_on"], "ok": ok,
                             **({"uses": job["uses"]} if job["uses"] else {})})
         if not jobs:
@@ -412,6 +420,11 @@ def verify(repository, github, now=None, hosted_jobs=None):
     for entry in workflows:
         if entry["ok"] is False:
             where = f"{entry['path']}: " + (f"job {entry['job']}" if entry["job"] else "no job could be read")
+            if entry.get("uses") and entry["runs_on"] is None:
+                findings.append(f"{where} calls {entry['uses']}, a workflow this check cannot read (another repository's, "
+                                f"or written in a form it cannot parse): it could run on a hosted runner unseen; "
+                                f"call a workflow file of this repository instead")
+                continue
             findings.append(f"{where} has runs-on {entry['runs_on']!r}, not the contract line (RUNS_ON_LINE): a literal "
                             f"label bypasses the repository's variables, and a hosted one is a silent fallback "
                             f"(a job that stays hosted on purpose is listed in runners.json)")
@@ -540,7 +553,7 @@ def report(record, out=None):
     for entry in record["workflows"]:
         if entry["ok"] is None:
             print(f"  note {entry['path']}: job {entry['job']} uses {entry['uses']} and names no runner of its own: "
-                  f"the called workflow decides", file=out)
+                  f"the called workflow, {entry['uses']}, is scanned itself", file=out)
     for entry in record["workflows"]:
         if entry["ok"] == "0079":
             print(f"  note {entry['path']}: job {entry['job']} carries decision 0079's runner line, accepted on a "

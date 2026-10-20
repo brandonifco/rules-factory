@@ -176,8 +176,12 @@ cmd_held() {
   local d="/srv/factory-ci/fci-$1/runner" f
   f="$d/.runner"
   [[ -d $d && ! -L $d && -f $f && ! -L $f ]] || return 0
-  jq -cn --arg account "fci-$1" --arg id "$(jq -r '.agentId // empty' "$f" 2>/dev/null | head -1)" \
-    --arg url "$(jq -r '.gitHubUrl // empty' "$f" 2>/dev/null | head -1)" \
+  # The checks above only decide whether to look; the account can swap the file after them. So root never
+  # opens the path: the account reads it itself, and a link it swaps in can show it nothing it could not read.
+  local text
+  text="$(timeout 10 runuser -u "fci-$1" -- head -c 65536 -- "$f" 2>/dev/null)" || return 0
+  jq -cn --arg account "fci-$1" --arg id "$(jq -r '.agentId // empty' <<<"$text" 2>/dev/null | head -1)" \
+    --arg url "$(jq -r '.gitHubUrl // empty' <<<"$text" 2>/dev/null | head -1)" \
     '{kind:"held",account:$account,agentId:$id,url:$url}'
 }
 

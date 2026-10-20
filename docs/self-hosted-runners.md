@@ -211,7 +211,7 @@ decision 0074). A repository's own hand-written workflow uses the same line, cop
 **A private repository:**
 
 ```bash
-tools/ci-runner/factory-ci setup                          # if versions.env changed (also installs the guest's `held` and `register`)
+tools/ci-runner/factory-ci setup                          # once after this change, and when versions.env changes (installs the guest's `held` and `register`)
 tools/ci-runner/factory-ci onboard brandonifco/<repo>     # register this VM, set FACTORY_RUNS_ON, then verify
 tools/ci-runner/factory-ci onboard-check brandonifco/<repo> --json onboarding.json   # read-only; the evidence
 ```
@@ -225,6 +225,17 @@ it is not already exact; and then it runs `onboard-check`, whose verdict is its 
 registration token goes from the API to the guest on stdin, never on a command line or a disk. A
 public repository is refused with the commands to use instead (`trust`, `enable`): no standing
 registration, ever. `register` and `enable` remain, and `register` makes the same same-name check.
+
+`register` and `onboard` ask the guest which registration it holds (`dispatch-guest held`), a
+subcommand a guest has only after `factory-ci setup` has run once since it was added. Run `setup`
+once after this change, before `register` or `onboard`. Until then both fail closed, with the guest's
+refusal and a message naming `factory-ci setup`, and nothing is registered or written. `held` reads
+the runner's `.runner` as the runner account itself, so root never opens a path the account controls.
+
+A job that calls a reusable workflow (`uses:`) has no `runs-on` of its own. A callee in the same
+repository (`./.github/workflows/x.yml`) is a file `onboard-check` scans itself, so the job is a note;
+a callee in another repository (`owner/repo/.github/workflows/x.yml@ref`) cannot be scanned and could
+run hosted unseen, so it is a finding.
 
 `onboard-check OWNER/REPO [--json FILE]` reads only GitHub and proves the route, which is more than
 the three old commands having run. It exits 1 on any finding, 2 when something could not be read
@@ -380,6 +391,10 @@ and `factory-ci ssh 'sar -u -r 10'` before changing any of them.
   `dispatch-check`, `systemctl --user restart factory-ci-dispatch`, then delete the old token on
   GitHub. Without the file the dispatcher uses the owner's `gh` login, which works only after a
   graphical login. `audit` and `timings` read every repository and always use `gh`.
+- **The owner's `gh` login** (not the dispatcher's token) is what `factory-ci onboard` uses to request a
+  registration token and to write the `FACTORY_RUNS_ON` variable, so it needs repository
+  administration and variables write; `onboard-check` only reads, with the same login. The
+  dispatcher's token is not used by either.
 - **Registration tokens** are fetched by `factory-ci register` from the GitHub API and passed to the
   guest on stdin. They are never written to disk, an argument list, or a log, and they expire
   within an hour.
