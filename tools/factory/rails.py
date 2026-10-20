@@ -70,6 +70,10 @@ import re
 import subprocess
 import sys
 
+# The kit's onboarding module is loaded by path (`_onboard`), and the loader reads this flag when it
+# does, so no bytecode is left beside the kit (#384).
+sys.dont_write_bytecode = True
+
 import agentrails
 import ownership as ownership_step
 
@@ -170,11 +174,7 @@ def _onboard():
         spec = importlib.util.spec_from_file_location("_factory_ci_onboard", path)
         module = importlib.util.module_from_spec(spec)
         sys.modules["_factory_ci_onboard"] = module
-        written, sys.dont_write_bytecode = sys.dont_write_bytecode, True  # nothing is cached beside the kit
-        try:
-            spec.loader.exec_module(module)
-        finally:
-            sys.dont_write_bytecode = written
+        spec.loader.exec_module(module)
     return sys.modules["_factory_ci_onboard"]
 
 
