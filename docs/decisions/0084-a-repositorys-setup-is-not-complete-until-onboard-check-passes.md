@@ -24,7 +24,7 @@ and onboarding was three manual commands (`setup`, `register`, `enable`) that no
    request whose required checks must report, a produce that is merged, an agent run that waits for a
    check) does not start, until `factory-ci onboard-check OWNER/REPO` passes for it. The check proves a
    route, not that commands ran: only authorized runners (the reviewed
-   [`runners.json`](../tools/ci-runner/runners.json)), at least one online with exactly factory-ci's labels
+   [`runners.json`](../../tools/ci-runner/runners.json)), at least one online with exactly factory-ci's labels
    (private), routing exact (private: `FACTORY_RUNS_ON`, no `FACTORY_RUNS_ON_TRUSTED`; public: trusted
    dispatch, no standing runner), and every job of every workflow on the default branch on
    `RUNS_ON_LINE`. It writes JSON evidence (`factory-ci/onboarding/1`) and exits non-zero on any
