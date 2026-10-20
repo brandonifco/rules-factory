@@ -367,6 +367,50 @@ class TestTheGuestRefusesWhatWasNotAdmitted(unittest.TestCase):
             if any(word in line for word in ("install ", "rm -f", "tar ")):
                 self.assertIn("runuser -u \"$user\"", line, line)
 
+    def test_held_reads_the_account_s_file_as_the_account_and_never_as_root(self):
+        """The link and type checks only decide whether to look; the account can swap the file after them."""
+        import shutil
+        import stat
+        import subprocess
+        import tempfile
+        if not (shutil.which("jq") and shutil.which("timeout")):
+            self.skipTest("jq and timeout are needed to run the function")
+        text = self.read("dispatch-guest.sh")
+        function = text[text.index("cmd_held() {"):text.index("cmd_register() {")]
+        for line in function.splitlines():
+            if '"$f"' in line and not line.lstrip().startswith("[["):
+                self.assertIn('runuser -u "fci-$1"', line, "root opens no path the account controls")
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
+        runner = os.path.join(tmp, "fci-engine", "runner")
+        os.makedirs(runner)
+        with open(os.path.join(runner, ".runner"), "w", encoding="utf-8") as handle:
+            handle.write('{"agentId": 7, "gitHubUrl": "https://github.com/o/engine"}')
+        log = os.path.join(tmp, "runuser.log")
+        bin_dir = os.path.join(tmp, "bin")
+        os.makedirs(bin_dir)
+        stub = os.path.join(bin_dir, "runuser")
+        with open(stub, "w", encoding="utf-8") as handle:
+            handle.write('#!/bin/bash\necho "$*" >> "$RUNUSER_LOG"\n[[ $1 == -u ]] || exit 9\nshift 2; [[ $1 == -- ]] && shift\nexec "$@"\n')
+        os.chmod(stub, os.stat(stub).st_mode | stat.S_IXUSR)
+        script = ('name_ok() { :; }\ndie() { echo "$*" >&2; exit 2; }\n'
+                  + function.replace("/srv/factory-ci/", tmp + "/") + '\ncmd_held engine\n')
+        run = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=True,
+                             env={"PATH": bin_dir + ":" + os.environ["PATH"], "RUNUSER_LOG": log})
+        self.assertEqual({"kind": "held", "account": "fci-engine", "agentId": "7", "url": "https://github.com/o/engine"},
+                         __import__("json").loads(run.stdout))
+        with open(log, encoding="utf-8") as handle:
+            calls = handle.read().splitlines()
+        self.assertEqual(1, len(calls), calls)
+        self.assertTrue(calls[0].startswith("-u fci-engine -- head "), calls[0])
+        self.assertTrue(calls[0].endswith("/fci-engine/runner/.runner"), calls[0])
+        # an unreadable file (the account swapped in something it cannot read) yields nothing, not an error
+        os.chmod(os.path.join(runner, ".runner"), 0)
+        if os.geteuid() != 0:
+            run = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=True,
+                                 env={"PATH": bin_dir + ":" + os.environ["PATH"], "RUNUSER_LOG": log})
+            self.assertEqual("", run.stdout)
+
 
 class TestTheDispatcherSTokenFile(unittest.TestCase):
     """#641: a boot cannot unlock the keyring `gh` keeps its token in, so the service reads a file."""

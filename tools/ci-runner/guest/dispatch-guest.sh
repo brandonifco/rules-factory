@@ -13,6 +13,10 @@
 #   stop NAME RUNNER_ID           stop one (an idle listener exits; a running job may finish)
 #   reap                          remove finished one-job runners and admissions older than a day
 #   inventory                     one JSON object per line: dispatch, persistent and jit entries
+#   held NAME                     one JSON line, kind "held": the runner id (agentId) and repository URL
+#                                 the standing account fci-NAME is registered as; nothing when it has none
+#   register NAME OWNER/REPO      (re-)register this guest's standing runner for a private repository, as
+#                                 `factory-ci register` does: the registration token is read from stdin
 #
 # A repository served here is public, so its accounts never hold a standing registration: a runner
 # registered with a public repository would take a fork's job. Two rules keep a job of the owner's
@@ -166,9 +170,31 @@ cmd_inventory() {
   done
 }
 
+cmd_held() {
+  # What the account wrote is data: each value goes out through jq --arg, and the host checks its shape.
+  name_ok "${1:-}"
+  local d="/srv/factory-ci/fci-$1/runner" f
+  f="$d/.runner"
+  [[ -d $d && ! -L $d && -f $f && ! -L $f ]] || return 0
+  # The checks above only decide whether to look; the account can swap the file after them. So root never
+  # opens the path: the account reads it itself, and a link it swaps in can show it nothing it could not read.
+  local text
+  text="$(timeout 10 runuser -u "fci-$1" -- head -c 65536 -- "$f" 2>/dev/null)" || return 0
+  jq -cn --arg account "fci-$1" --arg id "$(jq -r '.agentId // empty' <<<"$text" 2>/dev/null | head -1)" \
+    --arg url "$(jq -r '.gitHubUrl // empty' <<<"$text" 2>/dev/null | head -1)" \
+    '{kind:"held",account:$account,agentId:$id,url:$url}'
+}
+
+cmd_register() {
+  # The same script `factory-ci register` always ran; it reads the token from this command's stdin and
+  # refuses an account that is served by dispatch (a public repository is never registered).
+  name_ok "${1:-}"; [[ ${2:-} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "give NAME OWNER/REPO"
+  exec /opt/factory-ci/bin/register "$1" "$2"
+}
+
 [[ $(id -u) == 0 ]] || die "run as root"
 c="${1:-}"; shift || true
 case "$c" in
-  trust|untrust|admit|start|stop|reap|inventory) "cmd_$c" "$@" ;;
-  *) sed -n '2,22s/^# \{0,1\}//p' "$0" >&2; exit 2 ;;
+  trust|untrust|admit|start|stop|reap|inventory|held|register) "cmd_$c" "$@" ;;
+  *) sed -n '2,26s/^# \{0,1\}//p' "$0" >&2; exit 2 ;;
 esac

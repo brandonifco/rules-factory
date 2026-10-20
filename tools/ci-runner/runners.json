@@ -1,0 +1,17 @@
+{
+  "schema": "factory-ci/runners/1",
+  "note": "The reviewed list of runner VMs authorized to execute this owner's CI jobs. A runner a repository has that is not named here (or a one-job runner <name>-jit-<hex> of a name here) is a finding of `factory-ci onboard-check`. Adding a host is a reviewed change to this file. `hosted_jobs` is the reviewed list of jobs that stay on a GitHub-hosted runner on purpose, in a public repository only: each names the repository, workflow path, job id, the exact `runs-on` it must have and its reason (`0080 point 8: publication credentials` or `manual maintenance`). A listed job is recorded, not a finding, only while it is exactly as listed; any other literal `runs-on` is a finding.",
+  "runners": [
+    {"name": "factory-ci-1", "site": "home", "labels": ["self-hosted", "linux", "x64", "factory-ci"]},
+    {"name": "factory-ci-2", "site": "office", "labels": ["self-hosted", "linux", "x64", "factory-ci"]}
+  ],
+  "hosted_jobs": [
+    {"repository": "brandonifco/rules-factory", "workflow": ".github/workflows/judge-rebuild.yml", "job": "judge", "runs_on": "ubuntu-24.04", "reason": "manual maintenance"},
+    {"repository": "brandonifco/rules-factory", "workflow": ".github/workflows/publish-map.yml", "job": "gate", "runs_on": "ubuntu-24.04", "reason": "0080 point 8: publication credentials"},
+    {"repository": "brandonifco/rules-factory", "workflow": ".github/workflows/publish-map.yml", "job": "publish", "runs_on": "ubuntu-24.04", "reason": "0080 point 8: publication credentials"},
+    {"repository": "brandonifco/faa-part-107", "workflow": ".github/workflows/publish.yml", "job": "gate", "runs_on": "ubuntu-24.04", "reason": "0080 point 8: publication credentials"},
+    {"repository": "brandonifco/faa-part-107", "workflow": ".github/workflows/publish.yml", "job": "publish", "runs_on": "ubuntu-24.04", "reason": "0080 point 8: publication credentials"},
+    {"repository": "brandonifco/rules-kernel", "workflow": ".github/workflows/publish.yml", "job": "validate", "runs_on": "ubuntu-24.04", "reason": "0080 point 8: publication credentials"},
+    {"repository": "brandonifco/rules-kernel", "workflow": ".github/workflows/publish.yml", "job": "publish", "runs_on": "ubuntu-24.04", "reason": "0080 point 8: publication credentials"}
+  ]
+}

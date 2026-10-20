@@ -17,7 +17,7 @@ installs. Nothing in it is a credential.
 | Every run of a private repository (since 2026-10-09: reykholt, reykholt-web, reykholt-art, hallertau) | `factory-ci` VM, standing registration | The variable `FACTORY_RUNS_ON` ([0079](decisions/0079-a-repository-chooses-its-runner-through-factory-runs-on.md)). Only the owner and the owner's agents can start a run there, and GitHub runs no fork pull request of a private repository while its Actions setting for that stays off (keep it off). |
 | The owner's own runs of a public repository (since 2026-10-10: see [Repositories](#repositories)) | `factory-ci` VM, one one-job runner per job | The variable `FACTORY_RUNS_ON_TRUSTED` routes them; the **trusted dispatcher** admits each one and starts its runner ([The boundary](#the-boundary-for-public-repositories)). |
 | Everything else in a public repository: fork pull requests, bots (Dependabot), a re-run of either | GitHub-hosted `ubuntu-24.04` | The runner line sends them there unmodified. A fork that rewrites its `runs-on` gets a job that is never served and is cancelled. Hosted runs are free on public repositories. |
-| Publishing (`publish-map.yml`, a library's `publish.yml`) and manual maintenance workflows | GitHub-hosted `ubuntu-24.04` | Pinned in the file. The NuGet key is never on the VM. |
+| Publishing (`publish-map.yml`, a library's `publish.yml`) and manual maintenance workflows | GitHub-hosted `ubuntu-24.04` | Pinned in the file, and declared in `runners.json` `hosted_jobs` (public repositories only; see Adding a repository). The NuGet key is never on the VM. |
 
 Every factory workflow, and this repository's own CI jobs, carry the one line `repository.py` holds
 as `RUNS_ON_LINE`. `FACTORY_RUNS_ON_TRUSTED` takes a run only when its actor and triggering actor
@@ -211,10 +211,79 @@ decision 0074). A repository's own hand-written workflow uses the same line, cop
 **A private repository:**
 
 ```bash
-tools/ci-runner/factory-ci setup                          # if versions.env changed
-tools/ci-runner/factory-ci register brandonifco/<repo>    # one standing registration
-tools/ci-runner/factory-ci enable brandonifco/<repo>      # sets FACTORY_RUNS_ON
+tools/ci-runner/factory-ci setup                          # once after this change, and when versions.env changes (installs the guest's `held` and `register`)
+tools/ci-runner/factory-ci onboard brandonifco/<repo>     # register this VM, set FACTORY_RUNS_ON, then verify
+tools/ci-runner/factory-ci onboard-check brandonifco/<repo> --json onboarding.json   # read-only; the evidence
 ```
+
+`onboard` is idempotent and for a private repository only. It registers this host's runner with
+the repository unless this guest already holds a correct, online registration (its
+`/srv/factory-ci/fci-<repo>/runner/.runner` `agentId` is GitHub's id for the runner, and the labels are
+exactly factory-ci's); it **refuses to replace** a runner of the same name this guest does not hold
+(another host's registration: remove it on GitHub if it is stale); it sets `FACTORY_RUNS_ON` only when
+it is not already exact; and then it runs `onboard-check`, whose verdict is its exit code. The
+registration token goes from the API to the guest on stdin, never on a command line or a disk. A
+public repository is refused with the commands to use instead (`trust`, `enable`): no standing
+registration, ever. `register` and `enable` remain, and `register` makes the same same-name check.
+
+`register` and `onboard` ask the guest which registration it holds (`dispatch-guest held`), a
+subcommand a guest has only after `factory-ci setup` has run once since it was added. Run `setup`
+once after this change, before `register` or `onboard`. Until then both fail closed, with the guest's
+refusal and a message naming `factory-ci setup`, and nothing is registered or written. `held` reads
+the runner's `.runner` as the runner account itself, so root never opens a path the account controls.
+
+A job that calls a reusable workflow (`uses:`) has no `runs-on` of its own. A callee in the same
+repository (`./.github/workflows/x.yml`) is a file `onboard-check` scans itself, so the job is a note;
+a callee in another repository (`owner/repo/.github/workflows/x.yml@ref`) cannot be scanned and could
+run hosted unseen, so it is a finding.
+
+`onboard-check OWNER/REPO [--json FILE]` reads only GitHub and proves the route, which is more than
+the three old commands having run. It exits 1 on any finding, 2 when something could not be read
+(naming what and the permission it needs: it is never a pass), and with `--json` writes a record
+(`factory-ci/onboarding/1`: repository, visibility, runners and their labels, routing, every
+workflow job and its `runs-on`, the findings and a `pass`/`fail` verdict). A finding is:
+
+- a runner the repository has that is not in [`runners.json`](../tools/ci-runner/runners.json) (the reviewed
+  list: `factory-ci-1` at home, `factory-ci-2` at the office, and one-job runners
+  `<name>-jit-<hex>` of a listed name), or a runner whose labels are not exactly
+  `self-hosted, linux, x64, factory-ci` (case aside);
+- a private repository with no authorized standing runner online with exactly those labels;
+- routing wrong: a private repository without `FACTORY_RUNS_ON` exactly those labels, or with
+  `FACTORY_RUNS_ON_TRUSTED` set; a public one with any standing runner, with `FACTORY_RUNS_ON` set,
+  or without `FACTORY_RUNS_ON_TRUSTED` exactly those labels;
+- a job in a workflow on the default branch whose `runs-on` is not `RUNS_ON_LINE` (a literal hosted
+  label is a silent fallback; a reusable-workflow job with no `runs-on` is reported, not failed), or no
+  workflow at all. A trailing YAML comment (a `#` preceded by whitespace, outside quotes) is not part of
+  the `runs-on`; a `#` inside the expression's quotes is.
+
+Two lines are accepted, not one. `RUNS_ON_LINE` is the contract. The line decision 0079 put in every
+recipe before 0080, `runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}`
+(`RUNS_ON_LINE_0079` in `tools/ci-runner/onboard.py`), is accepted on a private repository only, and the
+record's `ok` for that job is `"0079"` (a note is printed). On a private repository whose
+`FACTORY_RUNS_ON` is exactly factory-ci's labels and whose `FACTORY_RUNS_ON_TRUSTED` is unset it routes
+exactly as `RUNS_ON_LINE` does (decision 0080 point 5), and its hosted default is reachable only when
+`FACTORY_RUNS_ON` is unset, which the routing check already fails. On a public repository it would send
+a fork's run to the variable and the owner's run to hosted, so there it is a finding. Any other
+expression, such as the same line with `ubuntu-latest`, is a finding too.
+
+A job that stays hosted on purpose is declared, not assumed. Decision 0080 point 8 keeps two kinds on
+`ubuntu-24.04`: workflows that hold publication credentials (the NuGet key is never on the VM) and
+manual maintenance workflows. [`runners.json`](../tools/ci-runner/runners.json) lists each as one
+`hosted_jobs` entry naming the repository, the workflow path, the job id, the exact `runs-on` it must
+have (`ubuntu-24.04`) and its reason (`0080 point 8: publication credentials` or `manual maintenance`);
+adding one is a reviewed change to that file. `onboard-check` records a listed job as deliberately hosted
+(the record's `ok` is `"hosted"`, with the reason, and a note is printed), and it is not a finding, only
+when the repository is public and the job's `runs-on` is exactly the listed one. These are findings: any
+other literal `runs-on`, a listed job whose `runs-on` has changed (the contract line included), an
+entry for a private repository (a private repository has no hosted job, and the job is a finding too),
+and an entry whose workflow or job no longer exists. A blanket allowance of `ubuntu-24.04` would let a new
+`validate` job run hosted unnoticed, so there is none.
+
+A second host adds a line to `runners.json`; its runners then count beside this one's and are never
+touched by this host's `onboard`. `factory rails --check` has a `Self-hosted CI route` row from the
+same verification, so a repository's setup is not complete without it
+([decision 0084](decisions/0084-a-repositorys-setup-is-not-complete-until-onboard-check-passes.md));
+`factory rails --apply` registers no runner and says so, and `factory produce` is unchanged.
 
 **A public repository:**
 
@@ -223,6 +292,7 @@ tools/ci-runner/factory-ci setup                          # if versions.env chan
 tools/ci-runner/factory-ci trust brandonifco/<repo>       # account, dispatch, fork approval
 tools/ci-runner/factory-ci audit                          # must report no finding
 tools/ci-runner/factory-ci enable brandonifco/<repo>      # sets FACTORY_RUNS_ON_TRUSTED
+tools/ci-runner/factory-ci onboard-check brandonifco/<repo>   # trusted dispatch, no standing runner, contract runs-on
 ```
 
 Then push a pull request and confirm in the job metadata that it ran on the VM:
@@ -321,6 +391,10 @@ and `factory-ci ssh 'sar -u -r 10'` before changing any of them.
   `dispatch-check`, `systemctl --user restart factory-ci-dispatch`, then delete the old token on
   GitHub. Without the file the dispatcher uses the owner's `gh` login, which works only after a
   graphical login. `audit` and `timings` read every repository and always use `gh`.
+- **The owner's `gh` login** (not the dispatcher's token) is what `factory-ci onboard` uses to request a
+  registration token and to write the `FACTORY_RUNS_ON` variable, so it needs repository
+  administration and variables write; `onboard-check` only reads, with the same login. The
+  dispatcher's token is not used by either.
 - **Registration tokens** are fetched by `factory-ci register` from the GitHub API and passed to the
   guest on stdin. They are never written to disk, an argument list, or a log, and they expire
   within an hour.

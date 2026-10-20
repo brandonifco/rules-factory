@@ -50,14 +50,30 @@ status posted by whoever ran `tools/record-verdict.py` and `integration_id` pins
 a person: that limit is stated in 0029 §7 and in the emitted `AGENTS.md`, where the rails are
 decided, rather than left for a reader to infer.
 
+**A repository's setup is not complete without a route to a runner (decision 0084).** Rails that
+are in place on a repository whose jobs can execute nowhere are not rails: its required checks
+would sit queued. `--check` has a `Self-hosted CI route` row, OK only when `onboard.verify`
+(`tools/ci-runner/onboard.py`, the same verification as `factory-ci onboard-check`) passes: an
+authorized runner online with factory-ci's labels, the routing variables, and every workflow job on
+the contract `runs-on` line, bar a public repository's job declared as hosted on purpose in
+`runners.json`. `--apply` registers no runner -- that is the KVM host's `factory-ci
+onboard` -- and says so. The row reads through the same `gh`; where it cannot read, it is NOT
+VERIFIED, never OK.
+
 **Idempotent.** `--apply` twice in a row changes nothing the second time, and says so.
 
 Standard library only, plus `gh` (or `$FACTORY_GH`).
 """
+import importlib.util
 import json
 import os
 import re
 import subprocess
+import sys
+
+# The kit's onboarding module is loaded by path (`_onboard`), and the loader reads this flag when it
+# does, so no bytecode is left beside the kit (#384).
+sys.dont_write_bytecode = True
 
 import agentrails
 import ownership as ownership_step
@@ -147,6 +163,32 @@ def _json(args, gh, default=None):
         return json.loads(out or "null")
     except ValueError as error:
         raise RailsError(f"`gh {' '.join(args)}` did not return JSON ({error})")
+
+
+def _onboard():
+    """The kit's onboarding verification (`tools/ci-runner/onboard.py`), or None where the factory is
+    not beside its kit. Loaded by path: the kit is a program for the KVM host, not a package."""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ci-runner", "onboard.py")
+    if not os.path.isfile(path):
+        return None
+    if "_factory_ci_onboard" not in sys.modules:
+        spec = importlib.util.spec_from_file_location("_factory_ci_onboard", path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["_factory_ci_onboard"] = module
+        spec.loader.exec_module(module)
+    return sys.modules["_factory_ci_onboard"]
+
+
+def route_of(repo, gh):
+    """The repository's self-hosted CI route: {"record": the onboarding record, "error": None}, or
+    {"record": None, "error": why it could not be verified}. Reads only, through `gh`."""
+    onboard = _onboard()
+    if onboard is None:
+        return {"record": None, "error": "tools/ci-runner/onboard.py is not beside this factory"}
+    try:
+        return {"record": onboard.verify(repo, onboard.GhApi(gh)), "error": None}
+    except onboard.OnboardError as error:
+        return {"record": None, "error": str(error)}
 
 
 def labels_of(engine_dir):
@@ -319,6 +361,7 @@ def survey(repo, engine_dir, gh):
         "mergeOnly": (repository.get("allow_merge_commit") is True
                       and repository.get("allow_squash_merge") is False
                       and repository.get("allow_rebase_merge") is False),
+        "route": route_of(repo, gh),
         "chain": [str(link.get("id")) if isinstance(link, dict) else repr(link)
                   for link in ((document.get("review") or {}).get("independentFallback") or [])],
         "semanticContext": (document.get("review") or {}).get("semanticContext"),
@@ -389,10 +432,24 @@ def report(state):
                       "" if state["mergeOnly"] else "squash or rebase merging is still on"))
     lines.append(_row("No bypass actor", OK if not state["bypass"] else WRONG,
                       "" if not state["bypass"] else f"{len(state['bypass'])} actor(s) may bypass the rails"))
+    lines.append(_route_row(state["route"]))
     chain = " -> ".join(state["chain"]) or "none configured"
     lines.append(_row("Review chain", OK if not state["reviewProblems"] else WRONG,
                       f"{state['semanticContext']}, then {chain}"))
     return lines
+
+
+def _route_row(route):
+    """The self-hosted CI route: OK only when the onboarding verification passes (decision 0084)."""
+    name = "Self-hosted CI route"
+    if route["record"] is None:
+        return _row(name, NOT_VERIFIED, route["error"])
+    record = route["record"]
+    if record["verdict"] == "pass":
+        online = [r["name"] for r in record["runners"] if r["status"] == "online"]
+        return _row(name, OK, f"{record['visibility']}: " + (f"runner(s) online {', '.join(online)}; " if record["routing"]["mode"] == "standing"
+                                                           else "trusted dispatch; ") + "every workflow job on the contract runs-on line")
+    return _row(name, WRONG, f"{len(record['findings'])} finding(s), first: {record['findings'][0]}")
 
 
 def _in_force_row(state):
@@ -468,6 +525,15 @@ def problems(state):
     for shadow in state["shadows"]:
         note(f"{shadow} carries the factory's ruleset name above the repository; it is not the factory's, "
              f"`--apply` cannot write it, and the factory's own must be at the repository's level")
+    route = state["route"]
+    if route["record"] is None:
+        note(f"the self-hosted CI route could not be verified: {route['error']}")
+    else:
+        for finding in route["record"]["findings"]:
+            note(f"self-hosted CI route: {finding}")
+        if route["record"]["findings"]:
+            note("a repository's setup is not complete until `tools/ci-runner/factory-ci onboard-check OWNER/REPO` "
+                 "passes: a required check no runner can take never reports (decision 0084)")
     missing = _not_in_force(state)
     if missing:
         note(f"GitHub does not enforce {RULESET}'s {', '.join(missing)} rule(s) on {state['branch']}, though the "
@@ -639,6 +705,8 @@ def run(repo, engine_dir, gh, log, do_apply):
         changed = apply(repo, engine_dir, gh, log)
         if not changed:
             print("nothing to do: the rails are already in place", file=log)
+        print("--apply registers no runner: the route to the self-hosted runners is the KVM host's `factory-ci onboard "
+              f"{repo}` (private) or `trust` and `enable` (public), then `factory-ci onboard-check {repo}`", file=log)
         print("", file=log)
 
     state = survey(repo, engine_dir, gh)
