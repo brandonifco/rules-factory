@@ -6366,7 +6366,22 @@ if endpoint == f"repos/{state['repo']}":
     if method == "PATCH":
         state["settings"].update(fields())
         save()
-    print(json.dumps({"default_branch": state["branch"], **state["settings"]}))
+    print(json.dumps({"default_branch": state["branch"], "private": state.get("private", True), **state["settings"]}))
+elif endpoint == f"repos/{state['repo']}/actions/runners":
+    # The self-hosted CI route (decision 0084): `state["runners"]` is what GitHub lists for the repository.
+    if state.get("runnersDenied"):
+        sys.exit("gh: Resource not accessible by personal access token (HTTP 403)")
+    print(json.dumps({"runners": state.get("runners", [])}))
+elif endpoint == f"repos/{state['repo']}/actions/variables":
+    print(json.dumps({"variables": [{"name": n, "value": v} for n, v in state.get("variables", {}).items()]}))
+elif endpoint == f"repos/{state['repo']}/contents/.github/workflows":
+    if "workflows" not in state:
+        sys.exit("gh: Not Found (HTTP 404)")
+    print(json.dumps([{"type": "file", "path": f".github/workflows/{n}"} for n in sorted(state["workflows"])]))
+elif endpoint.startswith(f"repos/{state['repo']}/contents/.github/workflows/"):
+    import base64
+    text = state["workflows"][endpoint.rsplit("/", 1)[1]]
+    print(json.dumps({"encoding": "base64", "content": base64.b64encode(text.encode()).decode()}))
 elif endpoint.startswith(f"repos/{state['repo']}/labels"):
     if method == "POST":
         state["labels"].append(fields()["name"])
@@ -6444,8 +6459,19 @@ class TestFactoryRails(TestAProducedEngine):
 
     APP = 15368  # the GitHub Actions app on github.com; the stub answers `gh api apps/github-actions` with it
 
+    def route(self):
+        """A private repository with a route to a runner: the state `onboard` leaves, and what every test
+        that is about something else starts from. A test about the route overrides what it changes."""
+        import repository
+        return {"private": True,
+                "runners": [{"id": 7, "name": "factory-ci-1", "status": "online", "busy": False,
+                             "labels": [{"name": n} for n in ("self-hosted", "Linux", "X64", "factory-ci")]}],
+                "variables": {"FACTORY_RUNS_ON": '["self-hosted","linux","x64","factory-ci"]'},
+                "workflows": {"validate.yml": "name: validate\non: push\njobs:\n  validate:\n"
+                                              + repository.RUNS_ON_LINE + "\n    steps:\n      - run: true\n"}}
+
     def repo_state(self, **overrides):
-        document = {"repo": self.REPO, "branch": "main", "app": self.APP, **overrides}
+        document = {"repo": self.REPO, "branch": "main", "app": self.APP, **self.route(), **overrides}
         with open(self.state_path, "w", encoding="utf-8") as handle:
             json.dump(document, handle)
 
@@ -6491,6 +6517,78 @@ class TestFactoryRails(TestAProducedEngine):
         os.remove(guard)
         row = next(line for line in self.rails("--check")[1].splitlines() if line.startswith("Agent files"))
         self.assertIn(".claude/hooks/agent-lifecycle-guard.py (absent)", row)
+
+    def with_route(self, **change):
+        self.repo_state(labels=[], rulesets=[], settings={"allow_merge_commit": True, "allow_squash_merge": True,
+                                                         "allow_rebase_merge": True}, **change)
+
+    def route_row(self, output):
+        return next(line for line in output.splitlines() if line.startswith("Self-hosted CI route"))
+
+    def test_the_self_hosted_route_row_is_ok_when_a_runner_is_online_and_the_routing_is_exact(self):
+        self.produced()
+        code, output = self.rails("--check")
+        row = self.route_row(output)
+        self.assertIn(" OK", row)
+        self.assertIn("factory-ci-1", row)
+        self.assertNotIn("self-hosted CI route", output.split("Review chain")[-1], "no problem is listed for it")
+
+    def test_a_repository_with_no_runner_is_not_complete_whatever_its_rails_say(self):
+        # The incident: a private repository, produced and pushed, with nothing to run its jobs on.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.repo_state(**{**self.read_state(), "runners": []})
+        before = self.read_state()
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        row = self.route_row(output)
+        self.assertIn("WRONG", row)
+        self.assertIn("no authorized runner is online", row)
+        self.assertIn("self-hosted CI route: no authorized runner is online", output)
+        self.assertIn("factory-ci onboard-check", output)
+        self.assertEqual(self.read_state(), before, "--check changed the repository")
+
+    def test_each_way_the_route_is_wrong_fails_the_row(self):
+        self.produced()
+        import repository
+        hosted = {"validate.yml": "jobs:\n  validate:\n    runs-on: ubuntu-24.04\n    steps: []\n"}
+        for what, change, finding in (
+                ("an offline runner", {"runners": [{"id": 7, "name": "factory-ci-1", "status": "offline", "busy": False,
+                                                    "labels": [{"name": n} for n in ("self-hosted", "Linux", "X64", "factory-ci")]}]},
+                 "no authorized runner is online"),
+                ("a runner nobody authorized", {"runners": [{"id": 8, "name": "somebody-elses", "status": "online", "busy": False,
+                                                              "labels": [{"name": n} for n in ("self-hosted", "Linux", "X64", "factory-ci")]}]},
+                 "is not an authorized factory-ci runner"),
+                ("no FACTORY_RUNS_ON", {"variables": {}}, "FACTORY_RUNS_ON is not set"),
+                ("a hosted runs-on", {"workflows": hosted}, "not the contract line"),
+                ("no workflow", {"workflows": {}}, "no workflow on main")):
+            with self.subTest(what):
+                self.with_route(**change)
+                code, output = self.rails("--check")
+                self.assertEqual(code, 1, output)
+                self.assertIn("WRONG", self.route_row(output))
+                self.assertIn(finding, output)
+
+    def test_a_route_that_cannot_be_read_is_not_verified_and_not_ok(self):
+        self.produced()
+        self.with_route(runnersDenied=True)
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        row = self.route_row(output)
+        self.assertIn("NOT VERIFIED", row)
+        self.assertIn("could not read the repository's runners", row)
+        self.assertIn("Administration: read", row)
+
+    def test_apply_registers_no_runner_and_says_the_hosts_onboard_does(self):
+        self.produced()
+        self.with_route(runners=[], variables={})
+        code, output = self.rails("--apply")
+        self.assertEqual(code, 1, output)
+        self.assertIn("--apply registers no runner", output)
+        self.assertIn(f"factory-ci onboard {self.REPO}", output)
+        state = self.read_state()
+        self.assertEqual([], state["runners"])
+        self.assertEqual({}, state["variables"], "and sets no variable")
 
     def test_check_names_the_configured_chain(self):
         self.produced()

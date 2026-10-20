@@ -23,6 +23,7 @@ name_of() { local r="${1#*/}"; r="${r,,}"; echo "${r//[^a-z0-9-]/-}"; }
 need_repo() { [[ ${1:-} =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "give OWNER/REPO"; }
 is_private() { [[ "$("$GH" api "repos/$1" --jq .private)" == true ]]; }
 dispatch_py() { python3 -I "$kit/dispatch.py" "$@"; }
+onboard_py() { FACTORY_CI_VM="$VM" python3 -I "$kit/onboard.py" "$@"; }
 
 cmd_provision() { # create the network, filter and VM from the pinned cloud image
   virsh dominfo "$VM" >/dev/null 2>&1 && die "$VM already exists (rebuild: factory-ci destroy-vm first)"
@@ -65,10 +66,15 @@ cmd_setup() { # install or update the guest baseline (toolchain, hooks, units)
 cmd_register() { # OWNER/REPO: register (or re-register) this VM's runner for one private repository
   need_repo "${1:-}"; local repo="$1" name; name="$(name_of "$repo")"
   is_private "$repo" || die "$repo is public: a standing runner would take a fork's job; use trust (decision 0080)"
+  onboard_py guard "$repo" || exit 1  # never --replace a runner of this name that this guest does not hold
   "$GH" api -X POST "repos/$repo/actions/runners/registration-token" --jq .token |
     guest "sudo /opt/factory-ci/bin/register '$name' '$repo'"
   cmd_runners "$repo"
 }
+cmd_onboard() { # OWNER/REPO: register this VM for a private repository, set FACTORY_RUNS_ON, then verify the route
+  need_repo "${1:-}"; onboard_py onboard "$1"; }
+cmd_onboard_check() { # OWNER/REPO [--json FILE]: verify the route to the authorized runners (read-only); exit 1 on a finding
+  need_repo "${1:-}"; onboard_py check "$@"; }
 cmd_deregister() { # OWNER/REPO: remove this VM's runner for one repository, here and on GitHub
   need_repo "${1:-}"; local repo="$1" user; user="fci-$(name_of "$repo")"
   guest "sudo systemctl disable --now factory-ci-runner@$user"
