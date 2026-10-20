@@ -244,6 +244,10 @@ workflow job and its `runs-on`, the findings and a `pass`/`fail` verdict). A fin
   label is a silent fallback; a reusable-workflow job with no `runs-on` is reported, not failed), or no
   workflow at all.
 
+There is no exemption list: a job that deliberately stays hosted (publishing holds the NuGet key, so
+`publish-map.yml` and `judge-rebuild.yml` in this repository do) is a finding, and `onboard-check` on
+a repository with such jobs fails until the owner decides how they are to be recorded.
+
 A second host adds a line to `runners.json`; its runners then count beside this one's and are never
 touched by this host's `onboard`. `factory rails --check` has a `Self-hosted CI route` row from the
 same verification, so a repository's setup is not complete without it
