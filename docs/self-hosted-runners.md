@@ -211,10 +211,44 @@ decision 0074). A repository's own hand-written workflow uses the same line, cop
 **A private repository:**
 
 ```bash
-tools/ci-runner/factory-ci setup                          # if versions.env changed
-tools/ci-runner/factory-ci register brandonifco/<repo>    # one standing registration
-tools/ci-runner/factory-ci enable brandonifco/<repo>      # sets FACTORY_RUNS_ON
+tools/ci-runner/factory-ci setup                          # if versions.env changed (also installs the guest's `held` and `register`)
+tools/ci-runner/factory-ci onboard brandonifco/<repo>     # register this VM, set FACTORY_RUNS_ON, then verify
+tools/ci-runner/factory-ci onboard-check brandonifco/<repo> --json onboarding.json   # read-only; the evidence
 ```
+
+`onboard` is idempotent and for a private repository only. It registers this host's runner with
+the repository unless this guest already holds a correct, online registration (its
+`/srv/factory-ci/fci-<repo>/runner/.runner` `agentId` is GitHub's id for the runner, and the labels are
+exactly factory-ci's); it **refuses to replace** a runner of the same name this guest does not hold
+(another host's registration: remove it on GitHub if it is stale); it sets `FACTORY_RUNS_ON` only when
+it is not already exact; and then it runs `onboard-check`, whose verdict is its exit code. The
+registration token goes from the API to the guest on stdin, never on a command line or a disk. A
+public repository is refused with the commands to use instead (`trust`, `enable`): no standing
+registration, ever. `register` and `enable` remain, and `register` makes the same same-name check.
+
+`onboard-check OWNER/REPO [--json FILE]` reads only GitHub and proves the route, which is more than
+the three old commands having run. It exits 1 on any finding, 2 when something could not be read
+(naming what and the permission it needs: it is never a pass), and with `--json` writes a record
+(`factory-ci/onboarding/1`: repository, visibility, runners and their labels, routing, every
+workflow job and its `runs-on`, the findings and a `pass`/`fail` verdict). A finding is:
+
+- a runner the repository has that is not in [`runners.json`](../tools/ci-runner/runners.json) (the reviewed
+  list: `factory-ci-1` at home, `factory-ci-2` at the office, and one-job runners
+  `<name>-jit-<hex>` of a listed name), or a runner whose labels are not exactly
+  `self-hosted, linux, x64, factory-ci` (case aside);
+- a private repository with no authorized standing runner online with exactly those labels;
+- routing wrong: a private repository without `FACTORY_RUNS_ON` exactly those labels, or with
+  `FACTORY_RUNS_ON_TRUSTED` set; a public one with any standing runner, with `FACTORY_RUNS_ON` set,
+  or without `FACTORY_RUNS_ON_TRUSTED` exactly those labels;
+- a job in a workflow on the default branch whose `runs-on` is not `RUNS_ON_LINE` (a literal hosted
+  label is a silent fallback; a reusable-workflow job with no `runs-on` is reported, not failed), or no
+  workflow at all.
+
+A second host adds a line to `runners.json`; its runners then count beside this one's and are never
+touched by this host's `onboard`. `factory rails --check` has a `Self-hosted CI route` row from the
+same verification, so a repository's setup is not complete without it
+([decision 0084](decisions/0084-a-repositorys-setup-is-not-complete-until-onboard-check-passes.md));
+`factory rails --apply` registers no runner and says so, and `factory produce` is unchanged.
 
 **A public repository:**
 
@@ -223,6 +257,7 @@ tools/ci-runner/factory-ci setup                          # if versions.env chan
 tools/ci-runner/factory-ci trust brandonifco/<repo>       # account, dispatch, fork approval
 tools/ci-runner/factory-ci audit                          # must report no finding
 tools/ci-runner/factory-ci enable brandonifco/<repo>      # sets FACTORY_RUNS_ON_TRUSTED
+tools/ci-runner/factory-ci onboard-check brandonifco/<repo>   # trusted dispatch, no standing runner, contract runs-on
 ```
 
 Then push a pull request and confirm in the job metadata that it ran on the VM:
