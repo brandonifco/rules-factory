@@ -242,7 +242,18 @@ workflow job and its `runs-on`, the findings and a `pass`/`fail` verdict). A fin
   or without `FACTORY_RUNS_ON_TRUSTED` exactly those labels;
 - a job in a workflow on the default branch whose `runs-on` is not `RUNS_ON_LINE` (a literal hosted
   label is a silent fallback; a reusable-workflow job with no `runs-on` is reported, not failed), or no
-  workflow at all.
+  workflow at all. A trailing YAML comment (a `#` preceded by whitespace, outside quotes) is not part of
+  the `runs-on`; a `#` inside the expression's quotes is.
+
+Two lines are accepted, not one. `RUNS_ON_LINE` is the contract. The line decision 0079 put in every
+recipe before 0080, `runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}`
+(`RUNS_ON_LINE_0079` in `tools/ci-runner/onboard.py`), is accepted on a private repository only, and the
+record's `ok` for that job is `"0079"` (a note is printed). On a private repository whose
+`FACTORY_RUNS_ON` is exactly factory-ci's labels and whose `FACTORY_RUNS_ON_TRUSTED` is unset it routes
+exactly as `RUNS_ON_LINE` does (decision 0080 point 5), and its hosted default is reachable only when
+`FACTORY_RUNS_ON` is unset, which the routing check already fails. On a public repository it would send
+a fork's run to the variable and the owner's run to hosted, so there it is a finding. Any other
+expression, such as the same line with `ubuntu-latest`, is a finding too.
 
 A job that stays hosted on purpose is declared, not assumed. Decision 0080 point 8 keeps two kinds on
 `ubuntu-24.04`: workflows that hold publication credentials (the NuGet key is never on the VM) and

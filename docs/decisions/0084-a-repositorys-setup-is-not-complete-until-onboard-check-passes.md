@@ -37,6 +37,16 @@ and onboarding was three manual commands (`setup`, `register`, `enable`) that no
    private repository may have none (its entry is a finding); any other literal `runs-on`, a changed
    listed one and an entry whose job no longer exists are findings. There is no blanket allowance of
    `ubuntu-24.04`.
+
+   Two lines are accepted for a job's `runs-on`, not one. `RUNS_ON_LINE` is the contract. The line
+   [0079](0079-a-repository-chooses-its-runner-through-factory-runs-on.md) put in every recipe before 0080,
+   `runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}` (`RUNS_ON_LINE_0079`), is accepted
+   on a **private** repository only, recorded in the workflow row as `"0079"`. There, with
+   `FACTORY_RUNS_ON` exactly factory-ci's labels and `FACTORY_RUNS_ON_TRUSTED` unset, it routes exactly as
+   `RUNS_ON_LINE` does (0080 point 5), and its hosted default is reachable only when the variable is
+   unset, which the routing check already fails. On a public repository it would send a fork's run to the
+   variable and the owner's to hosted, so it stays a finding, as does any other expression. A trailing
+   YAML comment (a `#` preceded by whitespace, outside quotes) is not part of the `runs-on`.
 2. **Enforced at the provisioning boundary, not in `produce`.** `produce` stays deterministic and
    offline: it writes files and cannot know what runners a repository has. The boundary where the
    fact is knowable is the host that runs the VM, and the repository settings the factory already

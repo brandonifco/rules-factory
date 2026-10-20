@@ -51,6 +51,12 @@ RUNS_ON_LINE = ("    runs-on: ${{ fromJSON(github.actor == github.repository_own
                 "github.repository_owner && (github.event.pull_request.head.repo.full_name || "
                 "!github.event.pull_request && github.repository) == github.repository && vars.FACTORY_RUNS_ON_TRUSTED "
                 "|| vars.FACTORY_RUNS_ON || '\"ubuntu-24.04\"') }}")
+#: The line decision 0079 put in every recipe before 0080 (tools/factory/repository.py at aebb15b, `RUNS_ON_LINE`).
+#: On a private repository whose FACTORY_RUNS_ON is exactly factory-ci's labels and whose FACTORY_RUNS_ON_TRUSTED is
+#: unset it routes exactly as RUNS_ON_LINE does (0080 point 5), and its hosted default is reachable only when the
+#: variable is unset, which the routing check already fails. On a public repository it would send a fork's run to
+#: the variable and the owner's to hosted, so it is accepted on a private repository only.
+RUNS_ON_LINE_0079 = "    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '\"ubuntu-24.04\"') }}"
 
 
 def _load(name):
@@ -219,6 +225,21 @@ class GhApi:
 JOB_KEY = re.compile(r"""(?:"([^"]+)"|'([^']+)'|([^\s:#'"{}\[\]]+))\s*:\s*(?:#.*)?$""")
 
 
+def strip_comment(value):
+    """`value` without a trailing YAML comment: a `#` at the start or preceded by whitespace, outside quotes.
+    A `#` inside the quotes of the expression is part of it."""
+    quote = None
+    for index, char in enumerate(value):
+        if quote:
+            if char == quote:
+                quote = None
+        elif char in "'\"":
+            quote = char
+        elif char == "#" and (index == 0 or value[index - 1].isspace()):
+            return value[:index].rstrip()
+    return value
+
+
 def jobs_of(text):
     """[{job, runs_on, uses}] for each job under a workflow file's top-level `jobs:`.
 
@@ -252,15 +273,16 @@ def jobs_of(text):
         if indent == child_indent:
             keyed = re.match(r"(runs-on|uses)\s*:\s*(.*)$", stripped)
             if keyed and keyed.group(1) == "runs-on":
-                current["runs_on"], current["line"] = keyed.group(2).strip(), stripped
+                current["runs_on"], current["line"] = strip_comment(keyed.group(2)).strip(), strip_comment(stripped)
             elif keyed:
                 current["uses"] = keyed.group(2).strip()
     return found
 
 
-def scan_workflows(github, repository, branch):
+def scan_workflows(github, repository, branch, private=False):
     """[{path, job, runs_on, ok}] for every job of every workflow file on the default branch, and the
-    paths read. ok is True (the contract line), False, or None (a reusable-workflow job with no
+    paths read. ok is True (the contract line), "0079" (decision 0079's line, on a private repository only),
+    False, or None (a reusable-workflow job with no
     `runs-on` of its own: reported, not failed). No workflow directory is no entries."""
     ref = urllib.parse.quote(branch, safe="")
     listing = read(github, "the workflow directory", f"/repos/{repository}/contents/.github/workflows?ref={ref}", missing_ok=True)
@@ -283,6 +305,8 @@ def scan_workflows(github, repository, branch):
         for job in jobs:
             if job["runs_on"] is not None or job["line"] is not None:
                 ok = job["line"] == RUNS_ON_LINE.strip()
+                if not ok and private and job["line"] == RUNS_ON_LINE_0079.strip():
+                    ok = "0079"
             else:
                 ok = None if job["uses"] and not job["unreadable"] else False
             entries.append({"path": path, "job": job["job"], "runs_on": job["runs_on"], "ok": ok,
@@ -326,7 +350,7 @@ def verify(repository, github, now=None, hosted_jobs=None):
     runners = pages(github, "the repository's runners", f"/repos/{repository}/actions/runners", "runners")
     variables = {item.get("name"): item.get("value") for item in
                  pages(github, "the repository's variables", f"/repos/{repository}/actions/variables", "variables", size=30)}
-    workflows, paths = scan_workflows(github, repository, branch)
+    workflows, paths = scan_workflows(github, repository, branch, private)
 
     names, findings = authorized_names(), []
     listed = []
@@ -517,6 +541,10 @@ def report(record, out=None):
         if entry["ok"] is None:
             print(f"  note {entry['path']}: job {entry['job']} uses {entry['uses']} and names no runner of its own: "
                   f"the called workflow decides", file=out)
+    for entry in record["workflows"]:
+        if entry["ok"] == "0079":
+            print(f"  note {entry['path']}: job {entry['job']} carries decision 0079's runner line, accepted on a "
+                  f"private repository only", file=out)
     for entry in record["workflows"]:
         if entry["ok"] == "hosted":
             print(f"  note {entry['path']}: job {entry['job']} stays on {entry['runs_on']} on purpose "

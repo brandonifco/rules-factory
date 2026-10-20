@@ -193,6 +193,52 @@ class TestVerify(unittest.TestCase):
             self.assertIn("validate.yml: job publish has runs-on", "\n".join(record["findings"]))
             self.assertEqual([True, False], [w["ok"] for w in record["workflows"]])
 
+    def test_decision_0079s_line_is_accepted_on_a_private_repository_with_the_variable_exact_and_nowhere_else(self):
+        self.assertEqual("    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '\"ubuntu-24.04\"') }}", onboard.RUNS_ON_LINE_0079)
+        old = {"validate.yml": workflow(("validate", onboard.RUNS_ON_LINE_0079, ""))}
+        record = verify(FakeGitHub(runners=[runner()], workflows=old))
+        self.assertEqual("pass", record["verdict"], record["findings"])
+        self.assertEqual(["0079"], [w["ok"] for w in record["workflows"]])
+        out = io.StringIO()
+        onboard.report(record, out)
+        self.assertIn("decision 0079's runner line", out.getvalue())
+        # the variable missing: the routing check fails it, as it does for RUNS_ON_LINE
+        text = self.findings(FakeGitHub(runners=[runner()], workflows=old, variables={}))
+        self.assertIn("FACTORY_RUNS_ON is not set", text)
+        # public: it would send a fork's run to the variable, so it stays a finding
+        public = verify(FakeGitHub(private=False, variables={"FACTORY_RUNS_ON_TRUSTED": EXACT}, workflows=old))
+        self.assertEqual("fail", public["verdict"])
+        self.assertEqual([False], [w["ok"] for w in public["workflows"]])
+        self.assertIn("not the contract line", "\n".join(public["findings"]))
+
+    def test_the_ubuntu_latest_variant_of_0079s_line_stays_a_finding(self):
+        line = "    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '\"ubuntu-latest\"') }}"
+        record = verify(FakeGitHub(runners=[runner()], workflows={"validate.yml": workflow(("validate", line, ""))}))
+        self.assertEqual("fail", record["verdict"])
+        self.assertEqual([False], [w["ok"] for w in record["workflows"]])
+
+    def test_a_trailing_yaml_comment_is_not_part_of_the_runs_on(self):
+        for comment in (" # Enabled 2026-10-12", " # As build-and-test", "  #no space after", " #"):
+            files = {"validate.yml": workflow(("validate", GOOD + comment, ""), ("again", onboard.RUNS_ON_LINE_0079 + comment, ""))}
+            record = verify(FakeGitHub(runners=[runner()], workflows=files))
+            self.assertEqual("pass", record["verdict"], (comment, record["findings"]))
+            self.assertEqual([True, "0079"], [w["ok"] for w in record["workflows"]])
+            self.assertEqual(onboard.RUNS_ON_LINE.strip()[len("runs-on: "):], record["workflows"][0]["runs_on"])
+        # a comment does not make a wrong line right
+        files = {"validate.yml": workflow(("validate", "    runs-on: ubuntu-24.04 # " + GOOD.strip(), ""))}
+        self.assertEqual("fail", verify(FakeGitHub(runners=[runner()], workflows=files))["verdict"])
+
+    def test_a_hash_inside_quotes_or_not_after_whitespace_is_not_a_comment(self):
+        self.assertEqual("'a # b' x", onboard.strip_comment("'a # b' x # c"))
+        self.assertEqual('"a # b"', onboard.strip_comment('"a # b" # c'))
+        self.assertEqual("${{ fromJSON('\"#x\"') }}", onboard.strip_comment("${{ fromJSON('\"#x\"') }} # c"))
+        self.assertEqual("ubuntu#24", onboard.strip_comment("ubuntu#24"))
+        self.assertEqual("", onboard.strip_comment("# only a comment"))
+        line = "    runs-on: ${{ vars.FACTORY_RUNS_ON || '\"#ubuntu\"' }}"
+        record = verify(FakeGitHub(runners=[runner()], workflows={"w.yml": workflow(("build", line, ""))}))
+        self.assertEqual("fail", record["verdict"])
+        self.assertIn("'\"#ubuntu\"'", record["workflows"][0]["runs_on"])
+
     def test_every_workflow_file_is_read_in_both_extensions_and_a_directory_is_not(self):
         files = {"a.yml": workflow(("one", GOOD, "")), "b.yaml": workflow(("two", "    runs-on: ubuntu-latest", "")),
                  "notes.txt": "runs-on: nothing"}
