@@ -4926,6 +4926,25 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         self.assertIn('("Produced by the factory"', checker)
         self.assertIn('PRODUCE_MARKER = "<!-- rules-factory-produce -->"', checker)
 
+    CRITERIA_ISSUE = "## Acceptance criteria\n\n- [ ] the engine is produced from the new map\n"
+
+    def test_a_produce_update_reports_the_criteria_of_its_issue_too(self):
+        # mutation: skip check_acceptance_criteria when the produce claim is admitted
+        self.commit_engine()
+        files = self.produced_files()
+        self.pull_request(body=self.produce_body(files=files), files=files, issue_body=self.CRITERIA_ISSUE)
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("`## Acceptance criteria` is missing or holds no numbered item", done.stdout)
+        self.assertNotIn("names no mutation", done.stdout)
+        report = "## Acceptance criteria\n\n1. **MET** — `python3 tools/factory provenance --engine .` printed it.\n\n"
+        body = self.produce_body(files=files).replace("## Tests and evidence", report + "## Tests and evidence", 1)
+        self.pull_request(body=body, files=files, issue_body=self.CRITERIA_ISSUE)
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("acceptance criteria: 1 reported, MET 1", done.stdout)
+        self.assertIn("claim was admitted", done.stdout)
+
     def test_a_pull_request_without_the_section_is_not_asked_for_one(self):
         # The one optional heading: almost no pull request is a factory update.
         self.produced()
@@ -4933,6 +4952,307 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         done = self.policy_check()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertNotIn("Produced by the factory", done.stdout)
+
+
+class TestPrPolicyAcceptanceCriteria(RailsInAGitEngine):
+    """`tools/pr-policy.py`: one evidenced status per acceptance criterion of the linked issue (#695).
+
+    Every test names the mutation of the check that turns it red. The mutations are edits to
+    `tools/factory/recipe/rails/tools/pr-policy.py`, and each was watched failing.
+    """
+
+    pull_request = TestPrPolicy.pull_request
+    policy_check = TestPrPolicy.policy_check
+    BASE = TestPrPolicy.BASE
+
+    #: A test method the engine declares, a method it only calls, and the command GOOD_PR_BODY quotes.
+    #: (Not the `Declines` one the overlay names: a test named for a decline is a criterion resting on one.)
+    TEST = "AltitudeLimit_AnswersBelowTheCeiling"
+    CALLED = "AltitudeLimit_OnlyCalledNeverDeclared"
+    COMMAND = "./scripts/validate.sh full"
+    DECISION = "docs/decisions/0001-the-ceiling-is-declined.md"
+    TESTS_FILE = ("using Xunit;\nnamespace " + NAME + ".Tests;\npublic sealed class AltitudeLimitTests\n{\n"
+                  "    [Fact]\n    public void AltitudeLimit_AnswersBelowTheCeiling()\n    {\n"
+                  "        AltitudeLimit_OnlyCalledNeverDeclared();\n    }\n}\n")
+
+    def criteria(self, *items, wanted=3, section=True, issue_has_criteria=True, evidence=None, closed=(31,),
+                 opened=(32,), body=None):
+        """Run the check on a pull request reporting `items` against an issue that lists `wanted` criteria.
+
+        Issues #31 and #32 exist as closed and open; `closed` and `opened` name which numbers are which.
+        """
+        self.produced()
+        tests = os.path.join(self.out, "tests", f"{NAME}.Tests")
+        os.makedirs(tests, exist_ok=True)
+        with open(os.path.join(tests, "AltitudeLimitTests.cs"), "w", encoding="utf-8") as handle:
+            handle.write(self.TESTS_FILE)
+        os.makedirs(os.path.join(self.out, "docs", "decisions"), exist_ok=True)
+        with open(os.path.join(self.out, self.DECISION), "w", encoding="utf-8") as handle:
+            handle.write("# 0001 — The ceiling is declined\n")
+        text = body if body is not None else GOOD_PR_BODY
+        if section:
+            listing = "\n".join(f"{number}. {item}" for number, item in enumerate(items, 1))
+            text = text.replace("## Tests and evidence", f"## Acceptance criteria\n\n{listing}\n\n## Tests and evidence", 1)
+        if evidence is not None:
+            text = text.replace(self.COMMAND, evidence, 1)
+        criteria = "".join(f"- [{' x'[number % 2]}] criterion {number}\n      which continues here\n"
+                           for number in range(1, wanted + 1)) if issue_has_criteria else ""
+        marker = "<!-- rules-factory-entry: altitude-limit -->\n"
+        self.pull_request(body=text, issue_body=marker + ("## Acceptance criteria\n\n" + criteria if criteria else ""))
+        with open(self.fixture_path, encoding="utf-8") as handle:
+            document = json.load(handle)
+        for number in closed:
+            document["issue"][str(number)] = {"number": number, "state": "CLOSED"}
+        for number in opened:
+            document["issue"][str(number)] = {"number": number, "state": "OPEN"}
+        self.fixture(document)
+        return self.policy_check()
+
+    def refused(self, done, *needles):
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        for needle in needles:
+            self.assertIn(needle, done.stdout)
+
+    def passed(self, done, line=None):
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        if line:
+            self.assertIn(line, done.stdout)
+
+    def met(self):
+        return f"**MET** — `{self.TEST}` shows it."
+
+    # --- the report itself -------------------------------------------------------------------
+
+    def test_an_issue_with_no_criteria_is_not_checked(self):
+        # mutation: return early only when the section is empty, so an issue with none still demands the report
+        done = self.criteria(wanted=0, issue_has_criteria=False, section=False)
+        self.passed(done, "the linked issue lists none, so none are checked")
+
+    def test_a_missing_section_fails(self):
+        # mutation: `if not reported or not items` -> `if False` (a missing section is read as zero items and no finding)
+        done = self.criteria(section=False)
+        self.refused(done, "`## Acceptance criteria` is missing or holds no numbered item",
+                     "lists 3 criteria")
+
+    def test_the_template_placeholder_is_not_a_report(self):
+        # mutation: let an item with no text skip the status test
+        done = self.criteria("", "", "")
+        self.refused(done, "acceptance criterion 1 does not begin with a status")
+
+    def test_a_wrong_count_fails_both_ways(self):
+        # mutation: delete the `len(items) != wanted` finding
+        fewer = self.criteria(self.met(), self.met())
+        self.refused(fewer, "reports 2 criteria, and issue #27 lists 3")
+        more = self.criteria(self.met(), self.met(), self.met(), self.met())
+        self.refused(more, "reports 4 criteria, and issue #27 lists 3")
+
+    def test_out_of_order_numbering_fails(self):
+        # mutation: delete the finding that compares the numbers with `1..N`
+        done = self.criteria(self.met(), self.met(), self.met())
+        self.passed(done)
+        listing = "\n".join(f"{number}. {self.met()}" for number in (2, 1, 3))
+        body = GOOD_PR_BODY.replace("## Tests and evidence", f"## Acceptance criteria\n\n{listing}\n\n## Tests and evidence", 1)
+        done = self.criteria(section=False, body=body)
+        self.refused(done, "is not numbered `1.` to `3.` in order", "it reads 2., 1., 3.")
+
+    def test_a_free_status_fails_and_names_the_criterion(self):
+        # mutation: `STATUS.match(text)` -> `STATUS.search(text)`, so a status anywhere in the item is taken
+        done = self.criteria("NOT MET, escalated. `" + self.TEST + "` is MET elsewhere.", "partly met, `" + self.TEST + "`",
+                             "met, `" + self.TEST + "`")
+        self.refused(done, "acceptance criterion 1 does not begin with a status",
+                     "acceptance criterion 2 does not begin with a status",
+                     "acceptance criterion 3 does not begin with a status")
+
+    def test_a_status_may_be_bold_and_only_one_is_taken(self):
+        # mutation: delete the SECOND_STATUS finding
+        done = self.criteria(f"MET, {'`' + self.TEST + '`'}", f"**MET**: `{self.TEST}`", f"**MET** or BLOCKED on #32, `{self.TEST}`")
+        self.refused(done, "acceptance criterion 3 begins with more than one status")
+        self.assertNotIn("acceptance criterion 1", done.stdout)
+        self.assertNotIn("acceptance criterion 2", done.stdout)
+
+    # --- MET -----------------------------------------------------------------------------------
+
+    def test_met_with_no_verifiable_evidence_fails(self):
+        # mutation: accept a MET with no evidence (delete the `evidence_for_met` refusal)
+        done = self.criteria("MET — it is done.", "MET — `NoSuchTestAnywhere` shows it.", "MET — see the review.")
+        self.refused(done, "acceptance criterion 1 is MET with no evidence this check can verify",
+                     "acceptance criterion 2 is MET with no evidence this check can verify",
+                     "acceptance criterion 3 is MET with no evidence this check can verify")
+
+    def test_met_citing_only_a_review_a_mutation_score_or_ci_fails(self):
+        # mutation: take any backticked span as evidence
+        done = self.criteria("MET — `rules-verdict/semantic` is success.", "MET — `9 of 9` mutations were red.",
+                             "MET — `ci / validate` is green, and `pr-policy`.")
+        self.refused(done, "acceptance criterion 1 is MET with no evidence", "acceptance criterion 2 is MET with no evidence",
+                     "acceptance criterion 3 is MET with no evidence", "A review verdict, a mutation score or a CI")
+
+    def test_met_citing_a_method_that_is_only_called_fails(self):
+        # mutation: `declares` -> a plain search for `name(` anywhere in a tests file
+        done = self.criteria(f"MET — `{self.CALLED}` shows it.", self.met(), self.met())
+        self.refused(done, "acceptance criterion 1 is MET with no evidence")
+        self.assertNotIn("acceptance criterion 2", done.stdout)
+
+    def test_met_citing_an_existing_test_passes_in_either_spelling(self):
+        # mutation: look the span up under tests/ without stripping `()` or a `Class.` prefix
+        done = self.criteria(f"MET — `{self.TEST}` shows it.", f"MET — `{self.TEST}()` shows it.",
+                             f"MET — `AltitudeLimitTests.{self.TEST}` shows it.")
+        self.passed(done, "acceptance criteria: 3 reported, MET 3")
+
+    def test_met_citing_a_command_quoted_in_the_evidence_passes_and_one_that_is_not_fails(self):
+        # mutation: accept a command without testing that the evidence section quotes it
+        done = self.criteria(f"MET — `{self.COMMAND}` printed it.", "MET — `dotnet test --filter Something` printed it.",
+                             self.met())
+        self.refused(done, "acceptance criterion 2 is MET with no evidence")
+        self.assertNotIn("acceptance criterion 1", done.stdout)
+
+    def test_met_resting_on_a_decline_needs_an_authority(self):
+        # mutation: delete the `declined and not context.authority(...)` finding
+        for rests in ("it declines `MissingRulesData`", "the entry returns RequiresInterpretation", "it Declines"):
+            done = self.criteria(f"MET — `{self.TEST}`: {rests}.", self.met(), self.met())
+            self.refused(done, "acceptance criterion 1 is MET but rests on a decline")
+            self.assertNotIn("acceptance criterion 2", done.stdout)
+
+    def test_met_resting_on_a_decline_passes_with_a_verifiable_authority(self):
+        # mutation: require the authority only when it is absent, not when it fails to verify
+        ok = self.criteria(f"MET — `{self.TEST}`: it declines `MissingRulesData`. Authority: `{self.DECISION}`.",
+                           self.met(), self.met())
+        self.passed(ok, "acceptance criteria: 3 reported, MET 3")
+        bad = self.criteria(f"MET — `{self.TEST}`: it declines. Authority: docs/decisions/0099-nothing.md.",
+                            self.met(), self.met())
+        self.refused(bad, "acceptance criterion 1 is MET but rests on a decline")
+
+    # --- AUTHORIZED INCOMPLETE -----------------------------------------------------------------
+
+    def test_authorized_incomplete_without_an_authority_fails(self):
+        # mutation: delete the authority finding of AUTHORIZED INCOMPLETE
+        done = self.criteria("AUTHORIZED INCOMPLETE — Limitation: gate-true requests decline.", self.met(), self.met())
+        self.refused(done, "acceptance criterion 1 is AUTHORIZED INCOMPLETE with no authority this check can verify")
+        self.assertNotIn("no stated limitation", done.stdout)
+
+    def test_authorized_incomplete_with_an_unverifiable_authority_fails(self):
+        # mutation: `authority()` returns every reference it was shown without testing it
+        for authority in ("docs/decisions/0099-nothing.md", "#32", "#999999", "`not-an-entry` definedElsewhere",
+                          "`altitude-limit` and nothing else", "correspondence row 9", "the owner said so"):
+            done = self.criteria(f"AUTHORIZED INCOMPLETE — Authority: {authority}. Limitation: it declines.",
+                                 self.met(), self.met())
+            self.refused(done, "acceptance criterion 1 is AUTHORIZED INCOMPLETE with no authority this check can verify")
+
+    def test_authorized_incomplete_without_a_limitation_fails(self):
+        # mutation: delete the limitation finding
+        for item in (f"AUTHORIZED INCOMPLETE — Authority: {self.DECISION}.",
+                     f"AUTHORIZED INCOMPLETE — Authority: {self.DECISION}. Limitation:   ",
+                     f"AUTHORIZED INCOMPLETE — Authority: {self.DECISION}. Limitation: **"):
+            done = self.criteria(item, self.met(), self.met())
+            self.refused(done, "acceptance criterion 1 is AUTHORIZED INCOMPLETE with no stated limitation")
+            self.assertNotIn("no authority", done.stdout)
+
+    def test_authorized_incomplete_passes_with_each_form_of_authority(self):
+        # mutation: delete one form of authority from `authority()` (each of the four was removed in turn)
+        forms = {
+            "a decision record": f"{self.DECISION}",
+            "a closed issue": "#31",
+            "an overlay entry": "`altitude-limit` ambiguity",
+            "a correspondence row": "correspondence row 3",
+        }
+        for what, authority in forms.items():
+            done = self.criteria(f"AUTHORIZED INCOMPLETE — Authority: {authority}. Limitation: gate-true requests decline.",
+                                 self.met(), self.met())
+            self.passed(done, "acceptance criteria: 3 reported, MET 2, AUTHORIZED INCOMPLETE 1")
+
+    def test_an_entry_the_generated_map_names_is_an_authority_though_it_has_no_overlay_file(self):
+        # mutation: look the id up in overlay/ only
+        self.produced()
+        generated = self.read(f"src/{NAME}/Generated/MapEntries.g.cs")
+        known = [i for i in re.findall(r'new\(\s*"([a-z0-9-]+)"', generated) if i != "altitude-limit"][0]
+        self.assertFalse(os.path.exists(os.path.join(self.out, "overlay", f"{known}.json")))
+        done = self.criteria(f"AUTHORIZED INCOMPLETE — Authority: `{known}` definedElsewhere. Limitation: declined.",
+                             self.met(), self.met())
+        self.passed(done, "AUTHORIZED INCOMPLETE 1")
+
+    def test_every_correspondence_row_of_the_specification_is_one_the_check_knows(self):
+        # mutation: add a ninth row to CORRESPONDENCE_ROWS
+        with open(os.path.join(FACTORY, "..", "..", "docs", "corpus-map.md"), encoding="utf-8") as handle:
+            document = handle.read()
+        table = document.split("**Rows are checked in order and the first match wins.**")[1].split("**Row order")[0]
+        rows = {int(m.group(1)) for m in re.finditer(r"(?m)^\| (\d+) \|", table)}
+        self.assertEqual(rows, set(range(1, 9)))
+        self.produced()
+        checker = self.read("tools/pr-policy.py")
+        self.assertIn("CORRESPONDENCE_ROWS = frozenset(range(1, 9))", checker)
+
+    # --- BLOCKED -------------------------------------------------------------------------------
+
+    def test_blocked_on_an_open_issue_fails_and_cites_section_six(self):
+        # mutation: let BLOCKED return its status when the issue is open
+        done = self.criteria("BLOCKED on #32, the owner's question.", self.met(), self.met())
+        self.refused(done, "acceptance criterion 1 is BLOCKED on #32, which is open",
+                     "AGENTS.md section 6 the issue awaits that decision", "cannot close it")
+
+    def test_blocked_on_a_closed_issue_fails_and_says_to_classify_again(self):
+        # mutation: report the open-issue finding whatever the state
+        done = self.criteria("BLOCKED on #31, the owner's question.", self.met(), self.met())
+        self.refused(done, "acceptance criterion 1 is BLOCKED on #31, which is closed", "Classify the criterion again")
+        self.assertNotIn("awaits", done.stdout)
+
+    def test_blocked_naming_no_issue_fails_and_says_so(self):
+        # mutation: pass a BLOCKED that names no issue
+        done = self.criteria("BLOCKED — waiting for the owner.", self.met(), self.met())
+        self.refused(done, "acceptance criterion 1 is BLOCKED and names no issue it waits on")
+
+    # --- counting, and reading each issue once -------------------------------------------------
+
+    def test_the_passing_output_counts_each_status(self):
+        # mutation: count every criterion as MET
+        done = self.criteria(self.met(), f"AUTHORIZED INCOMPLETE — Authority: {self.DECISION}. Limitation: declined.",
+                             self.met(), wanted=3)
+        self.passed(done, "acceptance criteria: 3 reported, MET 2, AUTHORIZED INCOMPLETE 1")
+
+    def test_each_referenced_issue_is_read_once(self):
+        # mutation: drop the `if number not in self._issues` cache
+        log = os.path.join(self.tmp, "gh.log")
+        wrapper = os.path.join(self.tmp, "gh-logged.py")
+        with open(wrapper, "w", encoding="utf-8") as handle:
+            handle.write(f"#!{sys.executable}\nimport os, subprocess, sys\n"
+                         f"open({log!r}, 'a').write(' '.join(sys.argv[1:]) + '\\n')\n"
+                         f"sys.exit(subprocess.run([{self.gh!r}, *sys.argv[1:]]).returncode)\n")
+        os.chmod(wrapper, 0o755)
+        again = ["AUTHORIZED INCOMPLETE — Authority: #31 and #31. Limitation: declined."] * 2
+        done = self.criteria(*again, "BLOCKED on #31 and #31.", wanted=3)
+        self.refused(done)
+        again_done = subprocess.run([sys.executable, os.path.join(self.out, "tools", "pr-policy.py"), "5"], cwd=self.out,
+                                    capture_output=True, text=True, env=self.environment(RULES_ENGINE_GH=wrapper))
+        self.assertEqual(again_done.returncode, 1)
+        with open(log, encoding="utf-8") as handle:
+            reads = [line for line in handle.read().splitlines() if line.startswith("issue view 31")]
+        self.assertEqual(len(reads), 1, reads)
+
+    # --- the contract around the check ---------------------------------------------------------
+
+    def test_a_pull_request_with_an_unedited_template_section_is_not_asked_when_the_issue_lists_none(self):
+        # mutation: judge `## Acceptance criteria` in check_sections like any other section (an empty one is a finding)
+        body = GOOD_PR_BODY.replace("## Tests and evidence", "## Acceptance criteria\n\n<!-- left as the template has it -->\n\n## Tests and evidence", 1)
+        done = self.criteria(section=False, wanted=0, issue_has_criteria=False, body=body)
+        self.passed(done, "so none are checked")
+        self.assertNotIn("is empty", done.stdout)
+
+    def test_the_template_has_the_section_before_the_evidence_and_the_checker_lists_it(self):
+        # mutation: delete the section from the template
+        self.produced()
+        template = self.read(".github/pull_request_template.md")
+        self.assertLess(template.index("\n## Acceptance criteria\n"), template.index("\n## Tests and evidence\n"))
+        for word in ("MET", "AUTHORIZED INCOMPLETE", "BLOCKED", "Authority:", "Limitation:", "mutation", "CI"):
+            self.assertIn(word, template.split("\n## Acceptance criteria\n")[1].split("\n## Tests and evidence\n")[0])
+        self.assertIn('("Acceptance criteria"', self.read("tools/pr-policy.py"))
+
+    def test_the_rail_says_what_the_check_holds(self):
+        # mutation: delete the section 6 paragraph, or the section 7 bullet, from the rail
+        self.produced()
+        rail = self.read("AGENTS.md")
+        six = rail.split("## 6. Ambiguity is escalated, not resolved")[1].split("## 7. Evidence")[0]
+        for word in ("AUTHORIZED INCOMPLETE", "BLOCKED", "MET", "awaits that decision"):
+            self.assertIn(word, six)
+        seven = rail.split("## 7. Evidence")[1].split("## 8.")[0]
+        self.assertIn("Implemented, tested and reviewed is not the same as every criterion MET", seven)
 
 
 class TestVerdicts(RailsInAGitEngine):
