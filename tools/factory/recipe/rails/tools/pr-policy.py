@@ -100,14 +100,20 @@ checklist, and a pull request that closes it says, for each, whether it holds. T
 `## Acceptance criteria` and asks the pull request's own `## Acceptance criteria` for one numbered item per
 criterion, in order, each beginning with exactly one status:
 
-  MET                    shown by a test method declared under `tests/`, or a command quoted verbatim in
-                         `## Tests and evidence`. A review verdict, a mutation score and a CI result are not
-                         that: they check conformance or behaviour, not whether a criterion holds. A MET that
-                         rests on a decline also names the `Authority:` that lets a decline fulfil it.
+  MET                    shown by a test method declared under `tests/`, or a command that is a whole line of
+                         `## Tests and evidence` (after leading whitespace and an optional `$ ` prompt), with its
+                         arguments: a runner's bare name (`dotnet`, `python3`, `pytest`) is not one, and a line that
+                         merely contains the command is not it. A review verdict, a mutation score and a CI result
+                         are not that: they check conformance or behaviour, not whether a criterion holds. A MET
+                         that rests on a decline also names the `Authority:` that lets a decline fulfil it.
   AUTHORIZED INCOMPLETE  not fully performed, where something a reader can open permits it: an `Authority:`
-                         (a decision record in the tree, a closed issue, a map entry's `definedElsewhere` or
-                         `ambiguity`, a correspondence row) and a `Limitation:` that states what is not done.
-                         This is AGENTS.md section 6's legitimate decline, made visible, and it may merge.
+                         (a decision record in the tree, a closed issue, a correspondence row, or a map entry's
+                         `definedElsewhere` or `ambiguity`) and a `Limitation:` that states what is not done. A map
+                         basis is read from the engine's generated registry (`src/<Engine>/Generated/Registry.g.cs`,
+                         `CorrespondenceRow.DefinedElsewhere` or `.UnresolvedAmbiguity`), not from the overlay; in a
+                         tree with no registry it is no authority, and is reported as such only when no other form
+                         of the item verifies. This is AGENTS.md section 6's legitimate decline, made visible, and
+                         it may merge.
   BLOCKED                waits on an open question: names the issue, and always fails, because under section 6
                          that issue awaits its decision and this pull request cannot close it.
 
@@ -1235,16 +1241,11 @@ class Criteria:
         """True when the engine's generated registry gives `entry_id` the row `basis` names; else False.
 
         `definedElsewhere` needs `CorrespondenceRow.DefinedElsewhere` and `ambiguity` needs
-        `CorrespondenceRow.UnresolvedAmbiguity`. Where no registry can be read the form cannot be verified: that is
-        a finding of its own, made once, and the form is not an authority.
+        `CorrespondenceRow.UnresolvedAmbiguity`. Where no registry can be read the form cannot be verified and is
+        not an authority; `authority()` says so, once, when no other form of the item verifies.
         """
         registries = self.registries()
         if not registries:
-            if not self._registry_reported:
-                self._registry_reported = True
-                self.findings.append("no generated registry (`src/<Engine>/Generated/Registry.g.cs`) can be read in "
-                                     "this tree, so a map basis (`<id>` definedElsewhere or ambiguity) cannot be "
-                                     "verified and is not an authority; name another form.")
             return False
         wanted = MAP_BASIS_ROW[basis]
         return any(row == wanted for text in registries for name, row in REGISTRY_ENTRY.findall(text)
@@ -1271,12 +1272,18 @@ class Criteria:
         for number in dict.fromkeys(ISSUE_REFERENCE.findall(text)):
             if self.state(int(number)) == "CLOSED":
                 found.append(f"#{number}")
-        for entry_id, basis in MAP_BASIS.findall(text):
+        bases = MAP_BASIS.findall(text)
+        for entry_id, basis in bases:
             if self.map_basis_holds(entry_id, basis):
                 found.append(f"`{entry_id}` {basis}")
         for row in CORRESPONDENCE_ROW.findall(text):
             if int(row) in CORRESPONDENCE_ROWS:
                 found.append(f"correspondence row {row}")
+        if bases and not found and not self.registries() and not self._registry_reported:
+            self._registry_reported = True
+            self.findings.append("no generated registry (`src/<Engine>/Generated/Registry.g.cs`) can be read in "
+                                 "this tree, so a map basis (`<id>` definedElsewhere or ambiguity) cannot be "
+                                 "verified and is not an authority; name another form.")
         return found
 
     def evidence_for_met(self, text):
@@ -1296,7 +1303,7 @@ class Criteria:
 
         A runner's bare name (`dotnet`, `python3`) is not a command line, even where a line equals it.
         """
-        words = span.split()
+        words = span.removeprefix("$").split()
         if len(words) < 2 and (words[0].rsplit("/", 1)[-1] if words else "") in RUNNERS_NEEDING_ARGUMENTS:
             return False
         return any(line in (span, "$ " + span) for line in (raw.strip() for raw in self.evidence.splitlines()))

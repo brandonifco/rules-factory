@@ -5138,11 +5138,12 @@ class TestPrPolicyAcceptanceCriteria(RailsInAGitEngine):
         self.assertNotIn("acceptance criterion 1", done.stdout)
 
     def test_a_quoted_command_is_a_line_of_the_evidence_not_a_part_of_one(self):
-        # mutation 1: `line in (span, "$ " + span)` -> `span in self.evidence`; mutation 2: delete the bare-runner test
+        # mutation 1: `line in (span, "$ " + span)` -> `span in self.evidence`; mutation 2: delete the bare-runner test;
+        # mutation 3: `span.removeprefix("$").split()` -> `span.split()` (a `$ python3` is two words)
         evidence = "./scripts/validate.sh --brief\n  $ dotnet test --filter Something --no-build\ndotnet\n$ python3\npython3"
         refused = "is MET with no evidence"
         for span in ("dotnet test --filter Something", "dotnet test", "./scripts/validate.sh", "validate.sh --brief",
-                     "dotnet", "python3", "$ dotnet", "pytest"):
+                     "dotnet", "python3", "$ dotnet", "$ python3", "$python3", "pytest"):
             done = self.criteria(f"MET — `{span}` printed it.", self.met(), self.met(), evidence=evidence)
             self.refused(done, f"acceptance criterion 1 {refused}")
             self.assertNotIn("acceptance criterion 2", done.stdout, span)
@@ -5248,6 +5249,19 @@ class TestPrPolicyAcceptanceCriteria(RailsInAGitEngine):
                          "no generated registry (`src/<Engine>/Generated/Registry.g.cs`) can be read",
                          "cannot be verified")
             self.assertEqual(done.stdout.count("no generated registry"), 1)
+
+    def test_a_map_basis_the_tree_cannot_verify_fails_an_item_only_when_nothing_else_verifies(self):
+        # mutation: `if bases and not found and ...` -> `if bases and ...` in `authority()` (the finding is made
+        # whenever a map basis is read in a tree without a registry, though a decision record verifies the item)
+        ok = self.criteria(f"AUTHORIZED INCOMPLETE — Authority: {self.DECISION} and `night-operation` definedElsewhere. "
+                           f"Limitation: declined.", self.met(), self.met(), registry=False)
+        self.passed(ok, "acceptance criteria: 3 reported, MET 2, AUTHORIZED INCOMPLETE 1")
+        self.assertNotIn("no generated registry", ok.stdout)
+        alone = self.criteria("AUTHORIZED INCOMPLETE — Authority: `night-operation` definedElsewhere. "
+                              "Limitation: declined.", self.met(), self.met(), registry=False)
+        self.refused(alone, "acceptance criterion 1 is AUTHORIZED INCOMPLETE with no authority this check can verify",
+                     "no generated registry (`src/<Engine>/Generated/Registry.g.cs`) can be read")
+        self.assertEqual(alone.stdout.count("no generated registry"), 1)
 
     def test_every_correspondence_row_of_the_specification_is_one_the_check_knows(self):
         # mutation: add a ninth row to CORRESPONDENCE_ROWS
