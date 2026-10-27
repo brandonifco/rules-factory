@@ -86,6 +86,34 @@ Closes #
 - decision scope:
 - owner's rulings used, if any:
 
+## Acceptance criteria
+
+<!-- Required when the linked issue lists `## Acceptance criteria` as a checklist; delete this section
+     when it does not. One numbered item per criterion, `1.` to `N.`, in the issue's order. Each item
+     begins with exactly one status (it may be bold), and tools/pr-policy.py checks each (#695):
+
+       MET                    needs a backticked test method declared under `tests/`, or a backticked
+                              command quoted verbatim in "Tests and evidence" below. If it rests on a
+                              decline (`Unresolved`, `MissingRulesData`, `RequiresInterpretation`,
+                              `UnsupportedRule`, `UnsupportedInteraction`, `OutsideCurrentScope`, or the
+                              word "declines"), it also needs an `Authority:` as below.
+       AUTHORIZED INCOMPLETE  not fully performed, where something permits it. Needs
+                              `Authority:` naming a `docs/decisions/<file>.md` in this tree, `#<n>` of a
+                              closed issue, a map entry as `` `<entry-id>` definedElsewhere `` (or `ambiguity`),
+                              or `correspondence row <k>`; and `Limitation:` saying what is not done. It may merge.
+       BLOCKED                waits on an open question: name the issue, `#<n>`. It always fails, because
+                              under AGENTS.md section 6 that issue awaits its decision and this pull
+                              request cannot close it.
+
+     Any other word fails: "NOT MET", "partly met", "escalated", "met". A passing review, a mutation
+     score or a CI result does not make a criterion MET: each checks conformance or behaviour, not
+     whether the criterion holds. Implemented, tested and reviewed is not the same as complete.
+
+     1. **MET** — `Some_test_method` shows it.
+     2. **AUTHORIZED INCOMPLETE** — Authority: `docs/decisions/0001-x.md`. Limitation: what it does not do. -->
+
+1.
+
 ## Tests and evidence
 
 <!-- The exact commands, and what they actually printed. "Tests pass" is not evidence; a run is.

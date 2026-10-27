@@ -23,7 +23,9 @@ So this checks what can be checked mechanically, and nothing it cannot:
   5. the named entry, linked issue and overlay status transition describe the same work;
   6. agent provenance says who implemented and who reviewed;
   7. the linked issue carries exactly one risk label and exactly one state label;
-  8. every document this engine owns is accounted for, and what is said matches the diff.
+  8. every document this engine owns is accounted for, and what is said matches the diff;
+  9. every acceptance criterion of the linked issue is reported, in order, with one evidenced status:
+     MET, AUTHORIZED INCOMPLETE or BLOCKED (below).
 
 **The documentation section (#236).** A change that makes a document untrue is not finished, and
 almost none of what makes one untrue is something a parser can see. So the body carries a line per
@@ -93,6 +95,25 @@ not apply with two that are harder to fake: the map package and version and what
 an entry and a locator; and the produce command, the gate's output and a `factory provenance`
 recompute, in place of a named mutation.
 
+**The acceptance criteria (#695).** An issue made by `factory backlog --create` lists its criteria as a
+checklist, and a pull request that closes it says, for each, whether it holds. The check reads the linked issue's
+`## Acceptance criteria` and asks the pull request's own `## Acceptance criteria` for one numbered item per
+criterion, in order, each beginning with exactly one status:
+
+  MET                    shown by a test method declared under `tests/`, or a command quoted verbatim in
+                         `## Tests and evidence`. A review verdict, a mutation score and a CI result are not
+                         that: they check conformance or behaviour, not whether a criterion holds. A MET that
+                         rests on a decline also names the `Authority:` that lets a decline fulfil it.
+  AUTHORIZED INCOMPLETE  not fully performed, where something a reader can open permits it: an `Authority:`
+                         (a decision record in the tree, a closed issue, a map entry's `definedElsewhere` or
+                         `ambiguity`, a correspondence row) and a `Limitation:` that states what is not done.
+                         This is AGENTS.md section 6's legitimate decline, made visible, and it may merge.
+  BLOCKED                waits on an open question: names the issue, and always fails, because under section 6
+                         that issue awaits its decision and this pull request cannot close it.
+
+Any other word ("NOT MET", "partly met", "escalated") fails. This adds no merge policy: it makes section 6's
+three outcomes visible where `pr-policy` can see them. An issue with no checklist is not checked.
+
 **The review class (rules-factory 0076, #595).** What a change owes the semantic review is not "does
 it touch `review.semanticPaths`" -- that put a decision record, a regeneration and a comment on the
 same ceremony as a handler. `scripts/factory/reviewclass.py` computes the class from the diff:
@@ -145,6 +166,7 @@ SECTIONS = (
     ("Exact behavioural claim", "what the engine does now that it did not do before"),
     ("Scope, and what this deliberately does not do", "what makes the diff reviewable"),
     ("Map and rules conformance", "the entry, the map version and the locator"),
+    ("Acceptance criteria", "one status per criterion of the linked issue, each with its evidence"),
     ("Tests and evidence", "the commands, and what they printed"),
     ("Documentation", "a line for every document this engine owns, and for every one the diff changes"),
     ("Determinism", "what this change does about anything that reads the machine"),
@@ -158,7 +180,10 @@ SECTIONS = (
 # section every author had to write "N/A" into would be noise. Its presence is a claim, though, so
 # once it is there it is judged like any other section -- and then checked against the tree.
 PRODUCE_SECTION = "Produced by the factory"
-OPTIONAL = frozenset({PRODUCE_SECTION})
+# The other: required exactly when the linked issue lists criteria, which `check_sections` cannot know
+# (it reads one body). `check_acceptance_criteria` judges it, whether it is absent, empty or filled (#695).
+CRITERIA_SECTION = "Acceptance criteria"
+OPTIONAL = frozenset({PRODUCE_SECTION, CRITERIA_SECTION})
 # Fixed, and matched in the raw body rather than in the parsed section: the template's guidance
 # lives in HTML comments, which sections() strips, and so does this.
 PRODUCE_MARKER = "<!-- rules-factory-produce -->"
@@ -416,6 +441,8 @@ def check_sections(body, findings):
     present = sections(body)
     filled = {}
     for name, purpose in SECTIONS:
+        if name == CRITERIA_SECTION:
+            continue
         empty = {"", "-", "TODO"} if name == MAY_BE_NA else {"", "-", "N/A", "TODO"}
         if name not in present:
             if name in OPTIONAL:
@@ -1095,6 +1122,252 @@ def check_issue_labels(number, settings, findings):
     return issue
 
 
+# --- the acceptance criteria (#695) ---------------------------------------------------------
+
+STATUSES = ("MET", "AUTHORIZED INCOMPLETE", "BLOCKED")
+# `- [ ] ` / `- [x] `: how `factory backlog --create` writes a criterion. Its continuation lines are indented.
+CRITERION = re.compile(r"^[ \t]{0,3}[-*][ \t]+\[[ xX]\](?:[ \t]|$)", re.M)
+NUMBERED_ITEM = re.compile(r"^[ \t]{0,3}(\d+)\.(?:[ \t]+|$)")
+STATUS = re.compile(r"\*{0,2}(AUTHORIZED INCOMPLETE|MET|BLOCKED)(?![A-Za-z])")
+SECOND_STATUS = re.compile(r"(?:(?:or|and)\s+)?\*{0,2}(?:AUTHORIZED INCOMPLETE|MET|BLOCKED)(?![A-Za-z])")
+FIELD = re.compile(r"(?<![A-Za-z])\*{0,2}(Authority|Limitation)\s*:\s*\*{0,2}")
+BACKTICKED = re.compile(r"`([^`\n]+)`")
+TEST_NAME = re.compile(r"(?:[A-Za-z_]\w*\.)*([A-Za-z_]\w*)(?:\(\))?")
+# What check_evidence takes for a command: the gate, or one of the runners an engine's tests use.
+COMMAND = re.compile(r"(?:\$\s*)?(?:\S*/)?(?:validate\.sh|dotnet|python3|pytest)\b|(?:\$\s*)?\./\S")
+DECISION_RECORD = re.compile(r"docs/decisions/[A-Za-z0-9._-]+\.md")
+ISSUE_REFERENCE = re.compile(r"(?<![\w&/])#(\d+)\b")
+MAP_BASIS = re.compile(r"`([A-Za-z0-9][A-Za-z0-9._-]*)`\s+`?(?:definedElsewhere|ambiguity)`?(?![A-Za-z])")
+CORRESPONDENCE_ROW = re.compile(r"(?i)\bcorrespondence row (\d+)\b")
+# A criterion that rests on a decline. The names are the kernel's reasons; "declin" is the word.
+DECLINE = re.compile(r"Unresolved|MissingRulesData|RequiresInterpretation|UnsupportedRule|UnsupportedInteraction"
+                     r"|OutsideCurrentScope|(?i:declin)")
+# The rows of the map specification's correspondence table (docs/corpus-map.md, "The map and the engine
+# agree"). An engine does not carry that document, so the rows are carried here, and rules-factory's own
+# tests hold this set to the table.
+CORRESPONDENCE_ROWS = frozenset(range(1, 9))
+TESTS_DIRECTORY = "tests"
+DECLARATION_NOT_A_TYPE = frozenset({"return", "await", "new", "throw", "else", "yield"})
+
+
+def numbered_items(text):
+    """`[(number as written, text)]` of a section's numbered items; an item runs to the next numbered item."""
+    items = []
+    for line in text.splitlines():
+        match = NUMBERED_ITEM.match(line)
+        if match:
+            items.append((int(match.group(1)), [line[match.end():]]))
+        elif items:
+            items[-1][1].append(line)
+    return [(number, "\n".join(lines).strip()) for number, lines in items]
+
+
+def criterion_count(issue):
+    """How many criteria the linked issue's body lists as a checklist; 0 when it has no such section."""
+    section = sections(issue.get("body") or "").get(CRITERIA_SECTION)
+    return len(CRITERION.findall(section)) if section else 0
+
+
+def declared_tests():
+    """The text of every `*.cs` file under the engine's tests directory, read once. bin/ and obj/ are build output."""
+    texts = []
+    for base, directories, names in os.walk(ROOT / TESTS_DIRECTORY):
+        directories[:] = sorted(d for d in directories if d not in NOT_A_DOCUMENT_DIRECTORY)
+        for name in sorted(names):
+            if name.endswith(".cs"):
+                try:
+                    texts.append((pathlib.Path(base) / name).read_text(encoding="utf-8", errors="replace"))
+                except OSError:
+                    continue
+    return texts
+
+
+def declares(text, name):
+    """Whether `text` declares a method called `name`: a type then the name then `(`, not a call of it."""
+    pattern = re.compile(rf"(?m)^[ \t]*(?:\[[^\]\n]*\][ \t]*)*(?:(?:public|private|protected|internal|static|async|"
+                         rf"virtual|override|sealed|new|partial|extern|unsafe)[ \t]+)*"
+                         rf"(?P<type>[A-Za-z_][\w<>\[\],.?]*)[ \t]+{re.escape(name)}[ \t]*(?:<[^>\n]*>)?\(")
+    return any(match["type"] not in DECLARATION_NOT_A_TYPE for match in pattern.finditer(text))
+
+
+class Criteria:
+    """What the acceptance-criteria check reads from the tree and from GitHub, each read at most once."""
+
+    def __init__(self, evidence, findings):
+        self.evidence = evidence
+        self.findings = findings
+        self._tests = None
+        self._map_entries = None
+        self._issues = {}
+
+    def test_declared(self, name):
+        if self._tests is None:
+            self._tests = declared_tests()
+        return any(declares(text, name) for text in self._tests)
+
+    def entry_known(self, entry_id):
+        if (ROOT / "overlay" / f"{entry_id}.json").is_file():
+            return True
+        if self._map_entries is None:
+            self._map_entries = []
+            for path in sorted(ROOT.glob("src/*/Generated/MapEntries.g.cs")):
+                try:
+                    self._map_entries.append(path.read_text(encoding="utf-8", errors="replace"))
+                except OSError:
+                    continue
+        return any(f'"{entry_id}"' in text for text in self._map_entries)
+
+    def state(self, number):
+        """The state of issue `number`, upper case, or None when it cannot be read. One `gh issue view` per number."""
+        if number not in self._issues:
+            try:
+                record = json.loads(gh("issue", "view", str(number), "--json", "number,state"))
+                self._issues[number] = str(record.get("state") or "").upper() or None
+            except (Failed, ValueError) as error:
+                self.findings.append(f"issue #{number} cannot be read ({error}); a reference that cannot be "
+                                     f"looked up is not one this check can verify.")
+                self._issues[number] = None
+        return self._issues[number]
+
+    def authority(self, text):
+        """The references in `text` that this check can verify, as short descriptions; [] when there is none."""
+        found = []
+        for path in DECISION_RECORD.findall(text):
+            if (ROOT / path).is_file():
+                found.append(path)
+        for number in dict.fromkeys(ISSUE_REFERENCE.findall(text)):
+            if self.state(int(number)) == "CLOSED":
+                found.append(f"#{number}")
+        for entry_id in MAP_BASIS.findall(text):
+            if self.entry_known(entry_id):
+                found.append(f"`{entry_id}`")
+        for row in CORRESPONDENCE_ROW.findall(text):
+            if int(row) in CORRESPONDENCE_ROWS:
+                found.append(f"correspondence row {row}")
+        return found
+
+    def evidence_for_met(self, text):
+        """The backticked spans of `text` that are a declared test method or a command quoted in the evidence."""
+        found = []
+        for span in BACKTICKED.findall(text):
+            span = span.strip()
+            named = TEST_NAME.fullmatch(span)
+            if named and self.test_declared(named.group(1)):
+                found.append(span)
+            elif COMMAND.match(span) and span in self.evidence:
+                found.append(span)
+        return found
+
+
+AUTHORITY_FORMS = ("a `docs/decisions/<file>.md` that exists in this tree, `#<n>` of a closed issue, a map entry "
+                   "as `<id>` followed by `definedElsewhere` or `ambiguity`, or `correspondence row <k>`")
+
+
+def fields_of(text):
+    """`{"Authority": text, "Limitation": text}` for the labels an item carries; a field runs to the next label."""
+    marks = list(FIELD.finditer(text))
+    found = {}
+    for index, mark in enumerate(marks):
+        end = marks[index + 1].start() if index + 1 < len(marks) else len(text)
+        found.setdefault(mark.group(1), text[mark.end():end].strip())
+    return found
+
+
+def check_criterion(number, text, context, findings):
+    """Judge one item. Returns its status when it has a valid one, else None; a finding names the criterion."""
+    named = STATUS.match(text)
+    if not named:
+        lead = " ".join(text.split())[:40]
+        findings.append(f"acceptance criterion {number} does not begin with a status ({lead!r}...). Begin it with "
+                        f"exactly one of {', '.join(f'`{s}`' for s in STATUSES)}: \"NOT MET\", \"partly met\", "
+                        f"\"escalated\" and \"met\" are not statuses (AGENTS.md section 6).")
+        return None
+    status = named.group(1)
+    after = text[named.end():].lstrip("*:;,.-–—/&() \t\n")
+    if SECOND_STATUS.match(after):
+        findings.append(f"acceptance criterion {number} begins with more than one status; a criterion stands in "
+                        f"exactly one of {', '.join(STATUSES)}.")
+        return None
+    own = fields_of(text)
+    if status == "MET":
+        declined = DECLINE.search(text)
+        if not context.evidence_for_met(text):
+            findings.append(f"acceptance criterion {number} is MET with no evidence this check can verify: cite, in "
+                            f"backticks, a test method declared under `{TESTS_DIRECTORY}/`, or a command quoted "
+                            f"verbatim in `## Tests and evidence`. A review verdict, a mutation score or a CI "
+                            f"result is not evidence that a criterion holds.")
+            return None
+        if declined and not context.authority(own.get("Authority", "")):
+            findings.append(f"acceptance criterion {number} is MET but rests on a decline ({declined.group(0)!r}). "
+                            f"A decline fulfils a criterion only where something authorizes it as doing so: add "
+                            f"`Authority:` naming {AUTHORITY_FORMS}; or report it AUTHORIZED INCOMPLETE.")
+            return None
+        return status
+    if status == "AUTHORIZED INCOMPLETE":
+        ok = True
+        if not context.authority(own.get("Authority", "")):
+            findings.append(f"acceptance criterion {number} is AUTHORIZED INCOMPLETE with no authority this check can "
+                            f"verify: add `Authority:` naming {AUTHORITY_FORMS}.")
+            ok = False
+        if not re.search(r"\w", own.get("Limitation", "")):
+            findings.append(f"acceptance criterion {number} is AUTHORIZED INCOMPLETE with no stated limitation: add "
+                            f"`Limitation:` and say what the engine does not do.")
+            ok = False
+        return status if ok else None
+    waits = list(dict.fromkeys(ISSUE_REFERENCE.findall(text)))
+    if not waits:
+        findings.append(f"acceptance criterion {number} is BLOCKED and names no issue it waits on (`#<n>`). A "
+                        f"criterion that waits on an open question names it, and under AGENTS.md section 6 that "
+                        f"issue awaits the decision; this pull request cannot close it.")
+    for waited in waits:
+        state = context.state(int(waited))
+        if state == "CLOSED":
+            findings.append(f"acceptance criterion {number} is BLOCKED on #{waited}, which is closed: the question "
+                            f"is answered. Classify the criterion again: MET, or AUTHORIZED INCOMPLETE with #{waited} "
+                            f"as its `Authority:`.")
+        elif state is not None:
+            findings.append(f"acceptance criterion {number} is BLOCKED on #{waited}, which is open: under AGENTS.md "
+                            f"section 6 the issue awaits that decision, and this pull request cannot close it. Get "
+                            f"the answer, or split the criterion out.")
+    return None
+
+
+def check_acceptance_criteria(body, issue, findings):
+    """One evidenced status per acceptance criterion of the linked issue (#695). Returns a line to print, or None.
+
+    Run for every review class, a produce update included: the issue's criteria are the issue's, whatever the
+    change is. An issue that lists none is not checked, and the passing output says so.
+    """
+    wanted = criterion_count(issue)
+    if not wanted:
+        return "acceptance criteria: the linked issue lists none, so none are checked."
+    present = sections(body)
+    reported = present.get(CRITERIA_SECTION, "")
+    items = numbered_items(reported)
+    if not reported or not items:
+        findings.append(f"the section `## {CRITERIA_SECTION}` is missing or holds no numbered item, and issue "
+                        f"#{issue.get('number')} lists {wanted} criteria. Report each as `1.` to `{wanted}.`, in the "
+                        f"issue's order, beginning with MET, AUTHORIZED INCOMPLETE or BLOCKED (AGENTS.md section 6).")
+        return None
+    if len(items) != wanted:
+        findings.append(f"`## {CRITERIA_SECTION}` reports {len(items)} criteria, and issue #{issue.get('number')} "
+                        f"lists {wanted}: report every one, none twice.")
+    if [number for number, _ in items] != list(range(1, len(items) + 1)):
+        findings.append(f"`## {CRITERIA_SECTION}` is not numbered `1.` to `{len(items)}.` in order "
+                        f"(it reads {', '.join(f'{number}.' for number, _ in items)}): item k reports the issue's "
+                        f"k-th criterion.")
+    context = Criteria(present.get("Tests and evidence", ""), findings)
+    counts = dict.fromkeys(STATUSES, 0)
+    for number, text in items:
+        status = check_criterion(number, text, context, findings)
+        if status:
+            counts[status] += 1
+    if sum(counts.values()) != wanted or len(items) != wanted:
+        return None
+    return (f"acceptance criteria: {wanted} reported, "
+            + ", ".join(f"{status} {count}" for status, count in counts.items() if count))
+
+
 # GitHub's REST statuses, spelled as `gh pr view --json files` spells a `changeType`, so a path read
 # either way compares the same.
 _CHANGE_TYPES = {"added": "ADDED", "removed": "DELETED", "modified": "MODIFIED", "renamed": "RENAMED",
@@ -1165,7 +1438,7 @@ def main(argv=None):
     if args.pr is None:
         parser.error("a pull request number is required (or --docs-skeleton)")
 
-    findings, living = [], None
+    findings, living, criteria_line = [], None, None
     try:
         settings = policy()
         pull = json.loads(gh("pr", "view", str(args.pr), "--json",
@@ -1211,6 +1484,7 @@ def main(argv=None):
         check_provenance(filled, findings)
         if linked is not None:
             issue = check_issue_labels(linked, settings, findings)
+            criteria_line = check_acceptance_criteria(body, issue, findings)
             # A produce changes the map as a whole, and a truncated file list cannot identify all
             # transitions. Both cases are explicitly outside this correspondence decision.
             if not produce and not truncated and effective == module.SEMANTIC_IMPLEMENTATION:
@@ -1239,6 +1513,8 @@ def main(argv=None):
     print(f"pr-policy: PR #{args.pr} satisfies the contract "
           f"({len(SECTIONS) - len(OPTIONAL)} required sections, one linked issue, evidence and provenance present, "
           f"{living if living is not None else 0} living document(s) accounted for).")
+    if criteria_line:
+        print(criteria_line)
     if produce:
         print(f"The `## {PRODUCE_SECTION}` claim was admitted: the declared factory, map and kernel are "
               f"{PROVENANCE}'s, that record is not dirty, and every changed file is one a produce writes. "
