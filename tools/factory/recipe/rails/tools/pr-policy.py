@@ -1193,12 +1193,15 @@ def declares(text, name):
 class Criteria:
     """What the acceptance-criteria check reads from the tree and from GitHub, each read at most once."""
 
-    def __init__(self, evidence, findings):
+    def __init__(self, evidence, findings, linked=None):
         self.evidence = evidence
         self.findings = findings
         self._tests = None
         self._map_entries = None
+        # The linked issue was read already, for its labels: its state is known and is not asked for again.
         self._issues = {}
+        if linked and isinstance(linked.get("number"), int):
+            self._issues[linked["number"]] = str(linked.get("state") or "").upper() or None
 
     def test_declared(self, name):
         if self._tests is None:
@@ -1356,7 +1359,7 @@ def check_acceptance_criteria(body, issue, findings):
         findings.append(f"`## {CRITERIA_SECTION}` is not numbered `1.` to `{len(items)}.` in order "
                         f"(it reads {', '.join(f'{number}.' for number, _ in items)}): item k reports the issue's "
                         f"k-th criterion.")
-    context = Criteria(present.get("Tests and evidence", ""), findings)
+    context = Criteria(present.get("Tests and evidence", ""), findings, issue)
     counts = dict.fromkeys(STATUSES, 0)
     for number, text in items:
         status = check_criterion(number, text, context, findings)

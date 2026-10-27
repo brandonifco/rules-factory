@@ -5210,7 +5210,7 @@ class TestPrPolicyAcceptanceCriteria(RailsInAGitEngine):
         self.passed(done, "acceptance criteria: 3 reported, MET 2, AUTHORIZED INCOMPLETE 1")
 
     def test_each_referenced_issue_is_read_once(self):
-        # mutation: drop the `if number not in self._issues` cache
+        # mutation: drop the `if number not in self._issues` cache, or the seeding of the linked issue's state
         log = os.path.join(self.tmp, "gh.log")
         wrapper = os.path.join(self.tmp, "gh-logged.py")
         with open(wrapper, "w", encoding="utf-8") as handle:
@@ -5219,14 +5219,16 @@ class TestPrPolicyAcceptanceCriteria(RailsInAGitEngine):
                          f"sys.exit(subprocess.run([{self.gh!r}, *sys.argv[1:]]).returncode)\n")
         os.chmod(wrapper, 0o755)
         again = ["AUTHORIZED INCOMPLETE — Authority: #31 and #31. Limitation: declined."] * 2
-        done = self.criteria(*again, "BLOCKED on #31 and #31.", wanted=3)
-        self.refused(done)
+        done = self.criteria(*again, "BLOCKED on #31 and #31, and on #27 which is this issue.", wanted=3)
+        self.refused(done, "BLOCKED on #27, which is open")
         again_done = subprocess.run([sys.executable, os.path.join(self.out, "tools", "pr-policy.py"), "5"], cwd=self.out,
                                     capture_output=True, text=True, env=self.environment(RULES_ENGINE_GH=wrapper))
         self.assertEqual(again_done.returncode, 1)
         with open(log, encoding="utf-8") as handle:
-            reads = [line for line in handle.read().splitlines() if line.startswith("issue view 31")]
-        self.assertEqual(len(reads), 1, reads)
+            logged = handle.read().splitlines()
+        for number in (31, 27):
+            reads = [line for line in logged if line.startswith(f"issue view {number} ")]
+            self.assertEqual(len(reads), 1, logged)
 
     # --- the contract around the check ---------------------------------------------------------
 
