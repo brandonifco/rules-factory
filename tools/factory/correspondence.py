@@ -4,7 +4,9 @@
     is not `implemented` declines with its row's reason and its own locator, through the
     dictionary dispatch and through its typed entry point alike, and registers every locator it
     cites (all of a derived entry's premises); every `implemented` entry has a hand-written
-    handler unless its row's default can serve.
+    handler unless its row's default can serve, and answers the same through the dictionary
+    dispatch as through its typed entry point when the caller states nothing (#692: the dictionary
+    dispatch cannot state an input an engine declared on the entry's request type).
 
 These are the engine's tests, not the factory's: they run in the produced engine's test project,
 against the registry and the entry points it was produced with, and they are the reason a map
@@ -69,6 +71,38 @@ def tests_cs(model):
                  "            Assert.Equal(cited[0], unresolved.Locator);\n"
                  "        }\n\n"
                  "        Assert.Equal(cited, Registry.Citations(entryId));\n"
+                 "    }\n\n"
+                 "    // The one request both paths can build is the one that states nothing (#692): a RuleRequest carries\n"
+                 "    // assertions only, so the string path cannot state an input the engine declared on a request type.\n"
+                 "    private static void AssertSameOutcome(Func<Resolution<object>> stringPath, Func<Resolution<object>> typedPath)\n"
+                 "    {\n"
+                 "        var viaString = Outcome(stringPath);\n"
+                 "        var viaTyped = Outcome(typedPath);\n"
+                 "        Assert.Equal(viaTyped.Thrown?.GetType(), viaString.Thrown?.GetType());\n"
+                 "        if (viaString.Thrown is not null)\n"
+                 "        {\n"
+                 "            return;\n"
+                 "        }\n\n"
+                 "        Assert.Equal(viaTyped.Declined is null, viaString.Declined is null);\n"
+                 "        if (viaString.Declined is null)\n"
+                 "        {\n"
+                 "            Assert.True(Equals(viaTyped.Value, viaString.Value), \"the string and typed entry points resolved to different values\");\n"
+                 "            return;\n"
+                 "        }\n\n"
+                 "        Assert.Equal(viaTyped.Declined!.Reason, viaString.Declined.Reason);\n"
+                 "        Assert.Equal(viaTyped.Declined.Locator, viaString.Declined.Locator);\n"
+                 "        Assert.Equal(viaTyped.Declined.Attempted, viaString.Declined.Attempted);\n"
+                 "    }\n\n"
+                 "    private static (Exception? Thrown, object? Value, UnresolvedResult? Declined) Outcome(Func<Resolution<object>> resolve)\n"
+                 "    {\n"
+                 "        try\n"
+                 "        {\n"
+                 "            return resolve().Match<(Exception?, object?, UnresolvedResult?)>(v => (null, v, null), u => (null, null, u));\n"
+                 "        }\n"
+                 "        catch (Exception exception)\n"
+                 "        {\n"
+                 "            return (exception, null, null);\n"
+                 "        }\n"
                  "    }\n")
     for item in model.entries:
         entry, row = item["entry"], item["row"]
@@ -86,6 +120,10 @@ def tests_cs(model):
                          f"        Assert.Equal(cited, Registry.Citations({csharp.cs_string(entry['id'])}));\n"
                          "    }\n\n")
         if entry["status"] == "implemented":
+            lines.append("    [Fact]\n"
+                         f"    public void {method}__string_entry_point_is_the_typed_one_with_no_input_stated() =>\n"
+                         f"        AssertSameOutcome(() => Registry.Resolve({csharp.cs_string(entry['id'])}, RuleRequest.Empty), "
+                         f"() => EntryPoints.{item['member']}.Resolve({semantics.contract(model, item)['request_cs']}.Empty));\n\n")
             if row == 8:
                 lines.append("    [Fact]\n"
                              f"    public void {method}__is_implemented_and_answers_or_demands_the_assertion()\n"

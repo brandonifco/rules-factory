@@ -706,6 +706,67 @@ class TestDerivedProvenance(unittest.TestCase):
             self.model([self.derived("x", "a", "missing"), self.located("a", "p. 1")])
 
 
+class TestStringEntryPointStatesNoEngineDeclaredInput(unittest.TestCase):
+    """#692, option 3: `Resolve(string, RuleRequest)` carries assertions only, says so, and a generated test pins it.
+
+    Built on a synthetic map with one implemented entry off row 8, one implemented assertion and one
+    unimplemented entry, so the generator is read for a rule and not for a corpus.
+    """
+
+    @staticmethod
+    def entry(entry_id, kind="operation", status="mapped"):
+        return {"id": entry_id, "name": entry_id, "kind": kind, "scope": "in", "status": status,
+                "locator": {"sourceId": "corpus", "citation": f"p. {entry_id}"}}
+
+    def generated(self):
+        intake = type("Intake", (), {"package_id": "RulesFactory.Maps.Test", "version": "1.0.0"})()
+        entries = [self.entry("built", status="implemented"),
+                   self.entry("demanded", kind="assertion", status="implemented"),
+                   self.entry("unbuilt")]
+        model = semantics.Model(intake, {"corpus": "corpus", "entries": entries,
+                                         "baseline": {"contentHash": "sha256:0", "hashDerivation": "raw", "asOf": None}}, "Test")
+        return registry_step.registry_cs(model), correspondence.tests_cs(model)
+
+    def test_the_registry_names_the_inputs_an_engine_declared_on_each_request_type(self):
+        registry, _ = self.generated()
+        self.assertIn("    public static ImmutableArray<string> DeclaredInputs(string entryId)\n", registry)
+        self.assertIn("var entry = Entry(entryId);", registry)  # an unknown id throws KeyNotFoundException, as Citations does
+        self.assertIn("p.SetMethod is { IsPublic: true }", registry)
+        self.assertIn("nameof(IEntryRequest.EntryId) or nameof(IEntryRequest.Assertions)", registry)
+        self.assertIn(".OrderBy(p => p.MetadataToken)", registry)
+        for entry_id, request in (("built", "BuiltRequest"), ("demanded", "DemandedRequest"), ("unbuilt", "UnbuiltRequest")):
+            self.assertIn(f'[{csharp.cs_string(entry_id)}] = typeof(global::Test.Requests.{request}),', registry)
+
+    def test_the_string_entry_point_documents_that_it_states_no_input(self):
+        registry, _ = self.generated()
+        string_doc = registry[:registry.index("public static Resolution<object> Resolve(string entryId, RuleRequest request)")]
+        string_doc = string_doc[string_doc.rindex("/// <summary>"):]
+        self.assertIn("A <see cref=\"RuleRequest\"/> carries assertions only (row 8)", string_doc)
+        self.assertIn("as though the caller stated none of its <see cref=\"DeclaredInputs(string)\"/>", string_doc)
+        self.assertIn("resolve through\n    /// <see cref=\"Resolve(IEntryRequest)\"/> or <see cref=\"EntryPoints\"/>", string_doc)
+        typed_doc = registry[:registry.index("public static Resolution<object> Resolve(IEntryRequest request)")]
+        typed_doc = typed_doc[typed_doc.rindex("/// <summary>"):]
+        self.assertIn("(<see cref=\"DeclaredInputs(string)\"/>) as the caller stated it", typed_doc)
+
+    def test_only_an_implemented_entry_has_the_string_equals_typed_test(self):
+        _, tests = self.generated()
+        suffix = "__string_entry_point_is_the_typed_one_with_no_input_stated"
+        self.assertEqual(re.findall(r"public void (\w+)" + suffix, tests), ["built", "demanded"])
+        self.assertIn('AssertSameOutcome(() => Registry.Resolve("built", RuleRequest.Empty), '
+                      '() => EntryPoints.Built.Resolve(global::Test.Requests.BuiltRequest.Empty));', tests)
+        self.assertIn('AssertSameOutcome(() => Registry.Resolve("demanded", RuleRequest.Empty), '
+                      '() => EntryPoints.Demanded.Resolve(global::Test.Requests.DemandedRequest.Empty));', tests)
+        self.assertNotIn('Registry.Resolve("unbuilt", RuleRequest.Empty), () =>', tests)
+        self.assertEqual(tests.count("private static void AssertSameOutcome("), 1)
+        # The helper holds all three alternatives: the same exception type, equal values, an equal decline.
+        for needle in ("Assert.Equal(viaTyped.Thrown?.GetType(), viaString.Thrown?.GetType());",
+                       "Assert.True(Equals(viaTyped.Value, viaString.Value)",
+                       "Assert.Equal(viaTyped.Declined!.Reason, viaString.Declined.Reason);",
+                       "Assert.Equal(viaTyped.Declined.Locator, viaString.Declined.Locator);",
+                       "Assert.Equal(viaTyped.Declined.Attempted, viaString.Declined.Attempted);"):
+            self.assertIn(needle, tests)
+
+
 class TestRefuses(ProduceCase):
     def overlay(self, content):
         out = os.path.join(self.tmp, "engine")

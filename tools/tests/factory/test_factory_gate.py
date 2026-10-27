@@ -1890,7 +1890,13 @@ class TestValidateShWithDotnet(GateCase):
         with open(os.path.join(engine, "src", NAME, "SpeedLimitRequest.cs"), "w", encoding="utf-8") as handle:
             handle.write("namespace FaaPart107.Requests;\n\npublic sealed partial class SpeedLimitRequest\n{\n"
                          "    /// <summary>An engine-declared input.</summary>\n"
-                         "    public int Knots { get; init; } = 87;\n}\n")
+                         "    public int Knots { get; init; } = 87;\n"
+                         "    /// <summary>A second input, declared after the first and sorting before it.</summary>\n"
+                         "    public int Floor { get; set; }\n"
+                         "    /// <summary>Not an input: no setter.</summary>\n"
+                         "    public int Derived => Knots * 2;\n"
+                         "    /// <summary>Not an input: a private setter.</summary>\n"
+                         "    public int Hidden { get; private set; }\n}\n")
         with open(os.path.join(engine, "tests", f"{NAME}.Tests", "InputTests.cs"), "w", encoding="utf-8") as handle:
             handle.write("using RulesKernel.Resolution;\nusing Xunit;\n\nnamespace FaaPart107.Tests;\n\n"
                          "public sealed class InputTests\n{\n"
@@ -1899,10 +1905,32 @@ class TestValidateShWithDotnet(GateCase):
                          "    {\n"
                          "        Assert.Equal(100, EntryPoints.SpeedLimit.Resolve(new Requests.SpeedLimitRequest { Knots = 100 }).Match<object?>(v => v, _ => null));\n"
                          "        Assert.Equal(87, Registry.Resolve(\"speed-limit\", RuleRequest.Empty).Match<object?>(v => v, _ => null));\n"
+                         "    }\n\n"
+                         "    [Fact]\n"
+                         "    public void declared_inputs_names_what_the_engine_declared_and_refuses_an_unknown_id()\n"
+                         "    {\n"
+                         "        Assert.Equal([\"Knots\", \"Floor\"], Registry.DeclaredInputs(\"speed-limit\").ToArray());\n"
+                         "        Assert.Empty(Registry.DeclaredInputs(\"altitude-limit\").ToArray());\n"
+                         "        Assert.Throws<KeyNotFoundException>(() => Registry.DeclaredInputs(\"no-such-entry\"));\n"
                          "    }\n}\n")
         code, output = self.validate(engine, "full")
         self.assertEqual(code, 0, output[-4000:])
         self.assertIn("1 test(s) named by 1 entr(ies) (1 implemented), every one found and executed in all 2", output)
+
+    def test_a_handler_answering_the_string_path_unlike_the_typed_path_fails_a_generated_test(self):
+        """#692: with nothing stated the two entry points must agree, and the generated test is what says so.
+
+        The handler tells the two requests apart by the one thing that differs when nothing is stated:
+        the typed path is handed `SpeedLimitRequest.Empty`, the string path a request built from the
+        assertions. The same engine with a handler that ignores the difference passes (the test above).
+        """
+        engine = self.copy()
+        self.implement_speed_limit(engine, "    internal static partial Resolution<object> SpeedLimit("
+                                           "Requests.SpeedLimitRequest request) =>\n"
+                                           "        Resolution<object>.FromValue(ReferenceEquals(request, Requests.SpeedLimitRequest.Empty) ? 87 : 88);\n")
+        code, output = self.validate(engine, "full")
+        self.assertNotEqual(code, 0, output[-4000:])
+        self.assertIn("speed_limit__string_entry_point_is_the_typed_one_with_no_input_stated", output)
 
     def test_a_missing_or_mis_typed_handler_or_request_is_a_build_error(self):
         """#76: what reflection used to refuse at runtime, or never checked, the compiler refuses."""
