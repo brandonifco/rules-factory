@@ -336,7 +336,9 @@ decline that names why and cites where — that is the engine working, not the e
 
 The pull request reports each acceptance criterion of its issue as one of three statuses
 (`tools/pr-policy.py` checks them). A decline that something authorizes (a decision record, an
-answered owner decision, or the map's own `definedElsewhere` or `unresolved` ambiguity) is
+answered owner decision, or the map's own `definedElsewhere` or `ambiguity` basis, which the
+engine's generated registry must confirm as `CorrespondenceRow.DefinedElsewhere` or
+`CorrespondenceRow.UnresolvedAmbiguity`) is
 **AUTHORIZED INCOMPLETE**: it may merge, with its limitation stated. A criterion that waits on an
 open question is **BLOCKED**, and the issue awaits that decision; the pull request cannot close it.
 Only a criterion shown by a test or a command is **MET**.

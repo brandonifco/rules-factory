@@ -4976,12 +4976,25 @@ class TestPrPolicyAcceptanceCriteria(RailsInAGitEngine):
                   "        AltitudeLimit_OnlyCalledNeverDeclared();\n    }\n}\n")
 
     def criteria(self, *items, wanted=3, section=True, issue_has_criteria=True, evidence=None, closed=(31,),
-                 opened=(32,), body=None):
+                 opened=(32,), body=None, rows=None, registry=True):
         """Run the check on a pull request reporting `items` against an issue that lists `wanted` criteria.
 
         Issues #31 and #32 exist as closed and open; `closed` and `opened` name which numbers are which.
+        `rows` maps an entry id to the `CorrespondenceRow` its line of the generated registry is given, and
+        `registry=False` removes the registry: the produced engine's own registry has no ambiguity row.
         """
         self.produced()
+        path = os.path.join(self.out, "src", NAME, "Generated", "Registry.g.cs")
+        if not registry:
+            os.remove(path)
+        elif rows:
+            generated = self.read(f"src/{NAME}/Generated/Registry.g.cs")
+            for entry_id, row in rows.items():
+                generated, changed = re.subn(r'(new\(\s*"' + re.escape(entry_id) + r'",\s*EntryStatus\.\w+,\s*CorrespondenceRow\.)\w+',
+                                             r"\g<1>" + row, generated)
+                self.assertEqual(changed, 1, entry_id)
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(generated)
         tests = os.path.join(self.out, "tests", f"{NAME}.Tests")
         os.makedirs(tests, exist_ok=True)
         with open(os.path.join(tests, "AltitudeLimitTests.cs"), "w", encoding="utf-8") as handle:
@@ -5065,10 +5078,29 @@ class TestPrPolicyAcceptanceCriteria(RailsInAGitEngine):
 
     def test_a_status_may_be_bold_and_only_one_is_taken(self):
         # mutation: delete the SECOND_STATUS finding
-        done = self.criteria(f"MET, {'`' + self.TEST + '`'}", f"**MET**: `{self.TEST}`", f"**MET** or BLOCKED on #32, `{self.TEST}`")
+        done = self.criteria(f"MET. {'`' + self.TEST + '`'}", f"**MET**: `{self.TEST}`", f"**MET** or BLOCKED on #32, `{self.TEST}`")
         self.refused(done, "acceptance criterion 3 begins with more than one status")
         self.assertNotIn("acceptance criterion 1", done.stdout)
         self.assertNotIn("acceptance criterion 2", done.stdout)
+
+    def test_a_status_is_followed_by_a_separator_and_is_not_qualified(self):
+        # mutation 1: delete the `STATUS_SEPARATOR` test; mutation 2: delete the `QUALIFIED` test (each red alone)
+        refused = "does not stand in exactly one status"
+        qualified = ("MET NOT MET", "MET, partly", "MET (escalated)", "MET but not `X`", "**MET** partially", "MET — not yet",
+                     "MET — partly", "**MET** escalated", "AUTHORIZED INCOMPLETE (partly)", "AUTHORIZED INCOMPLETE, escalated")
+        for lead in qualified:
+            done = self.criteria(f"{lead} `{self.TEST}`", self.met(), self.met())
+            self.refused(done, f"acceptance criterion 1 {refused}")
+            self.assertNotIn("acceptance criterion 2", done.stdout, lead)
+        for lead in ("MET.", "MET:", "MET -", "MET —", "**MET**", "**MET**:", "**MET —**"):
+            done = self.criteria(f"{lead} `{self.TEST}` shows it.", self.met(), self.met())
+            self.passed(done, "acceptance criteria: 3 reported, MET 3")
+
+    def test_a_qualifier_after_the_first_full_stop_is_not_a_second_status(self):
+        # mutation: scan the whole item for the qualifier, not the text before its first full stop
+        done = self.criteria(f"MET — `{self.TEST}` shows it. It is not partly done, and `Some.Dotted_name` is not escalated.",
+                             self.met(), self.met())
+        self.passed(done, "acceptance criteria: 3 reported, MET 3")
 
     # --- MET -----------------------------------------------------------------------------------
 
@@ -5104,6 +5136,19 @@ class TestPrPolicyAcceptanceCriteria(RailsInAGitEngine):
                              self.met())
         self.refused(done, "acceptance criterion 2 is MET with no evidence")
         self.assertNotIn("acceptance criterion 1", done.stdout)
+
+    def test_a_quoted_command_is_a_line_of_the_evidence_not_a_part_of_one(self):
+        # mutation 1: `line in (span, "$ " + span)` -> `span in self.evidence`; mutation 2: delete the bare-runner test
+        evidence = "./scripts/validate.sh --brief\n  $ dotnet test --filter Something --no-build\ndotnet\n$ python3\npython3"
+        refused = "is MET with no evidence"
+        for span in ("dotnet test --filter Something", "dotnet test", "./scripts/validate.sh", "validate.sh --brief",
+                     "dotnet", "python3", "$ dotnet", "pytest"):
+            done = self.criteria(f"MET — `{span}` printed it.", self.met(), self.met(), evidence=evidence)
+            self.refused(done, f"acceptance criterion 1 {refused}")
+            self.assertNotIn("acceptance criterion 2", done.stdout, span)
+        for span in ("./scripts/validate.sh --brief", "dotnet test --filter Something --no-build"):
+            done = self.criteria(f"MET — `{span}` printed it.", self.met(), self.met(), evidence=evidence)
+            self.passed(done, "acceptance criteria: 3 reported, MET 3")
 
     def test_met_resting_on_a_decline_needs_an_authority(self):
         # mutation: delete the `declined and not context.authority(...)` finding
@@ -5151,23 +5196,58 @@ class TestPrPolicyAcceptanceCriteria(RailsInAGitEngine):
         forms = {
             "a decision record": f"{self.DECISION}",
             "a closed issue": "#31",
-            "an overlay entry": "`altitude-limit` ambiguity",
+            "a map entry the registry gives UnresolvedAmbiguity": "`altitude-limit` ambiguity",
+            "a map entry the registry gives DefinedElsewhere": "`night-operation` definedElsewhere",
             "a correspondence row": "correspondence row 3",
         }
         for what, authority in forms.items():
             done = self.criteria(f"AUTHORIZED INCOMPLETE — Authority: {authority}. Limitation: gate-true requests decline.",
-                                 self.met(), self.met())
+                                 self.met(), self.met(), rows={"altitude-limit": "UnresolvedAmbiguity"})
             self.passed(done, "acceptance criteria: 3 reported, MET 2, AUTHORIZED INCOMPLETE 1")
 
-    def test_an_entry_the_generated_map_names_is_an_authority_though_it_has_no_overlay_file(self):
-        # mutation: look the id up in overlay/ only
+    def test_an_entry_the_generated_registry_names_is_an_authority_though_it_has_no_overlay_file(self):
+        # mutation: `map_basis_holds` looks the id up in overlay/ only (no registry read)
         self.produced()
-        generated = self.read(f"src/{NAME}/Generated/MapEntries.g.cs")
-        known = [i for i in re.findall(r'new\(\s*"([a-z0-9-]+)"', generated) if i != "altitude-limit"][0]
+        generated = self.read(f"src/{NAME}/Generated/Registry.g.cs")
+        known = [i for i, row in re.findall(r'new\(\s*"([a-z0-9-]+)",\s*EntryStatus\.\w+,\s*CorrespondenceRow\.(\w+)', generated)
+                 if row == "DefinedElsewhere" and i != "altitude-limit"][0]
         self.assertFalse(os.path.exists(os.path.join(self.out, "overlay", f"{known}.json")))
         done = self.criteria(f"AUTHORIZED INCOMPLETE — Authority: `{known}` definedElsewhere. Limitation: declined.",
                              self.met(), self.met())
         self.passed(done, "AUTHORIZED INCOMPLETE 1")
+
+    def test_a_map_basis_is_an_authority_only_where_the_registry_gives_the_matching_row(self):
+        # mutation: `row == wanted` -> `True` in map_basis_holds (any row of a known id is the basis)
+        refused = "acceptance criterion 1 is AUTHORIZED INCOMPLETE with no authority this check can verify"
+        cases = (
+            # (authority, rows given to the registry, passes)
+            ("`night-operation` definedElsewhere", None, True),
+            ("`night-operation` ambiguity", None, False),                       # DefinedElsewhere is not ambiguity
+            ("`altitude-limit` definedElsewhere", None, False),                  # overlay/altitude-limit.json exists; row NotBuilt
+            ("`altitude-limit` ambiguity", None, False),                         # NotBuilt
+            ("`altitude-limit` ambiguity", {"altitude-limit": "UnresolvedAmbiguity"}, True),
+            ("`altitude-limit` definedElsewhere", {"altitude-limit": "UnresolvedAmbiguity"}, False),
+            ("`no-such-entry` ambiguity", {"altitude-limit": "UnresolvedAmbiguity"}, False),
+        )
+        for authority, rows, passes in cases:
+            done = self.criteria(f"AUTHORIZED INCOMPLETE — Authority: {authority}. Limitation: declined.",
+                                 self.met(), self.met(), rows=rows)
+            if passes:
+                self.passed(done, "AUTHORIZED INCOMPLETE 1")
+            else:
+                self.refused(done, refused)
+                self.assertNotIn("no generated registry", done.stdout, authority)
+
+    def test_a_map_basis_cannot_be_verified_where_no_registry_can_be_read(self):
+        # mutation: `if not registries:` -> `if False:` ... with the id found in no registry that is the same refusal,
+        # so the mutation is `return False` -> `return True` in that branch
+        for authority in ("`night-operation` definedElsewhere", "`altitude-limit` ambiguity"):
+            done = self.criteria(f"AUTHORIZED INCOMPLETE — Authority: {authority}. Limitation: declined.",
+                                 self.met(), self.met(), registry=False)
+            self.refused(done, "acceptance criterion 1 is AUTHORIZED INCOMPLETE with no authority this check can verify",
+                         "no generated registry (`src/<Engine>/Generated/Registry.g.cs`) can be read",
+                         "cannot be verified")
+            self.assertEqual(done.stdout.count("no generated registry"), 1)
 
     def test_every_correspondence_row_of_the_specification_is_one_the_check_knows(self):
         # mutation: add a ninth row to CORRESPONDENCE_ROWS

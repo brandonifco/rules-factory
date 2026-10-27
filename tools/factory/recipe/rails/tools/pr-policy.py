@@ -1137,7 +1137,18 @@ TEST_NAME = re.compile(r"(?:[A-Za-z_]\w*\.)*([A-Za-z_]\w*)(?:\(\))?")
 COMMAND = re.compile(r"(?:\$\s*)?(?:\S*/)?(?:validate\.sh|dotnet|python3|pytest)\b|(?:\$\s*)?\./\S")
 DECISION_RECORD = re.compile(r"docs/decisions/[A-Za-z0-9._-]+\.md")
 ISSUE_REFERENCE = re.compile(r"(?<![\w&/])#(\d+)\b")
-MAP_BASIS = re.compile(r"`([A-Za-z0-9][A-Za-z0-9._-]*)`\s+`?(?:definedElsewhere|ambiguity)`?(?![A-Za-z])")
+MAP_BASIS = re.compile(r"`([A-Za-z0-9][A-Za-z0-9._-]*)`\s+`?(definedElsewhere|ambiguity)`?(?![A-Za-z])")
+# The row of the engine's generated registry (`src/<Engine>/Generated/Registry.g.cs`, written by the factory's
+# registry generator as `new("<id>", EntryStatus.<Status>, CorrespondenceRow.<Row>, [...])`) that a map basis needs.
+MAP_BASIS_ROW = {"definedElsewhere": "DefinedElsewhere", "ambiguity": "UnresolvedAmbiguity"}
+REGISTRY_ENTRY = re.compile(r'new\(\s*"([^"\\]+)"\s*,\s*EntryStatus\.\w+\s*,\s*CorrespondenceRow\.(\w+)\s*,')
+# What may follow a status: a separator, or the end of the bold. A qualifier before the first full stop of a MET
+# ("MET but not", "MET (escalated)", "MET NOT MET", "MET, partly") says it is not one status.
+STATUS_SEPARATOR = re.compile(r"\s*(?:[.:\u2014\u2013-]|$)")
+QUALIFIED = re.compile(r"(?i)\b(?:not|never|cannot|partly|partially|escalated)\b|n't\b|\bno longer\b")
+FULL_STOP = re.compile(r"\.(?:\s|$)")
+# The runners whose command is more than the word: `dotnet` and `python3` alone name no command line.
+RUNNERS_NEEDING_ARGUMENTS = frozenset({"dotnet", "python3", "pytest"})
 CORRESPONDENCE_ROW = re.compile(r"(?i)\bcorrespondence row (\d+)\b")
 # A criterion that rests on a decline. The names are the kernel's reasons; "declin" is the word.
 DECLINE = re.compile(r"Unresolved|MissingRulesData|RequiresInterpretation|UnsupportedRule|UnsupportedInteraction"
@@ -1197,7 +1208,8 @@ class Criteria:
         self.evidence = evidence
         self.findings = findings
         self._tests = None
-        self._map_entries = None
+        self._registries = None
+        self._registry_reported = False
         # The linked issue was read already, for its labels: its state is known and is not asked for again.
         self._issues = {}
         if linked and isinstance(linked.get("number"), int):
@@ -1208,17 +1220,35 @@ class Criteria:
             self._tests = declared_tests()
         return any(declares(text, name) for text in self._tests)
 
-    def entry_known(self, entry_id):
-        if (ROOT / "overlay" / f"{entry_id}.json").is_file():
-            return True
-        if self._map_entries is None:
-            self._map_entries = []
-            for path in sorted(ROOT.glob("src/*/Generated/MapEntries.g.cs")):
+    def registries(self):
+        """The text of each generated registry in this tree, `src/<Engine>/Generated/Registry.g.cs`."""
+        if self._registries is None:
+            self._registries = []
+            for path in sorted(ROOT.glob("src/*/Generated/Registry.g.cs")):
                 try:
-                    self._map_entries.append(path.read_text(encoding="utf-8", errors="replace"))
+                    self._registries.append(path.read_text(encoding="utf-8", errors="replace"))
                 except OSError:
                     continue
-        return any(f'"{entry_id}"' in text for text in self._map_entries)
+        return self._registries
+
+    def map_basis_holds(self, entry_id, basis):
+        """True when the engine's generated registry gives `entry_id` the row `basis` names; else False.
+
+        `definedElsewhere` needs `CorrespondenceRow.DefinedElsewhere` and `ambiguity` needs
+        `CorrespondenceRow.UnresolvedAmbiguity`. Where no registry can be read the form cannot be verified: that is
+        a finding of its own, made once, and the form is not an authority.
+        """
+        registries = self.registries()
+        if not registries:
+            if not self._registry_reported:
+                self._registry_reported = True
+                self.findings.append("no generated registry (`src/<Engine>/Generated/Registry.g.cs`) can be read in "
+                                     "this tree, so a map basis (`<id>` definedElsewhere or ambiguity) cannot be "
+                                     "verified and is not an authority; name another form.")
+            return False
+        wanted = MAP_BASIS_ROW[basis]
+        return any(row == wanted for text in registries for name, row in REGISTRY_ENTRY.findall(text)
+                   if name == entry_id)
 
     def state(self, number):
         """The state of issue `number`, upper case, or None when it cannot be read. One `gh issue view` per number."""
@@ -1241,9 +1271,9 @@ class Criteria:
         for number in dict.fromkeys(ISSUE_REFERENCE.findall(text)):
             if self.state(int(number)) == "CLOSED":
                 found.append(f"#{number}")
-        for entry_id in MAP_BASIS.findall(text):
-            if self.entry_known(entry_id):
-                found.append(f"`{entry_id}`")
+        for entry_id, basis in MAP_BASIS.findall(text):
+            if self.map_basis_holds(entry_id, basis):
+                found.append(f"`{entry_id}` {basis}")
         for row in CORRESPONDENCE_ROW.findall(text):
             if int(row) in CORRESPONDENCE_ROWS:
                 found.append(f"correspondence row {row}")
@@ -1257,13 +1287,25 @@ class Criteria:
             named = TEST_NAME.fullmatch(span)
             if named and self.test_declared(named.group(1)):
                 found.append(span)
-            elif COMMAND.match(span) and span in self.evidence:
+            elif COMMAND.match(span) and self.quoted_command(span):
                 found.append(span)
         return found
 
+    def quoted_command(self, span):
+        """True when a line of the evidence is `span` or `$ ` and `span`, after leading whitespace.
+
+        A runner's bare name (`dotnet`, `python3`) is not a command line, even where a line equals it.
+        """
+        words = span.split()
+        if len(words) < 2 and (words[0].rsplit("/", 1)[-1] if words else "") in RUNNERS_NEEDING_ARGUMENTS:
+            return False
+        return any(line in (span, "$ " + span) for line in (raw.strip() for raw in self.evidence.splitlines()))
+
 
 AUTHORITY_FORMS = ("a `docs/decisions/<file>.md` that exists in this tree, `#<n>` of a closed issue, a map entry "
-                   "as `<id>` followed by `definedElsewhere` or `ambiguity`, or `correspondence row <k>`")
+                   "as `<id>` followed by `definedElsewhere` or `ambiguity` that the engine's generated registry gives "
+                   "`CorrespondenceRow.DefinedElsewhere` or `CorrespondenceRow.UnresolvedAmbiguity`, or "
+                   "`correspondence row <k>`")
 
 
 def fields_of(text):
@@ -1290,6 +1332,23 @@ def check_criterion(number, text, context, findings):
     if SECOND_STATUS.match(after):
         findings.append(f"acceptance criterion {number} begins with more than one status; a criterion stands in "
                         f"exactly one of {', '.join(STATUSES)}.")
+        return None
+    rest = text[named.end():]
+    if status == "BLOCKED":
+        pass  # "BLOCKED on #n" is its form, and a BLOCKED always fails; only a status that can pass is held to one word.
+    elif rest.startswith("**"):
+        rest = rest[2:]
+    elif not STATUS_SEPARATOR.match(rest):
+        rest = None
+    if rest is not None and status == "MET":
+        lead = FULL_STOP.split(BACKTICKED.sub(" ", rest), 1)[0]
+        if QUALIFIED.search(lead):
+            rest = None
+    if rest is None:
+        findings.append(f"acceptance criterion {number} does not stand in exactly one status: `{status}` must be "
+                        f"followed by `.`, `:`, `-`, an em dash or the end of the bold, and a MET is not qualified "
+                        f"(\"not\", \"partly\", \"partially\", \"escalated\") before its first full stop. \"MET NOT MET\", "
+                        f"\"MET, partly\" and \"MET (escalated)\" are not statuses (AGENTS.md section 6).")
         return None
     own = fields_of(text)
     if status == "MET":

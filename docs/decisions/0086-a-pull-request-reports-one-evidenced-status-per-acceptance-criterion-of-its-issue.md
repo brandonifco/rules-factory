@@ -31,7 +31,8 @@ does not settle. So a criterion stands in one of three states, and only the firs
 1. **MET.** Shown by a test or a command whose output the pull request carries.
 2. **AUTHORIZED INCOMPLETE.** Not fully performed, where a named authority permits that limitation: a
    decision record, an answered owner decision, or the map basis the specification turns into a decline (an
-   entry's `definedElsewhere`, or an `unresolved` ambiguity, or the correspondence row it reaches). The
+   entry the engine's generated registry gives `CorrespondenceRow.DefinedElsewhere` or
+   `CorrespondenceRow.UnresolvedAmbiguity`, or the correspondence row it reaches). The
    limitation is stated. This may merge: it is section 6's legitimate decline, made visible.
 3. **BLOCKED.** It waits on an open owner question. Under section 6 the issue awaits a decision, and the
    pull request cannot close it: the rule `check_issue_labels` already applies to the linked issue, applied
@@ -40,18 +41,24 @@ does not settle. So a criterion stands in one of three states, and only the firs
 **The check.** Whenever the linked issue's `## Acceptance criteria` lists at least one checklist item
 (`- [ ]` or `- [x]`), whatever the review class and including a `factory produce` update, the pull request
 must carry an `## Acceptance criteria` section with one numbered item per criterion, `1.` to `N.` in the
-issue's order, each beginning with exactly one status (bold is fine). A missing section, a different count or
-order, or any other status ("NOT MET", "partly met", "escalated", "met") fails, naming the criterion.
+issue's order, each beginning with exactly one status (bold is fine) followed by a separator (`.`, `:`, `-`, an
+em dash or the end of the bold). A missing section, a different count or order, or any other status ("NOT
+MET", "partly met", "escalated", "met") fails, naming the criterion; so does a MET that is qualified before
+its first full stop ("MET NOT MET", "MET, partly", "MET (escalated)", "MET but not ...").
 
 - **MET** needs a backticked test method declared in a `*.cs` file under the engine's `tests/`, or a
-  backticked command quoted verbatim in `## Tests and evidence`. A review verdict, a mutation score and a CI
+  backticked command that a line of `## Tests and evidence` is: the line equals the span, or is `$ ` followed
+  by it, after leading whitespace. A runner's bare name (`dotnet`, `python3`) is no command line. A review verdict, a mutation score and a CI
   result are not that. A MET that rests on a decline (its text names `Unresolved`, `MissingRulesData`,
   `RequiresInterpretation`, `UnsupportedRule`, `UnsupportedInteraction` or `OutsideCurrentScope`, or says
   "declin...") also needs an `Authority:`, because a decline fulfils a criterion only where something
   authorizes it as doing so.
 - **AUTHORIZED INCOMPLETE** needs `Authority:` naming a reference the check can verify (a
   `docs/decisions/<file>.md` in the tree; `#<n>` of a closed issue of this repository; a backticked map
-  entry id followed by `definedElsewhere` or `ambiguity`, where the engine knows the id; or
+  entry id followed by `definedElsewhere` or `ambiguity`, where the engine's generated registry
+  (`src/<Engine>/Generated/Registry.g.cs`) gives that id `CorrespondenceRow.DefinedElsewhere` or
+  `CorrespondenceRow.UnresolvedAmbiguity` respectively (where no registry can be read the form is not
+  verifiable, and the check says so); or
   `correspondence row <k>` for a row the map specification's table has) and a non-empty `Limitation:`.
 - **BLOCKED** always fails. It names the issue it waits on: open, the finding says the issue awaits that
   decision and this pull request cannot close it; closed, it says to classify the criterion again; none
