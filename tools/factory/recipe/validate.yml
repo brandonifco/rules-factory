@@ -26,11 +26,13 @@ jobs:
     # under it with it.
     # The runner is a repository variable's JSON label or list of labels (decisions 0079, 0080).
     # FACTORY_RUNS_ON_TRUSTED takes only a run the owner started on a commit of this repository,
-    # and a dispatcher outside this file checks that again before any runner exists for it;
-    # FACTORY_RUNS_ON takes every run and is for private repositories alone. Neither set, the
-    # hosted ubuntu-24.04. A malformed value fails the workflow, and an offline runner is waited
-    # for, never replaced by a hosted one.
-    runs-on: ${{ fromJSON(github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && (github.event.pull_request.head.repo.full_name || !github.event.pull_request && github.repository) == github.repository && vars.FACTORY_RUNS_ON_TRUSTED || vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}
+    # and a dispatcher outside this file checks that again before any runner exists for it; any
+    # other run is hosted. FACTORY_RUNS_ON takes every run and is for private repositories alone,
+    # or is exactly "ubuntu-24.04" on the owner's decision. There is no default (decision 0087):
+    # neither set, both, or a value that is not exactly one of those, and the job fails at once on
+    # a runner group that does not exist. An offline runner is waited for, never replaced by a
+    # hosted one.
+    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON_TRUSTED == '["self-hosted","linux","x64","factory-ci"]' && !vars.FACTORY_RUNS_ON && (github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && (github.event.pull_request.head.repo.full_name || !github.event.pull_request && github.repository) == github.repository && '["self-hosted","linux","x64","factory-ci"]' || '"ubuntu-24.04"') || vars.FACTORY_RUNS_ON == '["self-hosted","linux","x64","factory-ci"]' && !vars.FACTORY_RUNS_ON_TRUSTED && '["self-hosted","linux","x64","factory-ci"]' || vars.FACTORY_RUNS_ON == '"ubuntu-24.04"' && !vars.FACTORY_RUNS_ON_TRUSTED && '"ubuntu-24.04"' || '{"group":"FACTORY_RUNS_ON or FACTORY_RUNS_ON_TRUSTED is unset or invalid"}') }}
     timeout-minutes: 20
     steps:
       - name: Checkout

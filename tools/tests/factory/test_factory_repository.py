@@ -196,8 +196,10 @@ def evaluate_expression(text, context):
     compared ignoring case, as GitHub compares them), then `&&`, then `||`. `a && b` is `a` when
     `a` is falsy and `b` otherwise; `a || b` is `a` when it is truthy and `b` otherwise; the falsy
     values are null, false, 0 and the empty string. `fromJSON` parses its argument, and a value
-    that is not JSON fails the workflow, here as ValueError. Anything else is refused rather than
-    guessed at, so the line cannot grow a construct the model silently misreads.
+    that is not JSON fails the workflow, here as ValueError. `contains(search, item)` is whether a
+    string holds another, ignoring case (a null is the empty string), or an array an equal element.
+    Anything else is refused rather than guessed at, so the line cannot grow a construct the model
+    silently misreads.
     """
     tokens, at = [], 0
     while at < len(text):
@@ -238,6 +240,15 @@ def evaluate_expression(text, context):
             value = disjunction()
             take(")")
             return json.loads(value)
+        if kind == "name" and got == "contains":
+            take("(")
+            search = disjunction()
+            take(",")
+            item = disjunction()
+            take(")")
+            if isinstance(search, list):
+                return any(isinstance(v, str) and isinstance(item, str) and v.casefold() == item.casefold() for v in search)
+            return str(item or "").casefold() in str(search or "").casefold()
         if kind == "name":
             value = context
             for part in got.split("."):
@@ -302,18 +313,56 @@ def run_context(actor=OWNER, triggering_actor=None, head=REPOSITORY, event="push
             "vars": dict(variables or {})}
 
 
+HOSTED = "ubuntu-24.04"
+#: What GitHub is asked for when the variables do not configure a runner: a runner group that does
+#: not exist, which GitHub fails at once with a check run (decision 0087).
+UNSET = json.loads(repository.RUNS_ON_UNSET)
+EXACT = json.dumps(LABELS, separators=(",", ":"))
+
+#: The routing contract (decision 0087), configuration by configuration: what a trusted run and
+#: what any other run is sent to. Every recipe's line must answer exactly this.
+ROUTES = {
+    "private, standing runner": ({"FACTORY_RUNS_ON": EXACT}, LABELS, LABELS),
+    "public, served by dispatch": ({"FACTORY_RUNS_ON_TRUSTED": EXACT}, LABELS, HOSTED),
+    "deliberately hosted (factory-ci disable)": ({"FACTORY_RUNS_ON": '"ubuntu-24.04"'}, HOSTED, HOSTED),
+    "neither variable": ({}, UNSET, UNSET),
+    "both empty": ({"FACTORY_RUNS_ON": "", "FACTORY_RUNS_ON_TRUSTED": ""}, UNSET, UNSET),
+    "trusted empty, other unset": ({"FACTORY_RUNS_ON_TRUSTED": ""}, UNSET, UNSET),
+    "both set (contradictory)": ({"FACTORY_RUNS_ON": EXACT, "FACTORY_RUNS_ON_TRUSTED": EXACT}, UNSET, UNSET),
+    "both set, one hosted": ({"FACTORY_RUNS_ON": '"ubuntu-24.04"', "FACTORY_RUNS_ON_TRUSTED": EXACT}, UNSET, UNSET),
+    "not JSON": ({"FACTORY_RUNS_ON": "self-hosted"}, UNSET, UNSET),
+    "truncated JSON": ({"FACTORY_RUNS_ON": '["self-hosted",'}, UNSET, UNSET),
+    "trusted not JSON": ({"FACTORY_RUNS_ON_TRUSTED": "{'a': 1}"}, UNSET, UNSET),
+    "trusted names a hosted runner": ({"FACTORY_RUNS_ON_TRUSTED": '"ubuntu-24.04"'}, UNSET, UNSET),
+    "trusted names another hosted runner": ({"FACTORY_RUNS_ON_TRUSTED": '["ubuntu-latest"]'}, UNSET, UNSET),
+    "another hosted release": ({"FACTORY_RUNS_ON": '"ubuntu-latest"'}, UNSET, UNSET),
+    "the hosted release in a list": ({"FACTORY_RUNS_ON": '["ubuntu-24.04"]'}, UNSET, UNSET),
+    "self-hosted, not factory-ci": ({"FACTORY_RUNS_ON": '["self-hosted"]'}, UNSET, UNSET),
+    "a label that only starts with factory-ci": ({"FACTORY_RUNS_ON": '["factory-ci-other"]'}, UNSET, UNSET),
+    "the labels in another case": ({"FACTORY_RUNS_ON": EXACT.upper()}, LABELS, LABELS),
+    "the labels reordered": ({"FACTORY_RUNS_ON": '["linux","self-hosted","x64","factory-ci"]'}, UNSET, UNSET),
+    "the labels respaced": ({"FACTORY_RUNS_ON_TRUSTED": json.dumps(LABELS)}, UNSET, UNSET),
+    "factory-ci alone": ({"FACTORY_RUNS_ON": '["factory-ci"]'}, UNSET, UNSET),
+    "a duplicate key whose last value is hosted (review of 4879e9e)": (
+        {"FACTORY_RUNS_ON_TRUSTED": '{"labels":"factory-ci","labels":"ubuntu-latest"}'}, UNSET, UNSET),
+    "the same, in FACTORY_RUNS_ON": ({"FACTORY_RUNS_ON": '{"labels":"factory-ci","labels":"ubuntu-latest"}'}, UNSET, UNSET),
+    "trusted malformed but naming factory-ci (review of 4879e9e)": ({"FACTORY_RUNS_ON_TRUSTED": '["factory-ci"'}, UNSET, UNSET),
+    "the hosted literal in the trusted variable": ({"FACTORY_RUNS_ON_TRUSTED": '"ubuntu-24.04"'}, UNSET, UNSET),
+    "hosted, spelled in another case": ({"FACTORY_RUNS_ON": '"UBUNTU-24.04"'}, HOSTED, HOSTED),
+}
+
+
 class TestEveryRecipeSelectsItsRunnerThroughOneLine(unittest.TestCase):
-    """Runner selection is the repository's (0079), and trust decides which variable applies (0080)."""
+    """Runner selection is the repository's (0079), trust decides which variable applies (0080), and
+    nothing the variables fail to say becomes a hosted runner (0087)."""
 
     def test_the_line_is_held_in_one_place_and_says_what_it_means(self):
         self.assertEqual("FACTORY_RUNS_ON", repository.RUNS_ON_VARIABLE)
         self.assertEqual("FACTORY_RUNS_ON_TRUSTED", repository.RUNS_ON_TRUSTED_VARIABLE)
         self.assertEqual("ubuntu-24.04", repository.RUNS_ON_DEFAULT)
-        self.assertEqual(
-            "    runs-on: ${{ fromJSON(github.actor == github.repository_owner && github.triggering_actor == "
-            "github.repository_owner && (github.event.pull_request.head.repo.full_name || !github.event.pull_request "
-            "&& github.repository) == github.repository && vars.FACTORY_RUNS_ON_TRUSTED || vars.FACTORY_RUNS_ON || "
-            "'\"ubuntu-24.04\"') }}", repository.RUNS_ON_LINE)
+        self.assertEqual('"ubuntu-24.04"', repository.RUNS_ON_HOSTED)
+        self.assertEqual({"group": "FACTORY_RUNS_ON or FACTORY_RUNS_ON_TRUSTED is unset or invalid"}, UNSET)
+        self.assertTrue(repository.RUNS_ON_LINE.startswith("    runs-on: ${{ fromJSON("), repository.RUNS_ON_LINE)
 
     def test_each_of_the_four_recipes_carries_exactly_that_line_and_no_other_runs_on(self):
         recipes = repository.recipes(NAME)
@@ -332,6 +381,7 @@ class TestEveryRecipeSelectsItsRunnerThroughOneLine(unittest.TestCase):
             "the owner's push": (run_context(), True),
             "the owner's pull request from a branch here": (run_context(event="pull_request"), True),
             "a status the owner posted": (run_context(event="status"), True),
+            "an issue event the owner caused": (run_context(event="issues"), True),
             "the owner, spelled in another case": (run_context(actor="BrandonIfco", triggering_actor="BRANDONIFCO"), True),
             "an outsider's fork pull request": (run_context(actor="outsider", head="outsider/engine", event="pull_request"), False),
             "the owner labelling an outsider's fork pull request": (
@@ -350,47 +400,64 @@ class TestEveryRecipeSelectsItsRunnerThroughOneLine(unittest.TestCase):
         context = dict(context, vars=dict(variables))
         return evaluate_runs_on(line, context)
 
-    def test_a_repository_with_neither_variable_runs_every_run_on_the_pinned_hosted_release(self):
+    def test_every_run_in_every_configuration_goes_where_the_contract_says(self):
+        """The routing table: a trusted run and any other run, against every configuration."""
         for relative, line in self.recipe_lines().items():
-            for what, (context, _) in self.runs().items():
-                for variables in ({}, {"FACTORY_RUNS_ON": "", "FACTORY_RUNS_ON_TRUSTED": ""}):
-                    self.assertEqual("ubuntu-24.04", self.runner(line, context, variables), f"{relative}: {what}")
+            for configuration, (variables, trusted_to, other_to) in ROUTES.items():
+                for what, (context, trusted) in self.runs().items():
+                    self.assertEqual(trusted_to if trusted else other_to, self.runner(line, context, variables),
+                                     f"{relative}: {configuration}: {what}")
 
-    def test_factory_runs_on_sends_every_run_there_exactly_as_0079_did(self):
-        """A private repository's variable means what it meant: whoever started the run."""
-        value = json.dumps(LABELS, separators=(",", ":"))
-        for relative, line in self.recipe_lines().items():
-            for what, (context, _) in self.runs().items():
-                self.assertEqual(LABELS, self.runner(line, context, {"FACTORY_RUNS_ON": value}), f"{relative}: {what}")
-
-    def test_factory_runs_on_trusted_takes_the_owner_s_runs_here_and_nothing_else(self):
-        value = json.dumps(LABELS, separators=(",", ":"))
-        for relative, line in self.recipe_lines().items():
-            for what, (context, trusted) in self.runs().items():
-                expected = LABELS if trusted else "ubuntu-24.04"
-                self.assertEqual(expected, self.runner(line, context, {"FACTORY_RUNS_ON_TRUSTED": value}),
-                                 f"{relative}: {what} is {'trusted' if trusted else 'not trusted'}")
-
-    def test_with_both_set_an_untrusted_run_takes_factory_runs_on(self):
-        """Why a public repository must never hold FACTORY_RUNS_ON: it catches every run the other refuses."""
-        both = {"FACTORY_RUNS_ON_TRUSTED": '["trusted"]', "FACTORY_RUNS_ON": '["everyone"]'}
+    def test_a_hosted_runner_is_chosen_only_where_the_contract_authorizes_one(self):
+        """Hosted is reachable two ways: an untrusted run beside FACTORY_RUNS_ON_TRUSTED, and the
+        owner's explicit `"ubuntu-24.04"` in FACTORY_RUNS_ON. Never by absence or by a bad value."""
+        authorized = {"public, served by dispatch", "deliberately hosted (factory-ci disable)",
+                      "hosted, spelled in another case"}  # GitHub compares strings ignoring case
+        for configuration, (variables, trusted_to, other_to) in ROUTES.items():
+            if HOSTED in (trusted_to, other_to):
+                self.assertIn(configuration, authorized)
         for relative, line in self.recipe_lines().items():
             for what, (context, trusted) in self.runs().items():
-                self.assertEqual(["trusted"] if trusted else ["everyone"], self.runner(line, context, both),
-                                 f"{relative}: {what}")
+                if trusted:
+                    self.assertEqual(LABELS, self.runner(line, context, {"FACTORY_RUNS_ON_TRUSTED": EXACT}), f"{relative}: {what}")
 
-    def test_a_malformed_variable_fails_and_does_not_fall_back_to_a_hosted_runner(self):
-        owner = run_context()
+    def test_a_value_that_does_not_configure_a_runner_fails_the_job_and_never_reaches_fromjson(self):
+        """A bad value must give a failed check run, not a workflow file issue, so it never reaches
+        `fromJSON` unless it names factory-ci or is the hosted literal."""
         for relative, line in self.recipe_lines().items():
             for name in ("FACTORY_RUNS_ON", "FACTORY_RUNS_ON_TRUSTED"):
-                for variable in ("self-hosted", "[\"self-hosted\",", "{'a': 1}"):
-                    with self.assertRaises(ValueError, msg=f"{relative}: {name}={variable}"):
-                        self.runner(line, owner, {name: variable})
+                for value in ("self-hosted", '["self-hosted",', "{'a': 1}", "[]", "null", "0", "factory-ci", "ubuntu-24.04"):
+                    for what, (context, _) in self.runs().items():
+                        self.assertEqual(UNSET, self.runner(line, context, {name: value}), f"{relative}: {name}={value!r}: {what}")
 
-    def test_the_default_comes_from_the_recipe_s_own_line(self):
-        other = repository.RUNS_ON_LINE.replace("ubuntu-24.04", "ubuntu-26.04")
-        self.assertEqual("ubuntu-26.04", evaluate_runs_on(other, run_context()),
-                         "the model reads the literal out of the line it is given")
+    def test_no_variable_value_reaches_fromjson_so_the_runner_is_always_one_of_three_fixed_values(self):
+        """Whatever the variables hold, the line chooses between its own literals: factory-ci's labels, the
+        pinned hosted release, or the group that cannot exist. A value is compared, never parsed, so no
+        spelling of a hosted runner, no duplicate key and no malformed text can pass through."""
+        values = ("", "x", "[]", "{}", "null", "true", "0", '"ubuntu-24.04"', '"ubuntu-latest"', '["ubuntu-24.04"]',
+                  '["factory-ci"', '["factory-ci"]', '{"labels":"factory-ci","labels":"ubuntu-latest"}', EXACT, EXACT + " ",
+                  " " + EXACT, EXACT.replace(",", ", "), EXACT.upper(), '["self-hosted","linux","x64","factory-ci","gpu"]',
+                  '{"group":"default"}', "'\"ubuntu-24.04\"'")
+        allowed = (LABELS, HOSTED, UNSET)
+        for relative, line in self.recipe_lines().items():
+            for trusted_value in (None,) + values:
+                for every_value in (None,) + values:
+                    variables = {k: v for k, v in (("FACTORY_RUNS_ON_TRUSTED", trusted_value), ("FACTORY_RUNS_ON", every_value)) if v is not None}
+                    for what, (context, _) in self.runs().items():
+                        got = self.runner(line, context, variables)
+                        self.assertIn(got, allowed, f"{relative}: {variables}: {what}")
+
+    def test_routing_reads_only_the_run_and_the_variables_so_a_busy_or_offline_runner_changes_nothing(self):
+        """Nothing in the line can see a runner's state: an offline VM is waited for, never replaced."""
+        for relative, line in self.recipe_lines().items():
+            expression = re.fullmatch(r"\s*runs-on: \$\{\{ (.*) \}\}", line).group(1)
+            names = {match.group("name") for match in _TOKEN.finditer(expression) if match.group("name")}
+            self.assertEqual(set(), {n for n in names if n.split(".")[0] not in ("github", "vars", "fromJSON", "contains")},
+                             relative)
+
+    def test_the_failure_is_a_runner_group_that_cannot_exist_on_a_personal_account(self):
+        self.assertEqual({"group"}, set(UNSET))
+        self.assertNotIn("'", repository.RUNS_ON_UNSET)
 
     def test_the_model_reads_precedence_as_github_does(self):
         """The line leans on `&&` binding tighter than `||` and `!` tighter than both."""
@@ -399,6 +466,8 @@ class TestEveryRecipeSelectsItsRunnerThroughOneLine(unittest.TestCase):
         self.assertIs(False, evaluate_expression("!'x' && 'y'", {}))
         self.assertIs(True, evaluate_expression("'A' == 'a'", {}))
         self.assertIsNone(evaluate_expression("github.event.pull_request.head", {"github": {"event": {}}}))
+        self.assertIs(True, evaluate_expression("contains('[\"Factory-CI\"]', '\"factory-ci\"')", {}))
+        self.assertIs(False, evaluate_expression("contains(vars.x, 'a')", {"vars": {}}))
 
 
 class TestAnEmbeddedEngineTakesItsRailsFromTheRoot(RepositoryCase):
@@ -447,7 +516,9 @@ class TestAnEmbeddedEngineTakesItsRailsFromTheRoot(RepositoryCase):
             self.assertEqual(repository.render(recipes[relative], "engine", relative).encode("utf-8"), data,
                              f"{relative}: the root holds the rendering, byte for byte")
             self.assertEqual(repository._sha256(data), record[relative], f"{relative}: the record hashes these bytes")
-            self.assertEqual("ubuntu-24.04", evaluate_runs_on(runs_on_lines(text)[0], run_context()))
+            line = runs_on_lines(text)[0]
+            self.assertEqual(UNSET, evaluate_runs_on(line, run_context()), "no variable, no runner, and no hosted default")
+            self.assertEqual(LABELS, evaluate_runs_on(line, dict(run_context(), vars={"FACTORY_RUNS_ON": EXACT})))
 
     def test_a_deeper_engine_path_is_rendered_with_that_path(self):
         host, _engine, _ = self.embedded("products/engine")

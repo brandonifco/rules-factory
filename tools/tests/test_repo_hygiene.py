@@ -38,7 +38,9 @@ print(json.dumps(state.get(key, [])))
 """
 
 ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
-       "GIT_COMMITTER_EMAIL": "t@t", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+       "GIT_COMMITTER_EMAIL": "t@t", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+       # Not the factory-ci host, whatever machine the suite runs on: CiAudit below is.
+       "FACTORY_CI_DISPATCHER_UNIT": os.path.join(os.sep, "nonexistent", "factory-ci-dispatch.service")}
 
 
 class Hygiene(unittest.TestCase):
@@ -603,6 +605,62 @@ class Hygiene(unittest.TestCase):
         code, output = self.run_tool()
         self.assertEqual(code, 3, output)
         self.assertIn("NOT CHECKED merged pull requests (gh pr list: gh: not logged in)", output)
+
+    def test_on_the_dispatcher_s_host_a_failing_audit_is_said_at_session_start(self):
+        """The run a session starts with reads the dispatcher's verdict (0087)."""
+        unit, record = os.path.join(self.tmp, "factory-ci-dispatch.service"), os.path.join(self.tmp, "audit.json")
+        open(unit, "w").close()
+        with open(record, "w", encoding="utf-8") as handle:
+            json.dump({"checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "verdict": "fail",
+                       "findings": ["brandonifco/x: FACTORY_RUNS_ON_TRUSTED is not set"]}, handle)
+        with mock.patch.dict(os.environ, {"FACTORY_CI_DISPATCHER_UNIT": unit, "FACTORY_CI_AUDIT_RECORD": record}):
+            code, output = self.run_tool()
+        self.assertEqual(1, code, output)
+        self.assertIn("LEFTOVER  ci-route  factory-ci audit failed", output)
+        self.assertIn("brandonifco/x: FACTORY_RUNS_ON_TRUSTED is not set", output)
+
+
+class CiAudit(unittest.TestCase):
+    """On the host that runs the dispatcher, its hourly audit is read at every session start (0087)."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.unit = os.path.join(self._tmp.name, "factory-ci-dispatch.service")
+        self.record = os.path.join(self._tmp.name, "audit.json")
+        open(self.unit, "w").close()
+        self.now = 1_800_000_000
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def leftovers(self, record=None, unit=True):
+        if record is not None:
+            with open(self.record, "w", encoding="utf-8") as handle:
+                json.dump(record, handle)
+        report = hygiene.Report()
+        hygiene.check_ci_audit(report, unit=self.unit if unit else self.unit + ".absent", record=self.record, now=self.now)
+        return [(kind, what) for kind, what, _ in report.leftovers]
+
+    def at(self, seconds_ago):
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self.now - seconds_ago))
+
+    def test_a_recent_passing_audit_is_nothing_to_report(self):
+        self.assertEqual([], self.leftovers({"checked_at": self.at(600), "verdict": "pass", "findings": []}))
+
+    def test_a_failing_audit_is_a_leftover_naming_its_findings(self):
+        found = self.leftovers({"checked_at": self.at(600), "verdict": "fail",
+                                "findings": ["brandonifco/x: FACTORY_RUNS_ON is not set"]})
+        self.assertEqual(1, len(found))
+        self.assertEqual("ci-route", found[0][0])
+        self.assertIn("brandonifco/x: FACTORY_RUNS_ON is not set", found[0][1])
+
+    def test_a_stale_or_missing_audit_is_a_leftover(self):
+        self.assertEqual("ci-route", self.leftovers({"checked_at": self.at(4 * 3600), "verdict": "pass"})[0][0])
+        os.remove(self.record)
+        self.assertEqual("ci-route", self.leftovers()[0][0])
+
+    def test_a_machine_that_does_not_run_the_dispatcher_is_not_asked(self):
+        self.assertEqual([], self.leftovers(unit=False))
 
 
 if __name__ == "__main__":

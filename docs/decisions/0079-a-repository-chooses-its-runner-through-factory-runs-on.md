@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — 2026-10-09. **Partially superseded by [0080](0080-execution-trust-not-visibility-decides-whether-a-run-reaches-the-self-hosted-runner.md)** (2026-10-10): point 4 below, that public
+Accepted — 2026-10-09. **Point 2 (a repository without the variable runs hosted) is superseded by
+[0087](0087-no-run-reaches-a-hosted-runner-because-its-routing-is-missing.md)** (2026-10-27): there is no hosted
+default, and hosted is chosen only by `FACTORY_RUNS_ON` = `"ubuntu-24.04"`. **Partially superseded by [0080](0080-execution-trust-not-visibility-decides-whether-a-run-reaches-the-self-hosted-runner.md)** (2026-10-10): point 4 below, that public
 repositories never use the self-hosted runner, is replaced by trusted dispatch, and the runner line
 by 0080's, which reads `FACTORY_RUNS_ON_TRUSTED` first and evaluates as this one does where that is
 unset. Everything else here stands. Records the owner's direction on

@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — 2026-10-19, on the owner's directive that every owner-authorized CI run executes on the
+Accepted — 2026-10-19. **Point 1's acceptance of 0079's line on a private repository is superseded by
+[0087](0087-no-run-reaches-a-hosted-runner-because-its-routing-is-missing.md)** (2026-10-27): 0079's and 0080's
+lines end in a hosted default and are findings everywhere. Decided on the owner's directive that every owner-authorized CI run executes on the
 existing KVM runners (`factory-ci-1` at home, `factory-ci-2` at the office where configured) and that
 GitHub-hosted compute is never a fallback. Implements
 [#687](https://github.com/brandonifco/rules-factory/issues/687). Extends

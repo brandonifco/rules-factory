@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted — 2026-10-10. Records the owner's Governance Edict 0080,
+Accepted — 2026-10-10. **Point 5's runner line is superseded by
+[0087](0087-no-run-reaches-a-hosted-runner-because-its-routing-is-missing.md)** (2026-10-27), whose line has no
+hosted default: an untrusted run is still hosted beside `FACTORY_RUNS_ON_TRUSTED`, and a run whose variables
+name no runner fails. Records the owner's Governance Edict 0080,
 [#637](https://github.com/brandonifco/rules-factory/issues/637). **Partially supersedes
 [0079](0079-a-repository-chooses-its-runner-through-factory-runs-on.md)**: its point 4 (public
 repositories never use the self-hosted runner) is replaced by what follows, and its runner line by

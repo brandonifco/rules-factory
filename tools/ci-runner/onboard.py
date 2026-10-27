@@ -46,17 +46,26 @@ SCHEMA = "factory-ci/onboarding/1"
 RUNS_ON_VARIABLE = "FACTORY_RUNS_ON"
 TRUSTED_VARIABLE = "FACTORY_RUNS_ON_TRUSTED"
 #: tools/factory/repository.py's RUNS_ON_LINE, which every recipe carries as its only `runs-on`; a test
-#: holds this copy to the original.
-RUNS_ON_LINE = ("    runs-on: ${{ fromJSON(github.actor == github.repository_owner && github.triggering_actor == "
-                "github.repository_owner && (github.event.pull_request.head.repo.full_name || "
-                "!github.event.pull_request && github.repository) == github.repository && vars.FACTORY_RUNS_ON_TRUSTED "
-                "|| vars.FACTORY_RUNS_ON || '\"ubuntu-24.04\"') }}")
-#: The line decision 0079 put in every recipe before 0080 (tools/factory/repository.py at aebb15b, `RUNS_ON_LINE`).
-#: On a private repository whose FACTORY_RUNS_ON is exactly factory-ci's labels and whose FACTORY_RUNS_ON_TRUSTED is
-#: unset it routes exactly as RUNS_ON_LINE does (0080 point 5), and its hosted default is reachable only when the
-#: variable is unset, which the routing check already fails. On a public repository it would send a fork's run to
-#: the variable and the owner's to hosted, so it is accepted on a private repository only.
+#: holds this copy to the original. It has no hosted default (decision 0087).
+RUNS_ON_LINE = ('    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON_TRUSTED == \'["self-hosted","linux","x64","factory-ci"]\' && '
+                '!vars.FACTORY_RUNS_ON && (github.actor == github.repository_owner && github.triggering_actor == '
+                'github.repository_owner && (github.event.pull_request.head.repo.full_name || !github.event.pull_request && '
+                'github.repository) == github.repository && \'["self-hosted","linux","x64","factory-ci"]\' || \'"ubuntu-24.04"\') '
+                '|| vars.FACTORY_RUNS_ON == \'["self-hosted","linux","x64","factory-ci"]\' && !vars.FACTORY_RUNS_ON_TRUSTED && '
+                '\'["self-hosted","linux","x64","factory-ci"]\' || vars.FACTORY_RUNS_ON == \'"ubuntu-24.04"\' && '
+                '!vars.FACTORY_RUNS_ON_TRUSTED && \'"ubuntu-24.04"\' || \'{"group":"FACTORY_RUNS_ON or FACTORY_RUNS_ON_TRUSTED is '
+                'unset or invalid"}\') }}')
+#: The two lines that came before it, each ending in a hosted default that any run takes when the variables
+#: do not name a runner: an implicit fallback, a finding wherever it is found (decision 0087). Named so that
+#: the finding says which line it is and what replaces it. 0080's (repository.py at 852818f, `RUNS_ON_LINE`):
+RUNS_ON_LINE_0080 = ("    runs-on: ${{ fromJSON(github.actor == github.repository_owner && github.triggering_actor == "
+                     "github.repository_owner && (github.event.pull_request.head.repo.full_name || "
+                     "!github.event.pull_request && github.repository) == github.repository && vars.FACTORY_RUNS_ON_TRUSTED "
+                     "|| vars.FACTORY_RUNS_ON || '\"ubuntu-24.04\"') }}")
+#: 0079's, the line before 0080 (repository.py at aebb15b).
 RUNS_ON_LINE_0079 = "    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '\"ubuntu-24.04\"') }}"
+#: Both, by the decision that put the line in every recipe.
+LEGACY = {"0079": RUNS_ON_LINE_0079, "0080": RUNS_ON_LINE_0080}
 
 
 def _load(name):
@@ -285,11 +294,31 @@ def local_callee(uses):
     return value.startswith("./")
 
 
-def scan_workflows(github, repository, branch, private=False):
-    """[{path, job, runs_on, ok}] for every job of every workflow file on the default branch, and the
-    paths read. ok is True (the contract line), "0079" (decision 0079's line, on a private repository only),
-    False, or None (a job with no `runs-on` of its own that calls a workflow file of the same repository,
-    which is scanned itself: reported, not failed; a callee in another repository is False). No workflow directory is no entries."""
+def classify(jobs):
+    """[{job, runs_on, ok, legacy?, uses?}] for the jobs of one workflow file (`jobs_of`). ok is True (the
+    contract line), False (any other `runs-on`; `legacy` names decision 0079's or 0080's line, whose hosted
+    default is an implicit fallback, decision 0087), or None (a job with no `runs-on` of its own that calls a
+    workflow file of the same repository, which is scanned itself: reported, not failed; a callee in another
+    repository is False). The one judgement of a job's runner, for a repository on GitHub and for a checkout."""
+    entries = []
+    for job in jobs:
+        legacy = None
+        if job["runs_on"] is not None or job["line"] is not None:
+            ok = job["line"] == RUNS_ON_LINE.strip()
+            legacy = next((name for name, line in LEGACY.items() if job["line"] == line.strip()), None)
+        else:
+            # A callee in this repository is a file this scan reads itself; one in another repository
+            # (owner/repo/...@ref) could run hosted, unseen.
+            ok = None if job["uses"] and not job["unreadable"] and local_callee(job["uses"]) else False
+        entries.append({"job": job["job"], "runs_on": job["runs_on"], "ok": ok,
+                        **({"legacy": legacy} if legacy else {}), **({"uses": job["uses"]} if job["uses"] else {})})
+    return entries
+
+
+def scan_workflows(github, repository, branch):
+    """[{path, job, runs_on, ok, ...}] for every job of every workflow file on the default branch (`classify`),
+    and the paths read. A file with no job it can read is one entry with ok False. No workflow directory is no
+    entries."""
     ref = urllib.parse.quote(branch, safe="")
     listing = read(github, "the workflow directory", f"/repos/{repository}/contents/.github/workflows?ref={ref}", missing_ok=True)
     if listing is None:
@@ -308,17 +337,67 @@ def scan_workflows(github, repository, branch, private=False):
         except ValueError as error:
             raise Unreadable(f"could not read workflow {path}: {error}") from error
         jobs = jobs_of(text)
-        for job in jobs:
-            if job["runs_on"] is not None or job["line"] is not None:
-                ok = job["line"] == RUNS_ON_LINE.strip()
-                if not ok and private and job["line"] == RUNS_ON_LINE_0079.strip():
-                    ok = "0079"
-            else:
-                # A callee in this repository is a file this scan reads itself; one in another repository
-                # (owner/repo/...@ref) could run hosted, unseen.
-                ok = None if job["uses"] and not job["unreadable"] and local_callee(job["uses"]) else False
-            entries.append({"path": path, "job": job["job"], "runs_on": job["runs_on"], "ok": ok,
-                            **({"uses": job["uses"]} if job["uses"] else {})})
+        entries.extend({"path": path, **entry} for entry in classify(jobs))
+        if not jobs:
+            entries.append({"path": path, "job": None, "runs_on": None, "ok": False})
+    return entries, paths
+
+
+def workflow_findings(repository, private, branch, workflows, paths, hosted_jobs=None):
+    """The findings about the workflows of `repository` (`scan_workflows`, or `scan_checkout`), against the
+    contract line and runners.json's deliberately hosted jobs. Marks each listed hosted job's entry ok
+    "hosted". One rule for a repository on GitHub and for a checkout of it, so what the gate accepts before a
+    merge is what onboard-check and the audit accept after it."""
+    findings = []
+    if not paths:
+        findings.append(f"no workflow on {branch}: nothing in the repository asks for a runner")
+    listed_jobs = [item for item in (load_hosted_jobs() if hosted_jobs is None else hosted_jobs)
+                   if str(item.get("repository")).casefold() == repository.casefold()]
+    for item in listed_jobs:
+        path, job = item.get("workflow"), item.get("job")
+        where = f"runners.json lists {path} job {job} as deliberately hosted ({item.get('reason')})"
+        found = next((e for e in workflows if e["path"] == path and e["job"] == job), None)
+        if private:
+            findings.append(f"{where}, but {repository} is private: only a public repository may have a hosted job "
+                            f"(decision 0084), and a private one's jobs run on the VM")
+        elif found is None:
+            findings.append(f"{where}, but there is no such job on {branch}: remove the entry (a stale entry would "
+                            f"exempt whatever is written there next)")
+        elif found["runs_on"] != item.get("runs_on"):
+            findings.append(f"{where} with runs-on {item.get('runs_on')!r}, but it now has runs-on {found['runs_on']!r}")
+        else:
+            found["ok"], found["hosted"] = "hosted", item.get("reason")
+    for entry in workflows:
+        if entry["ok"] is False and entry.get("legacy"):
+            findings.append(f"{entry['path']}: job {entry['job']} carries decision {entry['legacy']}'s runner line, whose "
+                            f"hosted default ubuntu-24.04 is an implicit fallback: any run whose variables name no runner "
+                            f"goes hosted (decision 0087); re-produce from a factory that contains 0087, or copy RUNS_ON_LINE")
+            continue
+        if entry["ok"] is False:
+            where = f"{entry['path']}: " + (f"job {entry['job']}" if entry["job"] else "no job could be read")
+            if entry.get("uses") and entry["runs_on"] is None:
+                findings.append(f"{where} calls {entry['uses']}, a workflow this check cannot read (another repository's, "
+                                f"or written in a form it cannot parse): it could run on a hosted runner unseen; "
+                                f"call a workflow file of this repository instead")
+                continue
+            findings.append(f"{where} has runs-on {entry['runs_on']!r}, not the contract line (RUNS_ON_LINE): a literal "
+                            f"label bypasses the repository's variables, and a hosted one is a silent fallback "
+                            f"(a job that stays hosted on purpose is listed in runners.json)")
+    return findings
+
+
+def scan_checkout(root):
+    """[{path, job, runs_on, ok, ...}] for every job of every workflow file under `root`/.github/workflows, as
+    `scan_workflows` reads them from GitHub, and the paths read."""
+    directory = os.path.join(root, ".github", "workflows")
+    if not os.path.isdir(directory):
+        return [], []
+    paths = sorted(f".github/workflows/{name}" for name in os.listdir(directory) if re.search(r"\.ya?ml$", name))
+    entries = []
+    for path in paths:
+        with open(os.path.join(root, *path.split("/")), encoding="utf-8") as handle:
+            jobs = jobs_of(handle.read())
+        entries.extend({"path": path, **entry} for entry in classify(jobs))
         if not jobs:
             entries.append({"path": path, "job": None, "runs_on": None, "ok": False})
     return entries, paths
@@ -330,15 +409,18 @@ def now_utc():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+#: The one value either variable may hold to name factory-ci, as `repository.RUNS_ON_LABELS` (a test holds the two
+#: together). The runner line compares a variable with it, ignoring case as GitHub compares strings, and emits its own
+#: copy (decision 0087), so a value this check passes is a value the line routes; a reordered or respaced list is not.
+LABELS_VALUE = json.dumps(list(LABELS), separators=(",", ":"))
+
+
 def variable_value(variables, name):
-    """(set?, the labels it holds or None when it is not a JSON list of strings)."""
+    """(set?, whether it is exactly LABELS_VALUE, ignoring case)."""
     if name not in variables:
-        return False, None
-    try:
-        value = json.loads(variables[name])
-    except (TypeError, ValueError):
-        return True, None
-    return True, value if isinstance(value, list) and all(isinstance(v, str) for v in value) else None
+        return False, False
+    value = variables[name]
+    return True, isinstance(value, str) and value.casefold() == LABELS_VALUE.casefold()
 
 
 def verify(repository, github, now=None, hosted_jobs=None):
@@ -358,7 +440,7 @@ def verify(repository, github, now=None, hosted_jobs=None):
     runners = pages(github, "the repository's runners", f"/repos/{repository}/actions/runners", "runners")
     variables = {item.get("name"): item.get("value") for item in
                  pages(github, "the repository's variables", f"/repos/{repository}/actions/variables", "variables", size=30)}
-    workflows, paths = scan_workflows(github, repository, branch, private)
+    workflows, paths = scan_workflows(github, repository, branch)
 
     names, findings = authorized_names(), []
     listed = []
@@ -380,11 +462,11 @@ def verify(repository, github, now=None, hosted_jobs=None):
             findings.append("no authorized runner is online with exactly factory-ci's labels: a job would queue until "
                             f"one is (`factory-ci onboard {repository}` on the KVM host)")
         if not seen[0]:
-            findings.append(f"{RUNS_ON_VARIABLE} is not set: the repository's jobs ask for a hosted runner "
-                            f"(`factory-ci onboard {repository}` sets it)")
-        elif not (seen[1] is not None and exact(seen[1])):
-            findings.append(f"{RUNS_ON_VARIABLE} is {variables[RUNS_ON_VARIABLE]!r}, not exactly "
-                            f"{json.dumps(list(LABELS))}")
+            findings.append(f"{RUNS_ON_VARIABLE} is not set: every job fails at once, asking for no runner "
+                            f"(decision 0087; `factory-ci onboard {repository}` sets it)")
+        elif not seen[1]:
+            findings.append(f"{RUNS_ON_VARIABLE} is {variables[RUNS_ON_VARIABLE]!r}, not exactly {LABELS_VALUE}: "
+                            f"every job fails at once (decision 0087; `factory-ci onboard {repository}` sets it)")
         if trusted_seen[0]:
             findings.append(f"{TRUSTED_VARIABLE} is set on a private repository: it is for trusted dispatch of a public one")
         mode = "standing"
@@ -394,40 +476,13 @@ def verify(repository, github, now=None, hosted_jobs=None):
                             f"(decision 0080; `factory-ci deregister {repository}`)")
         if seen[0]:
             findings.append(f"public repository with {RUNS_ON_VARIABLE} set: every fork pull request would ask for it")
-        if not (trusted_seen[1] is not None and exact(trusted_seen[1])):
+        if not trusted_seen[1]:
             findings.append(f"{TRUSTED_VARIABLE} is "
-                            f"{'not set' if not trusted_seen[0] else repr(variables[TRUSTED_VARIABLE]) + ', not exactly ' + json.dumps(list(LABELS))}"
-                            f": a public repository's owner runs reach the VM only through it (`factory-ci trust`, `enable`)")
+                            f"{'not set' if not trusted_seen[0] else repr(variables[TRUSTED_VARIABLE]) + ', not exactly ' + LABELS_VALUE}"
+                            f": a public repository's owner runs reach the VM only through it, and without it every job "
+                            f"fails at once (decision 0087; `factory-ci trust`, `enable`)")
         mode = "dispatch"
-    if not paths:
-        findings.append(f"no workflow on {branch}: nothing in the repository asks for a runner")
-    listed_jobs = [item for item in (load_hosted_jobs() if hosted_jobs is None else hosted_jobs)
-                   if str(item.get("repository")).casefold() == repository.casefold()]
-    for item in listed_jobs:
-        path, job = item.get("workflow"), item.get("job")
-        where = f"runners.json lists {path} job {job} as deliberately hosted ({item.get('reason')})"
-        found = next((e for e in workflows if e["path"] == path and e["job"] == job), None)
-        if private:
-            findings.append(f"{where}, but {repository} is private: only a public repository may have a hosted job "
-                            f"(decision 0084), and a private one's jobs run on the VM")
-        elif found is None:
-            findings.append(f"{where}, but there is no such job on {branch}: remove the entry (a stale entry would "
-                            f"exempt whatever is written there next)")
-        elif found["runs_on"] != item.get("runs_on"):
-            findings.append(f"{where} with runs-on {item.get('runs_on')!r}, but it now has runs-on {found['runs_on']!r}")
-        else:
-            found["ok"], found["hosted"] = "hosted", item.get("reason")
-    for entry in workflows:
-        if entry["ok"] is False:
-            where = f"{entry['path']}: " + (f"job {entry['job']}" if entry["job"] else "no job could be read")
-            if entry.get("uses") and entry["runs_on"] is None:
-                findings.append(f"{where} calls {entry['uses']}, a workflow this check cannot read (another repository's, "
-                                f"or written in a form it cannot parse): it could run on a hosted runner unseen; "
-                                f"call a workflow file of this repository instead")
-                continue
-            findings.append(f"{where} has runs-on {entry['runs_on']!r}, not the contract line (RUNS_ON_LINE): a literal "
-                            f"label bypasses the repository's variables, and a hosted one is a silent fallback "
-                            f"(a job that stays hosted on purpose is listed in runners.json)")
+    findings.extend(workflow_findings(repository, private, branch, workflows, paths, hosted_jobs))
     return {
         "schema": SCHEMA, "repository": repository, "visibility": visibility, "default_branch": branch,
         "checked_at": now() if callable(now) else (now or now_utc()),
@@ -513,8 +568,8 @@ def onboard(repository, github, guest, vm, now=None, log=print, wait=0, sleep=ti
     variables = {item.get("name"): item.get("value") for item in
                  pages(github, "the repository's variables", f"/repos/{repository}/actions/variables", "variables", size=30)}
     have = variable_value(variables, RUNS_ON_VARIABLE)
-    if have[1] is None or not exact(have[1]):
-        body = {"name": RUNS_ON_VARIABLE, "value": json.dumps(list(LABELS), separators=(",", ":"))}
+    if not have[1]:
+        body = {"name": RUNS_ON_VARIABLE, "value": LABELS_VALUE}
         if have[0]:
             write(github, f"set {RUNS_ON_VARIABLE}", "PATCH", f"/repos/{repository}/actions/variables/{RUNS_ON_VARIABLE}", body)
         else:
@@ -554,10 +609,6 @@ def report(record, out=None):
         if entry["ok"] is None:
             print(f"  note {entry['path']}: job {entry['job']} uses {entry['uses']} and names no runner of its own: "
                   f"the called workflow, {entry['uses']}, is scanned itself", file=out)
-    for entry in record["workflows"]:
-        if entry["ok"] == "0079":
-            print(f"  note {entry['path']}: job {entry['job']} carries decision 0079's runner line, accepted on a "
-                  f"private repository only", file=out)
     for entry in record["workflows"]:
         if entry["ok"] == "hosted":
             print(f"  note {entry['path']}: job {entry['job']} stays on {entry['runs_on']} on purpose "
