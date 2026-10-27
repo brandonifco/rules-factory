@@ -36,7 +36,8 @@ Usage:
                                        fork approval, and `onboard-check` of every repository the
                                        guest serves; exit 1 on any finding (factory-ci audit). The
                                        dispatcher runs it itself every AUDIT_EVERY seconds (an
-                                       hour), logs each finding and writes AUDIT_RECORD
+                                       hour) as `audit-record PATH`, a child it does not wait
+                                       for, which logs each finding and writes AUDIT_RECORD
   dispatch.py timings OWNER/REPO [N]   queue and run time of the last N runs' jobs, by runner
   dispatch.py check                    prove the dispatcher's token file can do everything the
                                        dispatcher does, on every served repository
@@ -194,7 +195,8 @@ class GitHub:
     def _token(self):
         token = read_token_file(self.token_file) if self.token_file else None
         self.source = self.token_file if token else "the gh login"
-        return token or subprocess.run(["gh", "auth", "token"], check=True, capture_output=True, text=True).stdout.strip()
+        return token or subprocess.run(["gh", "auth", "token"], check=True, capture_output=True, text=True,
+                                       timeout=60).stdout.strip()
 
     def call(self, method, path, body=None, cache=False):
         url = path if path.startswith("http") else API + path
@@ -507,24 +509,51 @@ def run_forever():
     dispatcher = Dispatcher()
     log(f"dispatcher up: VM {VM}, labels {','.join(LABELS)}, poll {POLL}s, at most {JIT_MAX} one-job runners, "
         f"token from {dispatcher.github.source}")
-    audited = None
+    auditor = Auditor()
     while True:
         started = time.monotonic()
-        audited = tick(dispatcher, audited)
+        tick(dispatcher, auditor)
         time.sleep(max(1.0, POLL - (time.monotonic() - started)))
 
 
-def tick(dispatcher, audited, clock=time.monotonic, audit=None):
-    """One turn of the loop: a cycle, and the audit when it is due (first at start, then every
-    AUDIT_EVERY seconds). Returns when the audit last ran."""
+def tick(dispatcher, auditor):
+    """One turn of the loop: a cycle, then a look at the audit, which never waits for it."""
     try:
         dispatcher.cycle()
     except Exception as error:  # the loop outlives one bad cycle; systemd restarts it if it dies
         log(f"cycle failed: {type(error).__name__}: {error}")
-    if audited is None or clock() - audited >= AUDIT_EVERY:
-        (audit or audit_now)(dispatcher)
-        return clock()
-    return audited
+    auditor.poll()
+
+
+class Auditor:
+    """The audit the dispatcher runs at start and every AUDIT_EVERY seconds (decision 0087), beside the loop and
+    never in it: a child process (`dispatch.py audit-record`) that `poll` starts when one is due and looks at on
+    each turn, so a slow or hung read of GitHub, the guest or a credential cannot stop admission. One still
+    running after AUDIT_TIMEOUT is killed and recorded as a failure; one that cannot start is recorded too."""
+
+    def __init__(self, path=None, clock=time.monotonic, start=None):
+        self.path = path or AUDIT_RECORD
+        self.clock = clock
+        self.start = start or (lambda: subprocess.Popen(
+            [sys.executable, "-I", os.path.abspath(__file__), "audit-record", self.path], stdin=subprocess.DEVNULL))
+        self.process, self.started, self.last = None, None, None
+
+    def poll(self):
+        now = self.clock()
+        if self.process is not None:
+            if self.process.poll() is None:
+                if now - self.started < AUDIT_TIMEOUT:
+                    return
+                self.process.kill()
+                self.process.wait(timeout=10)
+                record_audit(self.path, "fail", [f"the audit did not finish within {AUDIT_TIMEOUT:.0f}s and was stopped"])
+            self.process = None
+        if self.last is None or now - self.last >= AUDIT_EVERY:
+            self.started = self.last = now
+            try:
+                self.process = self.start()
+            except OSError as error:
+                record_audit(self.path, "fail", [f"the audit could not start: {type(error).__name__}: {error}"])
 
 
 # -------------------------------------------------------------------------------------- audit --
@@ -532,8 +561,9 @@ def tick(dispatcher, audited, clock=time.monotonic, audit=None):
 #: `FACTORY_RUNS_ON` holding exactly this is the owner's decision that every run is hosted (`factory-ci
 #: disable`, decision 0087); a fork's run reads it too, and is hosted, so a public repository may hold it.
 HOSTED = '"ubuntu-24.04"'
-#: How often the dispatcher runs the audit itself, and where it leaves the last verdict.
+#: How often the dispatcher runs the audit itself, how long one may take, and where it leaves the last verdict.
 AUDIT_EVERY = float(os.environ.get("FACTORY_CI_AUDIT_EVERY", "3600"))
+AUDIT_TIMEOUT = float(os.environ.get("FACTORY_CI_AUDIT_TIMEOUT", "900"))
 AUDIT_RECORD = os.environ.get("FACTORY_CI_AUDIT_RECORD", os.path.expanduser("~/.local/state/factory-ci/audit.json"))
 
 
@@ -579,7 +609,7 @@ def audit(github=None, guest=None, out=None):
         if standing:
             findings.append(f"{repository}: public, with standing runner(s) {', '.join(standing)}")
         variables = {v["name"]: v["value"] for v in github.get(f"/repos/{repository}/actions/variables?per_page=30").get("variables", [])}
-        if "FACTORY_RUNS_ON" in variables and variables["FACTORY_RUNS_ON"] != HOSTED:
+        if "FACTORY_RUNS_ON" in variables and str(variables["FACTORY_RUNS_ON"]).casefold() != HOSTED:
             findings.append(f"{repository}: public, with FACTORY_RUNS_ON set: every fork pull request would ask for it "
                             f"(`factory-ci disable {repository}` makes it exactly {HOSTED}, which sends every run hosted)")
         if "FACTORY_RUNS_ON_TRUSTED" in variables and repository not in inventory["dispatch"].values():
@@ -604,23 +634,28 @@ def audit(github=None, guest=None, out=None):
     return (1 if findings else 0), findings
 
 
-def audit_now(dispatcher, path=AUDIT_RECORD):
-    """The audit, run by the dispatcher itself so a change made on GitHub is found without anyone asking
-    (decision 0087). It reads with the `gh` login, as `factory-ci audit` does, never the dispatch token file,
-    which is scoped to the public repositories. Each finding is logged; the verdict is written to `path`
-    (repo-hygiene.py reports a failing or stale one); an audit that could not finish is a failure too."""
-    checked = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+def audit_now(path=AUDIT_RECORD, github=None, guest=None):
+    """The audit as the dispatcher's child runs it (`dispatch.py audit-record PATH`): it reads with the `gh` login,
+    as `factory-ci audit` does, never the dispatch token file, which is scoped to the public repositories. Each
+    finding is logged; the verdict is written to `path` (repo-hygiene.py reports a failing or stale one); an audit
+    that could not finish is a failure too. Returns the exit code."""
     try:
-        code, findings = audit(GitHub(), dispatcher.guest, out=io.StringIO())
+        code, findings = audit(github or GitHub(), guest, out=io.StringIO())
     except Exception as error:  # an audit that did not finish is not a pass
         code, findings = 2, [f"the audit did not finish: {type(error).__name__}: {error}"]
+    record_audit(path, "pass" if code == 0 else "fail", findings)
+    return code
+
+
+def record_audit(path, verdict, findings):
+    """Log the findings and write the verdict where repo-hygiene.py reads it; returns the record."""
     for finding in findings:
         log(f"audit: X {finding}")
-    log(f"audit: {'pass' if code == 0 else 'FAIL'}, {len(findings)} finding(s)")
-    record = {"schema": "factory-ci/audit/1", "checked_at": checked, "verdict": "pass" if code == 0 else "fail",
-              "findings": findings}
+    log(f"audit: {'pass' if verdict == 'pass' else 'FAIL'}, {len(findings)} finding(s)")
+    record = {"schema": "factory-ci/audit/1", "checked_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "verdict": verdict, "findings": findings}
     try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         temporary = f"{path}.tmp"
         with open(temporary, "w", encoding="utf-8") as handle:
             json.dump(record, handle, indent=2)
@@ -629,7 +664,6 @@ def audit_now(dispatcher, path=AUDIT_RECORD):
     except OSError as error:
         log(f"audit: could not write {path}: {error}")
     return record
-
 
 def paginate(github, path):
     page, items = 1, []
@@ -721,6 +755,8 @@ def main(argv):
         run_forever()
     if argv[:1] == ["audit"]:
         return audit()[0]
+    if argv[:1] == ["audit-record"] and len(argv) == 2:
+        return audit_now(argv[1])
     if argv[:1] == ["check"]:
         return check()
     if argv[:1] == ["timings"] and len(argv) in (2, 3):

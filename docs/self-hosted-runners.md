@@ -19,7 +19,7 @@ installs. Nothing in it is a credential.
 | Everything else in a public repository: fork pull requests, bots (Dependabot), a re-run of either | GitHub-hosted `ubuntu-24.04` | The runner line sends them there unmodified. A fork that rewrites its `runs-on` gets a job that is never served and is cancelled. Hosted runs are free on public repositories. |
 | Publishing (`publish-map.yml`, a library's `publish.yml`) and manual maintenance workflows | GitHub-hosted `ubuntu-24.04` | Pinned in the file, and declared in `runners.json` `hosted_jobs` (public repositories only; see Adding a repository). The NuGet key is never on the VM. |
 | Every run of a repository the owner returned to hosted runners | GitHub-hosted `ubuntu-24.04` | `FACTORY_RUNS_ON` is exactly `"ubuntu-24.04"`, which `factory-ci disable` writes ([Hosted usage, and going back](#hosted-usage-and-going-back)). |
-| Any run whose variables name no runner: neither set, either empty, both set, or a value naming neither factory-ci nor exactly `"ubuntu-24.04"` | **none: the job fails at once** | The runner line asks for a runner group that cannot exist; GitHub fails the job when it is created, and its check reports `failure` ([decision 0087](decisions/0087-no-run-reaches-a-hosted-runner-because-its-routing-is-missing.md)). |
+| Any run whose variables name no runner: neither set, both set, or a value that is not exactly factory-ci's labels (or, in `FACTORY_RUNS_ON`, `"ubuntu-24.04"`): empty, malformed, reordered, another runner | **none: the job fails at once** | The runner line asks for a runner group that cannot exist; GitHub fails the job when it is created, and its check reports `failure` ([decision 0087](decisions/0087-no-run-reaches-a-hosted-runner-because-its-routing-is-missing.md)). |
 
 Every factory workflow, and this repository's own CI jobs, carry the one line `repository.py` holds
 as `RUNS_ON_LINE`. `FACTORY_RUNS_ON_TRUSTED` takes a run only when its actor and triggering actor
@@ -153,8 +153,10 @@ tools/ci-runner/factory-ci logs dispatch -n 200            # what the dispatcher
 tools/ci-runner/factory-ci timings brandonifco/rules-factory 20   # queue and run time, by runner
 ```
 
-**The audit runs itself.** The dispatcher runs `factory-ci audit` at start and every hour
-(`FACTORY_CI_AUDIT_EVERY`, seconds), with the `gh` login: the boundary, and `onboard-check` of every
+**The audit runs itself.** The dispatcher starts `factory-ci audit` at start and every hour
+(`FACTORY_CI_AUDIT_EVERY`, seconds) as a child process it does not wait for (`dispatch.py audit-record`;
+one still running after `FACTORY_CI_AUDIT_TIMEOUT`, 900 s, is killed and recorded as a failure), with the
+`gh` login: the boundary, and `onboard-check` of every
 repository the guest serves (its variables, runners, and every job's `runs-on` on its default branch).
 Each finding goes to its journal as `audit: X ...`, and the verdict to
 `~/.local/state/factory-ci/audit.json`. `tools/repo-hygiene.py`, which every Claude Code session in

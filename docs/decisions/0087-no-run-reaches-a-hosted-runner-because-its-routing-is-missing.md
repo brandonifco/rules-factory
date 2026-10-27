@@ -40,21 +40,27 @@ no runner, a check run concluded `failure`, and the annotation "Required runner 
 
    | Configuration | Trusted run | Any other run |
    |---|---|---|
-   | private, standing runner: `FACTORY_RUNS_ON` = factory-ci's labels | factory-ci | factory-ci |
-   | public, served by dispatch: `FACTORY_RUNS_ON_TRUSTED` = factory-ci's labels | factory-ci, admitted by the dispatcher | hosted `ubuntu-24.04` (0080: a fork's run) |
-   | deliberately hosted: `FACTORY_RUNS_ON` = exactly `"ubuntu-24.04"` (`factory-ci disable`, the owner's decision) | hosted | hosted |
-   | neither set; either empty; both set; a value that is not JSON, or names neither the `factory-ci` label nor exactly `"ubuntu-24.04"` | **fails** | **fails** |
+   | private, standing runner: `FACTORY_RUNS_ON` exactly `["self-hosted","linux","x64","factory-ci"]`, the other unset | factory-ci | factory-ci |
+   | public, served by dispatch: `FACTORY_RUNS_ON_TRUSTED` exactly those labels, the other unset | factory-ci, admitted by the dispatcher | hosted `ubuntu-24.04` (0080: a fork's run) |
+   | deliberately hosted: `FACTORY_RUNS_ON` exactly `"ubuntu-24.04"`, the other unset (`factory-ci disable`, the owner's decision) | hosted | hosted |
+   | anything else: neither set, both set, a value that is empty, malformed, reordered, respaced, or names another runner | **fails** | **fails** |
 
-   A value is passed to `fromJSON` only once it contains `"factory-ci"` or is exactly `"ubuntu-24.04"`, so
-   a malformed value cannot become a workflow file issue unless it names factory-ci. Every other case
-   asks for `RUNS_ON_UNSET`, the runner group `FACTORY_RUNS_ON or FACTORY_RUNS_ON_TRUSTED is unset or
-   invalid`, which a personal account cannot have: the job fails when it is created, with no runner, and
-   its required check reports `failure`. The line reads only the run and the variables, so a busy or
+   "Exactly" is GitHub's string comparison, which ignores case. No variable's value is ever passed to
+   `fromJSON`: the line compares each with the one value it may hold and emits a fixed runner of its own
+   (`RUNS_ON_LABELS`, `RUNS_ON_HOSTED` or `RUNS_ON_UNSET`), so no duplicate key, malformed text or other
+   spelling can carry a runner through, and no value can become a workflow file issue. A first version
+   handed a value to `fromJSON` once it merely contained `"factory-ci"`; the independent review of
+   `4879e9e` showed that `{"labels":"factory-ci","labels":"ubuntu-latest"}` parses to a hosted runner, and
+   that a malformed trusted value still sent a fork's run hosted. Every other case asks for
+   `RUNS_ON_UNSET`, the runner group `FACTORY_RUNS_ON or FACTORY_RUNS_ON_TRUSTED is unset or invalid`,
+   which a personal account cannot have: the job fails when it is created, with no runner, and its
+   required check reports `failure`. The line reads only the run and the variables, so a busy or
    offline runner changes nothing: its job waits, and is never sent elsewhere.
 
 2. **Values are judged in one place.** `onboard.verify` (`factory-ci onboard-check`, the rails' `Self-hosted
-   CI route` row) holds a repository's variables to the exact values above (private: `FACTORY_RUNS_ON`
-   exactly factory-ci's labels, no `FACTORY_RUNS_ON_TRUSTED`; public: the reverse, and no standing runner),
+   CI route` row) holds a repository's variables to the exact values above, compared as the line compares
+   them (private: `FACTORY_RUNS_ON` exactly `LABELS_VALUE`, no `FACTORY_RUNS_ON_TRUSTED`; public: the
+   reverse, and no standing runner), so a value it passes is a value the line routes,
    and every job's `runs-on` to `RUNS_ON_LINE` or a `hosted_jobs` entry. 0079's and 0080's lines are
    findings that say so: an implicit fallback, with the command that replaces it. The judgement of a
    workflow's jobs is one function, `workflow_findings`, applied to a repository on GitHub and to a
@@ -64,8 +70,11 @@ no runner, a check run concluded `failure`, and the annotation "Required runner 
 3. **The audit verifies every served repository, and runs itself.** `factory-ci audit` runs `verify` on
    every repository the guest serves, by a standing runner or by dispatch; a repository it cannot read is
    a finding ("NOT VERIFIED, which is not a pass"). The trusted dispatcher, the service that already runs
-   on the host at all times, runs that audit at start and every hour (`AUDIT_EVERY`), logs each finding,
-   and writes the verdict to `~/.local/state/factory-ci/audit.json`. `repo-hygiene.py`, which every Claude
+   on the host at all times, starts that audit at start and every hour (`AUDIT_EVERY`) as a child process
+   it does not wait for, so a slow or hung read cannot stop admission (the review of `4879e9e` found the
+   first version ran it inside the loop); one still running after `AUDIT_TIMEOUT` (15 minutes) is killed
+   and recorded as a failure. The audit logs each finding and writes the verdict to
+   `~/.local/state/factory-ci/audit.json`. `repo-hygiene.py`, which every Claude
    Code session in this repository runs at its start, reports a failing audit, or one missing or more than
    three hours old, as a `ci-route` leftover. So a variable deleted or a workflow edited on GitHub is found
    within the hour and said at the next session, with nobody asking. No scheduler is added.
@@ -83,7 +92,6 @@ no runner, a check run concluded `failure`, and the annotation "Required runner 
 ## What this does not decide
 
 The boundary does not move: the dispatcher's admission and the guest's hook decide what runs on the VM, as
-in 0080, and nothing here admits a run they would refuse. A value that names factory-ci but is not exactly
-its labels (`["factory-ci"]`) is routed there and reported by the audit; the runner it reaches still
-admits only what it would admit. A malformed value that contains `"factory-ci"` still fails as a workflow
-file issue. Neither is hosted.
+in 0080, and nothing here admits a run they would refuse. The variables keep their names and their JSON
+form, but 0079's "a label, or a list of labels" narrows to the values above, the only ones `onboard-check`
+accepted already; a repository holding another value was failing that check before this decision.

@@ -178,7 +178,11 @@ class TestVerify(unittest.TestCase):
 
     def test_routing_missing_wrong_or_with_the_trusted_variable_fails_a_private_repository(self):
         self.assertIn("FACTORY_RUNS_ON is not set", self.findings(FakeGitHub(runners=[runner()], variables={})))
-        for value in ('["ubuntu-24.04"]', '"ubuntu-24.04"', "not json", '["self-hosted","linux","x64"]', "[]"):
+        # The runner line compares the value with LABELS_VALUE and fails the job otherwise (0087): a list in another
+        # order, or with spaces, is a value the line does not route, so it is a finding here too.
+        for value in ('["ubuntu-24.04"]', '"ubuntu-24.04"', "not json", '["self-hosted","linux","x64"]', "[]",
+                      '["linux","self-hosted","x64","factory-ci"]', '["self-hosted", "linux", "x64", "factory-ci"]',
+                      '{"labels":"factory-ci","labels":"ubuntu-latest"}'):
             self.assertIn("not exactly", self.findings(FakeGitHub(runners=[runner()], variables={"FACTORY_RUNS_ON": value})), value)
         self.assertEqual("pass", verify(FakeGitHub(runners=[runner()], variables={"FACTORY_RUNS_ON": '["Self-Hosted","LINUX","x64","factory-ci"]'}))["verdict"])
         text = self.findings(FakeGitHub(runners=[runner()], variables={"FACTORY_RUNS_ON": EXACT, "FACTORY_RUNS_ON_TRUSTED": EXACT}))
@@ -749,6 +753,8 @@ class TestTheKitAgreesWithItself(unittest.TestCase):
         self.assertEqual(repository.RUNS_ON_LINE, onboard.RUNS_ON_LINE)
         self.assertEqual(repository.RUNS_ON_VARIABLE, onboard.RUNS_ON_VARIABLE)
         self.assertEqual(repository.RUNS_ON_TRUSTED_VARIABLE, onboard.TRUSTED_VARIABLE)
+        self.assertEqual(repository.RUNS_ON_LABELS, onboard.LABELS_VALUE, "the value the line compares is the one checked")
+        self.assertEqual(repository.RUNS_ON_HOSTED, dispatch.HOSTED)
 
     def test_factory_ci_has_the_commands_and_register_asks_before_it_replaces(self):
         script = self.read("factory-ci")
@@ -887,42 +893,102 @@ class TestTheAuditHoldsEveryServedRepositoryToTheRoute(unittest.TestCase):
         code, findings = self.audit(github)
         self.assertIn("brandonifco/hosted: public, with FACTORY_RUNS_ON set", "\n".join(findings))
 
-    def test_the_dispatcher_audits_at_start_and_every_hour_and_records_the_verdict(self):
+    def test_the_dispatcher_audits_at_start_and_every_hour_beside_the_loop(self):
+        started, now = [], [1000.0]
+
+        class Child:
+            def __init__(self):
+                self.done = False
+
+            def poll(self):
+                return 0 if self.done else None
+
+        def start():
+            started.append(Child())
+            return started[-1]
+
         class Dispatcher:
             cycles = 0
-            guest = self.guest
 
             def cycle(self):
                 Dispatcher.cycles += 1
 
-        audits, now = [], [1000.0]
-        clock = lambda: now[0]
-        audited = dispatch.tick(Dispatcher(), None, clock, audits.append)
-        self.assertEqual((1, 1), (len(audits), Dispatcher.cycles))
-        now[0] += dispatch.AUDIT_EVERY - 1
-        audited = dispatch.tick(Dispatcher(), audited, clock, audits.append)
-        self.assertEqual(1, len(audits), "not again within the hour")
-        now[0] += 1
-        dispatch.tick(Dispatcher(), audited, clock, audits.append)
-        self.assertEqual((2, 3), (len(audits), Dispatcher.cycles))
+        with tempfile.TemporaryDirectory() as directory:
+            auditor = dispatch.Auditor(os.path.join(directory, "audit.json"), clock=lambda: now[0], start=start)
+            dispatch.tick(Dispatcher(), auditor)
+            self.assertEqual((1, 1), (len(started), Dispatcher.cycles), "an audit starts with the dispatcher")
+            started[0].done = True
+            now[0] += dispatch.AUDIT_EVERY - 1
+            dispatch.tick(Dispatcher(), auditor)
+            self.assertEqual(1, len(started), "not again within the hour")
+            now[0] += 1
+            dispatch.tick(Dispatcher(), auditor)
+            self.assertEqual((2, 3), (len(started), Dispatcher.cycles))
 
-    def test_the_recorded_verdict_is_the_audit_s_and_an_audit_that_breaks_is_a_failure(self):
+    def test_a_hung_audit_never_stops_the_cycles_and_is_stopped_and_recorded_as_a_failure(self):
+        """Review of 4879e9e: the audit ran inside the loop, so a `gh auth token` that hung stopped admission."""
+        now, killed = [0.0], []
+
+        class Hung:
+            def poll(self):
+                return None
+
+            def kill(self):
+                killed.append(True)
+
+            def wait(self, timeout=None):
+                return -9
+
         class Dispatcher:
-            guest = self.guest
+            cycles = 0
+
+            def cycle(self):
+                Dispatcher.cycles += 1
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "audit.json")
+            auditor = dispatch.Auditor(path, clock=lambda: now[0], start=Hung)
+            with contextlib.redirect_stdout(io.StringIO()) as logged:
+                for _ in range(5):
+                    dispatch.tick(Dispatcher(), auditor)
+                    now[0] += 10
+                self.assertEqual(5, Dispatcher.cycles, "every turn cycles while the audit hangs")
+                self.assertEqual([], killed)
+                now[0] = dispatch.AUDIT_TIMEOUT + 1
+                dispatch.tick(Dispatcher(), auditor)
+            self.assertEqual([True], killed)
+            with open(path, encoding="utf-8") as handle:
+                record = json.load(handle)
+            self.assertEqual("fail", record["verdict"])
+            self.assertIn("did not finish within", record["findings"][0])
+            self.assertIn("audit: FAIL", logged.getvalue())
+
+    def test_an_audit_that_cannot_start_is_a_failure(self):
+        def start():
+            raise OSError("no python")
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "audit.json")
+            with contextlib.redirect_stdout(io.StringIO()):
+                dispatch.Auditor(path, start=start).poll()
+            with open(path, encoding="utf-8") as handle:
+                self.assertEqual("fail", json.load(handle)["verdict"])
+
+    def test_the_child_records_the_audit_s_verdict_and_an_audit_that_breaks_is_a_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, "state", "audit.json")
             for github, verdict in ((account(), "pass"), (account(public={"variables": {}}), "fail"), (None, "fail")):
-                factory = (lambda g=github: g) if github else (lambda: (_ for _ in ()).throw(RuntimeError("no gh login")))
                 original = dispatch.GitHub
-                dispatch.GitHub = factory
+                dispatch.GitHub = lambda: (_ for _ in ()).throw(RuntimeError("no gh login"))
                 try:
                     with contextlib.redirect_stdout(io.StringIO()) as logged:
-                        record = dispatch.audit_now(Dispatcher(), path)
+                        code = dispatch.audit_now(path, github, self.guest)
                 finally:
                     dispatch.GitHub = original
                 with open(path, encoding="utf-8") as handle:
-                    self.assertEqual(record, json.load(handle))
+                    record = json.load(handle)
                 self.assertEqual(verdict, record["verdict"])
+                self.assertEqual(0 if verdict == "pass" else (2 if github is None else 1), code)
                 self.assertIn(f"audit: {'pass' if verdict == 'pass' else 'FAIL'}", logged.getvalue())
                 if github is None:
                     self.assertIn("the audit did not finish: RuntimeError: no gh login", record["findings"][0])

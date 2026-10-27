@@ -63,29 +63,33 @@ WORKFLOWS = (".github/workflows/validate.yml",
 #: * `FACTORY_RUNS_ON_TRUSTED` (0080) sends only a run that `TRUSTED_RUN` holds: started, and if it
 #:   is a re-run re-started, by the repository's owner, on a commit of this repository and not of a
 #:   fork. A fork's pull request, a bot's run, or the owner's re-run of either is hosted, when this
-#:   variable names factory-ci. This is routing, not the boundary: a fork can rewrite this line in its own pull
+#:   variable holds exactly `RUNS_ON_LABELS`. This is routing, not the boundary: a fork can rewrite this line in its own pull
 #:   request, so the runner those labels name is never registered with a public repository at all.
 #:   A dispatcher (`tools/ci-runner/dispatch.py`) checks each queued job against the same rule and
 #:   the pushed commit before it starts a one-job runner for it, and the guest refuses any job the
 #:   dispatcher did not admit.
 #:
-#: There is no default (decision 0087). A hosted runner is chosen in two cases only: a run that is
-#: not trusted, in a repository whose `FACTORY_RUNS_ON_TRUSTED` names factory-ci and so says it is
-#: served by dispatch (0080: a fork's run stays hosted), and a repository whose `FACTORY_RUNS_ON`
-#: is exactly `RUNS_ON_HOSTED`, which `factory-ci disable` writes on the owner's decision. A value is read as
-#: JSON only once it names the `factory-ci` label or is exactly `RUNS_ON_HOSTED`, so the variables
-#: cannot name a hosted runner by any other spelling. Anything else -- neither variable set, a value
-#: that is empty, malformed or names another runner, both set at once -- asks for `RUNS_ON_UNSET`,
-#: a runner group that does not exist: GitHub fails the job when it is created, with no runner and a
-#: failed check run that names the group ("Required runner group ... not found"). A `fromJSON` that
-#: failed would be worse: GitHub then fails the run as a workflow file issue and creates no check
-#: run, so a required check waits for ever instead of failing. An offline runner is waited for,
-#: never replaced. Each recipe carries `RUNS_ON_LINE` exactly, as its only `runs-on`.
+#: There is no default (decision 0087), and a variable's value is never handed to `fromJSON`: each
+#: is compared, ignoring case as GitHub compares strings, with the one value it may hold, and the
+#: line emits a fixed runner of its own. `FACTORY_RUNS_ON_TRUSTED` exactly `RUNS_ON_LABELS`, the
+#: other unset: a trusted run gets factory-ci, any other run the pinned hosted release (0080: a
+#: fork's run stays hosted). `FACTORY_RUNS_ON` exactly `RUNS_ON_LABELS`, the other unset: every run
+#: gets factory-ci. `FACTORY_RUNS_ON` exactly `RUNS_ON_HOSTED`, the other unset: every run is
+#: hosted, which `factory-ci disable` writes on the owner's decision. Anything else -- neither set,
+#: both, a value that is empty, malformed, reordered or names another runner -- asks for
+#: `RUNS_ON_UNSET`, a runner group that does not exist: GitHub fails the job when it is created,
+#: with no runner and a failed check run that names the group ("Required runner group ... not
+#: found"). A `fromJSON` that failed would be worse: GitHub then fails the run as a workflow file
+#: issue and creates no check run, so a required check waits for ever instead of failing. An
+#: offline runner is waited for, never replaced. Each recipe carries `RUNS_ON_LINE` exactly, as its
+#: only `runs-on`.
 RUNS_ON_VARIABLE = "FACTORY_RUNS_ON"
 RUNS_ON_TRUSTED_VARIABLE = "FACTORY_RUNS_ON_TRUSTED"
 RUNS_ON_DEFAULT = "ubuntu-24.04"
 RUNS_ON_HOSTED = '"' + RUNS_ON_DEFAULT + '"'
-RUNS_ON_LABEL = '"factory-ci"'
+#: factory-ci's labels as the variables hold them (`tools/ci-runner/dispatch.py` LABELS; a test
+#: holds the two together).
+RUNS_ON_LABELS = '["self-hosted","linux","x64","factory-ci"]'
 RUNS_ON_UNSET = '{"group":"FACTORY_RUNS_ON or FACTORY_RUNS_ON_TRUSTED is unset or invalid"}'
 TRUSTED_RUN = ("github.actor == github.repository_owner && github.triggering_actor == github.repository_owner"
                " && (github.event.pull_request.head.repo.full_name || !github.event.pull_request && github.repository)"
@@ -94,13 +98,12 @@ TRUSTED_RUN = ("github.actor == github.repository_owner && github.triggering_act
 
 def _runs_on_line():
     trusted, every = "vars." + RUNS_ON_TRUSTED_VARIABLE, "vars." + RUNS_ON_VARIABLE
-    unset, hosted, label = f"'{RUNS_ON_UNSET}'", f"'{RUNS_ON_HOSTED}'", f"'{RUNS_ON_LABEL}'"
-    either = f"{trusted} || {every}"
+    unset, hosted, labels = f"'{RUNS_ON_UNSET}'", f"'{RUNS_ON_HOSTED}'", f"'{RUNS_ON_LABELS}'"
     return ("    runs-on: ${{ fromJSON("
-            f"{trusted} && {every} && {unset}"
-            f" || {TRUSTED_RUN} && (contains({either}, {label}) && ({either}) || {every} == {hosted} && {hosted} || {unset})"
-            f" || contains({every}, {label}) && {every} || {every} == {hosted} && {hosted}"
-            f" || contains({trusted}, {label}) && {hosted} || {unset}) }}}}")
+            f"{trusted} == {labels} && !{every} && ({TRUSTED_RUN} && {labels} || {hosted})"
+            f" || {every} == {labels} && !{trusted} && {labels}"
+            f" || {every} == {hosted} && !{trusted} && {hosted}"
+            f" || {unset}) }}}}")
 
 
 RUNS_ON_LINE = _runs_on_line()

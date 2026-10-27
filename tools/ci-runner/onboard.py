@@ -47,16 +47,14 @@ RUNS_ON_VARIABLE = "FACTORY_RUNS_ON"
 TRUSTED_VARIABLE = "FACTORY_RUNS_ON_TRUSTED"
 #: tools/factory/repository.py's RUNS_ON_LINE, which every recipe carries as its only `runs-on`; a test
 #: holds this copy to the original. It has no hosted default (decision 0087).
-RUNS_ON_LINE = ('    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON_TRUSTED && vars.FACTORY_RUNS_ON && \'{"group":"FACTORY_RUNS_ON '
-                'or FACTORY_RUNS_ON_TRUSTED is unset or invalid"}\' || github.actor == github.repository_owner && '
-                'github.triggering_actor == github.repository_owner && (github.event.pull_request.head.repo.full_name || '
-                '!github.event.pull_request && github.repository) == github.repository && '
-                '(contains(vars.FACTORY_RUNS_ON_TRUSTED || vars.FACTORY_RUNS_ON, \'"factory-ci"\') && '
-                '(vars.FACTORY_RUNS_ON_TRUSTED || vars.FACTORY_RUNS_ON) || vars.FACTORY_RUNS_ON == \'"ubuntu-24.04"\' && '
-                '\'"ubuntu-24.04"\' || \'{"group":"FACTORY_RUNS_ON or FACTORY_RUNS_ON_TRUSTED is unset or invalid"}\') || '
-                'contains(vars.FACTORY_RUNS_ON, \'"factory-ci"\') && vars.FACTORY_RUNS_ON || vars.FACTORY_RUNS_ON == '
-                '\'"ubuntu-24.04"\' && \'"ubuntu-24.04"\' || contains(vars.FACTORY_RUNS_ON_TRUSTED, \'"factory-ci"\') && '
-                '\'"ubuntu-24.04"\' || \'{"group":"FACTORY_RUNS_ON or FACTORY_RUNS_ON_TRUSTED is unset or invalid"}\') }}')
+RUNS_ON_LINE = ('    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON_TRUSTED == \'["self-hosted","linux","x64","factory-ci"]\' && '
+                '!vars.FACTORY_RUNS_ON && (github.actor == github.repository_owner && github.triggering_actor == '
+                'github.repository_owner && (github.event.pull_request.head.repo.full_name || !github.event.pull_request && '
+                'github.repository) == github.repository && \'["self-hosted","linux","x64","factory-ci"]\' || \'"ubuntu-24.04"\') '
+                '|| vars.FACTORY_RUNS_ON == \'["self-hosted","linux","x64","factory-ci"]\' && !vars.FACTORY_RUNS_ON_TRUSTED && '
+                '\'["self-hosted","linux","x64","factory-ci"]\' || vars.FACTORY_RUNS_ON == \'"ubuntu-24.04"\' && '
+                '!vars.FACTORY_RUNS_ON_TRUSTED && \'"ubuntu-24.04"\' || \'{"group":"FACTORY_RUNS_ON or FACTORY_RUNS_ON_TRUSTED is '
+                'unset or invalid"}\') }}')
 #: The two lines that came before it, each ending in a hosted default that any run takes when the variables
 #: do not name a runner: an implicit fallback, a finding wherever it is found (decision 0087). Named so that
 #: the finding says which line it is and what replaces it. 0080's (repository.py at 852818f, `RUNS_ON_LINE`):
@@ -411,15 +409,18 @@ def now_utc():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+#: The one value either variable may hold to name factory-ci, as `repository.RUNS_ON_LABELS` (a test holds the two
+#: together). The runner line compares a variable with it, ignoring case as GitHub compares strings, and emits its own
+#: copy (decision 0087), so a value this check passes is a value the line routes; a reordered or respaced list is not.
+LABELS_VALUE = json.dumps(list(LABELS), separators=(",", ":"))
+
+
 def variable_value(variables, name):
-    """(set?, the labels it holds or None when it is not a JSON list of strings)."""
+    """(set?, whether it is exactly LABELS_VALUE, ignoring case)."""
     if name not in variables:
-        return False, None
-    try:
-        value = json.loads(variables[name])
-    except (TypeError, ValueError):
-        return True, None
-    return True, value if isinstance(value, list) and all(isinstance(v, str) for v in value) else None
+        return False, False
+    value = variables[name]
+    return True, isinstance(value, str) and value.casefold() == LABELS_VALUE.casefold()
 
 
 def verify(repository, github, now=None, hosted_jobs=None):
@@ -463,9 +464,9 @@ def verify(repository, github, now=None, hosted_jobs=None):
         if not seen[0]:
             findings.append(f"{RUNS_ON_VARIABLE} is not set: every job fails at once, asking for no runner "
                             f"(decision 0087; `factory-ci onboard {repository}` sets it)")
-        elif not (seen[1] is not None and exact(seen[1])):
-            findings.append(f"{RUNS_ON_VARIABLE} is {variables[RUNS_ON_VARIABLE]!r}, not exactly "
-                            f"{json.dumps(list(LABELS))}")
+        elif not seen[1]:
+            findings.append(f"{RUNS_ON_VARIABLE} is {variables[RUNS_ON_VARIABLE]!r}, not exactly {LABELS_VALUE}: "
+                            f"every job fails at once (decision 0087; `factory-ci onboard {repository}` sets it)")
         if trusted_seen[0]:
             findings.append(f"{TRUSTED_VARIABLE} is set on a private repository: it is for trusted dispatch of a public one")
         mode = "standing"
@@ -475,9 +476,9 @@ def verify(repository, github, now=None, hosted_jobs=None):
                             f"(decision 0080; `factory-ci deregister {repository}`)")
         if seen[0]:
             findings.append(f"public repository with {RUNS_ON_VARIABLE} set: every fork pull request would ask for it")
-        if not (trusted_seen[1] is not None and exact(trusted_seen[1])):
+        if not trusted_seen[1]:
             findings.append(f"{TRUSTED_VARIABLE} is "
-                            f"{'not set' if not trusted_seen[0] else repr(variables[TRUSTED_VARIABLE]) + ', not exactly ' + json.dumps(list(LABELS))}"
+                            f"{'not set' if not trusted_seen[0] else repr(variables[TRUSTED_VARIABLE]) + ', not exactly ' + LABELS_VALUE}"
                             f": a public repository's owner runs reach the VM only through it, and without it every job "
                             f"fails at once (decision 0087; `factory-ci trust`, `enable`)")
         mode = "dispatch"
@@ -567,8 +568,8 @@ def onboard(repository, github, guest, vm, now=None, log=print, wait=0, sleep=ti
     variables = {item.get("name"): item.get("value") for item in
                  pages(github, "the repository's variables", f"/repos/{repository}/actions/variables", "variables", size=30)}
     have = variable_value(variables, RUNS_ON_VARIABLE)
-    if have[1] is None or not exact(have[1]):
-        body = {"name": RUNS_ON_VARIABLE, "value": json.dumps(list(LABELS), separators=(",", ":"))}
+    if not have[1]:
+        body = {"name": RUNS_ON_VARIABLE, "value": LABELS_VALUE}
         if have[0]:
             write(github, f"set {RUNS_ON_VARIABLE}", "PATCH", f"/repos/{repository}/actions/variables/{RUNS_ON_VARIABLE}", body)
         else:

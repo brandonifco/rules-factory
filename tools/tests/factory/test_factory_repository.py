@@ -339,6 +339,16 @@ ROUTES = {
     "the hosted release in a list": ({"FACTORY_RUNS_ON": '["ubuntu-24.04"]'}, UNSET, UNSET),
     "self-hosted, not factory-ci": ({"FACTORY_RUNS_ON": '["self-hosted"]'}, UNSET, UNSET),
     "a label that only starts with factory-ci": ({"FACTORY_RUNS_ON": '["factory-ci-other"]'}, UNSET, UNSET),
+    "the labels in another case": ({"FACTORY_RUNS_ON": EXACT.upper()}, LABELS, LABELS),
+    "the labels reordered": ({"FACTORY_RUNS_ON": '["linux","self-hosted","x64","factory-ci"]'}, UNSET, UNSET),
+    "the labels respaced": ({"FACTORY_RUNS_ON_TRUSTED": json.dumps(LABELS)}, UNSET, UNSET),
+    "factory-ci alone": ({"FACTORY_RUNS_ON": '["factory-ci"]'}, UNSET, UNSET),
+    "a duplicate key whose last value is hosted (review of 4879e9e)": (
+        {"FACTORY_RUNS_ON_TRUSTED": '{"labels":"factory-ci","labels":"ubuntu-latest"}'}, UNSET, UNSET),
+    "the same, in FACTORY_RUNS_ON": ({"FACTORY_RUNS_ON": '{"labels":"factory-ci","labels":"ubuntu-latest"}'}, UNSET, UNSET),
+    "trusted malformed but naming factory-ci (review of 4879e9e)": ({"FACTORY_RUNS_ON_TRUSTED": '["factory-ci"'}, UNSET, UNSET),
+    "the hosted literal in the trusted variable": ({"FACTORY_RUNS_ON_TRUSTED": '"ubuntu-24.04"'}, UNSET, UNSET),
+    "hosted, spelled in another case": ({"FACTORY_RUNS_ON": '"UBUNTU-24.04"'}, HOSTED, HOSTED),
 }
 
 
@@ -401,7 +411,8 @@ class TestEveryRecipeSelectsItsRunnerThroughOneLine(unittest.TestCase):
     def test_a_hosted_runner_is_chosen_only_where_the_contract_authorizes_one(self):
         """Hosted is reachable two ways: an untrusted run beside FACTORY_RUNS_ON_TRUSTED, and the
         owner's explicit `"ubuntu-24.04"` in FACTORY_RUNS_ON. Never by absence or by a bad value."""
-        authorized = {"public, served by dispatch", "deliberately hosted (factory-ci disable)"}
+        authorized = {"public, served by dispatch", "deliberately hosted (factory-ci disable)",
+                      "hosted, spelled in another case"}  # GitHub compares strings ignoring case
         for configuration, (variables, trusted_to, other_to) in ROUTES.items():
             if HOSTED in (trusted_to, other_to):
                 self.assertIn(configuration, authorized)
@@ -419,10 +430,22 @@ class TestEveryRecipeSelectsItsRunnerThroughOneLine(unittest.TestCase):
                     for what, (context, _) in self.runs().items():
                         self.assertEqual(UNSET, self.runner(line, context, {name: value}), f"{relative}: {name}={value!r}: {what}")
 
-    def test_a_malformed_value_naming_factory_ci_still_fails_and_never_runs_hosted(self):
+    def test_no_variable_value_reaches_fromjson_so_the_runner_is_always_one_of_three_fixed_values(self):
+        """Whatever the variables hold, the line chooses between its own literals: factory-ci's labels, the
+        pinned hosted release, or the group that cannot exist. A value is compared, never parsed, so no
+        spelling of a hosted runner, no duplicate key and no malformed text can pass through."""
+        values = ("", "x", "[]", "{}", "null", "true", "0", '"ubuntu-24.04"', '"ubuntu-latest"', '["ubuntu-24.04"]',
+                  '["factory-ci"', '["factory-ci"]', '{"labels":"factory-ci","labels":"ubuntu-latest"}', EXACT, EXACT + " ",
+                  " " + EXACT, EXACT.replace(",", ", "), EXACT.upper(), '["self-hosted","linux","x64","factory-ci","gpu"]',
+                  '{"group":"default"}', "'\"ubuntu-24.04\"'")
+        allowed = (LABELS, HOSTED, UNSET)
         for relative, line in self.recipe_lines().items():
-            with self.assertRaises(ValueError, msg=relative):
-                self.runner(line, run_context(), {"FACTORY_RUNS_ON": '["factory-ci"'})
+            for trusted_value in (None,) + values:
+                for every_value in (None,) + values:
+                    variables = {k: v for k, v in (("FACTORY_RUNS_ON_TRUSTED", trusted_value), ("FACTORY_RUNS_ON", every_value)) if v is not None}
+                    for what, (context, _) in self.runs().items():
+                        got = self.runner(line, context, variables)
+                        self.assertIn(got, allowed, f"{relative}: {variables}: {what}")
 
     def test_routing_reads_only_the_run_and_the_variables_so_a_busy_or_offline_runner_changes_nothing(self):
         """Nothing in the line can see a runner's state: an offline VM is waited for, never replaced."""
