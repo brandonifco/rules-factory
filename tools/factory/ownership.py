@@ -91,7 +91,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 34,
+    Row("AGENTS.md", MANAGED, 35,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares, one per package for a "
@@ -102,7 +102,8 @@ TABLE = (
         "brief the next one reads (#465); section 3 says the orchestrator holds the scheduling decision and the repository holds the state, and names the command that reads it (#466); section 7 says a reviewer is given what its role judges, "
         "and that the role is part of the packet identity (#467); section 3 says where the rails are when the "
         "engine is embedded under a repository root, because GitHub runs a workflow only from the root (#501, "
-        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523); section 9 says the semantic surface is the engine's alone, so a host repository gates its own rule-bearing files (0072); section 7 says what a change owes the semantic review is its review class, computed from the diff and failing closed: a new decision record that overrules nothing, a regeneration with the rules unmoved and a document owe structural validation only, and an exemption is claimed on the pull request's `review class:` line and never assumed (0076); section 7 says a mutation spec's edits apply in order, each to the text the earlier ones left (#623); section 7 says an engine that declares an action surface in `acceptance.json` is accepted through it by a generated full-play harness, what its invariants hold, that the allowlist is built only from observed declines, and that cost is reduced by making the engine faster and not by checking less (0078); section 7 says the verdict of a recorded mutation is the named test's own result, read from the TRX of every test project, and that a build which fails is a build that did not compile (#625, #662); section 4 says what enforces one agent, one attempt: the lifecycle guard refuses a message to a completed agent, bounds a subagent's context at a measured checkpoint and hard bound, and prints a handoff from committed state, and says what no hook can see, and what counts as an agent having completed (#676, 0083)"),
+        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523); section 9 says the semantic surface is the engine's alone, so a host repository gates its own rule-bearing files (0072); section 7 says what a change owes the semantic review is its review class, computed from the diff and failing closed: a new decision record that overrules nothing, a regeneration with the rules unmoved and a document owe structural validation only, and an exemption is claimed on the pull request's `review class:` line and never assumed (0076); section 7 says a mutation spec's edits apply in order, each to the text the earlier ones left (#623); section 7 says an engine that declares an action surface in `acceptance.json` is accepted through it by a generated full-play harness, what its invariants hold, that the allowlist is built only from observed declines, and that cost is reduced by making the engine faster and not by checking less (0078); section 7 says the verdict of a recorded mutation is the named test's own result, read from the TRX of every test project, and that a build which fails is a build that did not compile (#625, #662); section 4 says what enforces one agent, one attempt: the lifecycle guard refuses a message to a completed agent, bounds a subagent's context at a measured checkpoint and hard bound, and prints a handoff from committed state, and says what no hook can see, and what counts as an agent having completed (#676, 0083)"
+        "; section 6 maps a criterion's three statuses onto escalation and the legitimate decline, and section 7 says implemented, tested and reviewed is not every criterion MET (#695, 0086)"),
     Row("CLAUDE.md", MANAGED, 2,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029); it lists the lifecycle guard (#676, 0083)"),
     Row("docs/agent-team.md", MANAGED, 12,
@@ -203,7 +204,7 @@ TABLE = (
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
         "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482); the changed paths are matched against the semantic surface in the engine's own terms, as the gate matches them, so an embedded engine is not told no verdict is owed when the gate will ask for one (#535); the brief says a semantic verdict is owed from the review class the gate reads, and from the surface when it cannot read the base (0076)"),
-    Row("tools/pr-policy.py", MANAGED, 17,
+    Row("tools/pr-policy.py", MANAGED, 18,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
         "marker and overlay transition must identify the same work (#451); a changed path is judged in the "
@@ -211,7 +212,8 @@ TABLE = (
         "reports (#501, 0069), the documentation skeleton included (#507); a changed document outside an "
         "embedded engine is listed under its path relative to the engine, `../README.md`, by the check and "
         "the skeleton alike, and a rename is its new path (#523, #511); the entry ids the conformance "
-        "bullet names are read by one function that review-packet.py loads, so the two cannot disagree (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); a deletion is a deletion whether GitHub spells it DELETED or REMOVED, and an entry the overlay split moves out of the retired shared overlay keeps that row as its base, so the split implements nothing (#566); an `entry id(s):` line that is exactly `none` names no entry, so a factory update's semantic packet is not asked for an entry called `none` (#572); the review class of the diff is computed by `scripts/factory/reviewclass.py` and the pull request's `review class:` line is checked against it: it can claim an exemption the diff shows and raise a class, never lower one; a ruling names its scope or entries; only an implementation names a mutation; `generated-or-provenance` needs the produce claim admitted (0076)"),
+        "bullet names are read by one function that review-packet.py loads, so the two cannot disagree (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); a deletion is a deletion whether GitHub spells it DELETED or REMOVED, and an entry the overlay split moves out of the retired shared overlay keeps that row as its base, so the split implements nothing (#566); an `entry id(s):` line that is exactly `none` names no entry, so a factory update's semantic packet is not asked for an entry called `none` (#572); the review class of the diff is computed by `scripts/factory/reviewclass.py` and the pull request's `review class:` line is checked against it: it can claim an exemption the diff shows and raise a class, never lower one; a ruling names its scope or entries; only an implementation names a mutation; `generated-or-provenance` needs the produce claim admitted (0076)"
+        "; the linked issue's acceptance criteria are each reported, in order, as MET with verifiable evidence, AUTHORIZED INCOMPLETE with a verifiable authority and a stated limitation, or BLOCKED, which fails because the issue awaits its decision (#695, 0086)"),
     Row("tools/record-verdict.py", MANAGED, 8,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
@@ -224,10 +226,11 @@ TABLE = (
         "asks the gate to report again when something outside the pull request changed what it "
         "would answer: a verdict recorded at its head (#191), or the risk label on the issue it "
         "closes (#230)"),
-    Row(".github/pull_request_template.md", MANAGED, 6,
+    Row(".github/pull_request_template.md", MANAGED, 7,
         "the pull request shape pr-policy.py checks, documentation section included (0029, #236); "
         "\"Unrelated changes\" says what belongs in it and what is part of the change (#196); the entry list "
-        "states the correspondence pr-policy checks (#451); a `review class:` line, checked against the diff and never taken, and a `decision scope:` line (0076)"),
+        "states the correspondence pr-policy checks (#451); a `review class:` line, checked against the diff and never taken, and a `decision scope:` line (0076)"
+        "; an `## Acceptance criteria` section, one numbered status per criterion of the linked issue (#695, 0086)"),
     Row(".github/workflows/pr-policy.yml", MANAGED, 3,
         "the required check that runs pr-policy.py (0029); the runner is the repository variable FACTORY_RUNS_ON, "
         "the hosted ubuntu-24.04 when it is unset (0079)"),
@@ -451,6 +454,7 @@ RECIPE_SHA256 = {
         32: "2529749d4d1c5a7b1ed9e1198b15f7b5ff4275a39de34e768e12f657e2590ad1",
         33: "4d6f196944d60473983d5f441c30db9b762c8fcefde7bb364ea74485cbf74c09",
         34: "6eb7bbb2573473fd265dfd586d4efe2cff6fff70308d44fe5731f205c28ddc61",
+        35: "da23c9c26b08914f17e93ebb382189056714d66b1c522004c40b923d9d3174ad",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -556,6 +560,7 @@ RECIPE_SHA256 = {
         15: "49e4845fb7d07855fe719c353b9493da9802f4bf80be3465a2ae8c991d957938",
         16: "80fda4f86822f5c2b9c8cd4e8a1b23f85b30a2d32b681749e788821d9d78bd07",
         17: "3125b6cb1967cac48117e186a438ca6a048cfda675a24223e2891038b807faf1",
+        18: "57d44ff3b624e9fc91e86c3ef2c368e73a2511eecdc6c96f5859611c36390726",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -587,6 +592,7 @@ RECIPE_SHA256 = {
         4: "3c21dc914830df9656fb49ec5cd56cbb56542f8121a219395cfc7d13f08aab74",
         5: "3a343651e908d6b6bc36594fa663c2aee9e88996147516173c39e3bea63ede78",
         6: "bb75cd6f5877d65d65cccf6e0cbfdddf86112899ecb11e6bbe61a77a9e459740",
+        7: "8cbc014a28b157ebcd2177d704d97c6466113c654b08c98c5f1b2613bb840887",
     },
     ".github/workflows/pr-policy.yml": {
         1: "caa3394a473d5fdd45b274176d8e28c48d9f5425176318194ba68fbea8453fa2",

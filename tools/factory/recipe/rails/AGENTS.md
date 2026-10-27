@@ -334,6 +334,15 @@ record in `docs/decisions/`, and then the work resumes.
 Declining is a legitimate outcome. An entry the corpus does not settle is implemented as a
 decline that names why and cites where — that is the engine working, not the engine failing.
 
+The pull request reports each acceptance criterion of its issue as one of three statuses
+(`tools/pr-policy.py` checks them). A decline that something authorizes (a decision record, an
+answered owner decision, or the map's own `definedElsewhere` or `ambiguity` basis, which the
+engine's generated registry must confirm as `CorrespondenceRow.DefinedElsewhere` or
+`CorrespondenceRow.UnresolvedAmbiguity`) is
+**AUTHORIZED INCOMPLETE**: it may merge, with its limitation stated. A criterion that waits on an
+open question is **BLOCKED**, and the issue awaits that decision; the pull request cannot close it.
+Only a criterion shown by a test or a command is **MET**.
+
 ## 7. Evidence
 
 - **The gate is `./scripts/validate.sh full`.** It is the one definition of acceptable here, and
@@ -341,6 +350,8 @@ decline that names why and cites where — that is the engine working, not the e
   rail citing a document this engine does not have, both fail it. Do
   not invent a substitute, do not run a narrower command and report the gate as passed, and do
   not change the gate to make a change pass.
+- **Implemented, tested and reviewed is not the same as every criterion MET**: each criterion is
+  reported with its own status (§6), and a review, a mutation score or a green CI makes none of them MET.
 - **Every test records the mutation that makes it fail.** The overlay holds it. A test whose
   named mutation was never observed to fail is a test nobody has watched fail, and this project
   has shipped two checks that counted work they had not done. **The gate refuses a placeholder
