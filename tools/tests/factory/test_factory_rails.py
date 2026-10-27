@@ -797,6 +797,19 @@ class TestTheEntryPacketOfAComposedEngine(unittest.TestCase):
         self.assertIn("published as `blinded`", text)
         self.assertIn("the entry is `blinded` there", text)
 
+    def test_a_packet_describes_enabled_by_as_the_map_specification_does(self):
+        """`enabledBy` is a disjunction: docs/corpus-map.md says the rules "make this one reachable
+        at runtime; it does not apply until one holds". The packet said "applies only where these
+        hold", a conjunction, which sends an implementer to require every enabling rule at once
+        (#691). `independent-mount` has two, and is the entry where the two readings differ."""
+        text = self.rendered("Srd52Combat.independent-mount")
+        line = next(line for line in text.splitlines() if line.startswith("**`enabledBy`**"))
+        self.assertIn("this entry does not apply until one of these holds", line)
+        self.assertNotIn("applies only where these hold", text)
+        listed = text.split(line, 1)[1].split("**`suspendedBy`**", 1)[0]
+        self.assertIn("mount-eligibility", listed, "the entry's two enabling rules are listed under it")
+        self.assertIn("mounting-cost", listed)
+
     def test_an_entry_of_the_other_package_reads_exactly_as_one_of_this_package_s(self):
         """The model is the whole composition, not the entry's own package. So an entry another
         map holds is named with what it is, not reported as absent -- which is what a model built
