@@ -606,6 +606,19 @@ class Hygiene(unittest.TestCase):
         self.assertEqual(code, 3, output)
         self.assertIn("NOT CHECKED merged pull requests (gh pr list: gh: not logged in)", output)
 
+    def test_on_the_dispatcher_s_host_a_failing_audit_is_said_at_session_start(self):
+        """The run a session starts with reads the dispatcher's verdict (0087)."""
+        unit, record = os.path.join(self.tmp, "factory-ci-dispatch.service"), os.path.join(self.tmp, "audit.json")
+        open(unit, "w").close()
+        with open(record, "w", encoding="utf-8") as handle:
+            json.dump({"checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "verdict": "fail",
+                       "findings": ["brandonifco/x: FACTORY_RUNS_ON_TRUSTED is not set"]}, handle)
+        with mock.patch.dict(os.environ, {"FACTORY_CI_DISPATCHER_UNIT": unit, "FACTORY_CI_AUDIT_RECORD": record}):
+            code, output = self.run_tool()
+        self.assertEqual(1, code, output)
+        self.assertIn("LEFTOVER  ci-route  factory-ci audit failed", output)
+        self.assertIn("brandonifco/x: FACTORY_RUNS_ON_TRUSTED is not set", output)
+
 
 class CiAudit(unittest.TestCase):
     """On the host that runs the dispatcher, its hourly audit is read at every session start (0087)."""
