@@ -5177,8 +5177,10 @@ class TestPrPolicyAcceptanceCriteria(RailsInAGitEngine):
         rows = {int(m.group(1)) for m in re.finditer(r"(?m)^\| (\d+) \|", table)}
         self.assertEqual(rows, set(range(1, 9)))
         self.produced()
-        checker = self.read("tools/pr-policy.py")
-        self.assertIn("CORRESPONDENCE_ROWS = frozenset(range(1, 9))", checker)
+        spec = importlib.util.spec_from_file_location("pr_policy_rows", os.path.join(self.out, "tools", "pr-policy.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual(set(module.CORRESPONDENCE_ROWS), rows)
 
     # --- BLOCKED -------------------------------------------------------------------------------
 
