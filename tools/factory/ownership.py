@@ -162,10 +162,11 @@ TABLE = (
         "engine is not mistaken for a worktree (#518)"),
     Row("tools/new-issue.sh", MANAGED, 2,
         "an issue with the shape the rails expect, a factory update's included (0029, #193)"),
-    Row("tools/entry-packet.py", MANAGED, 7,
+    Row("tools/entry-packet.py", MANAGED, 8,
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029); a composed "
         "engine's packet is built over the whole composition and names the package its entry's id says it "
-        "came from (#460)"),
+        "came from (#460); `enabledBy` is described as the map specification has it, an entry that does "
+        "not apply until one of its enabling rules holds, not only where all of them do (#691)"),
     Row("tools/mutate.py", MANAGED, 3,
         "a recorded mutation, run: the edit, the named test, and the source put back, so the evidence "
         "AGENTS.md asks for is re-runnable by the reviewer rather than a sentence (#454); a spec's edits "
@@ -489,6 +490,7 @@ RECIPE_SHA256 = {
         5: "3ef75a792934d473e87db94e1c3f08f459bab418a73ef5850dd6063fa4144fad",
         6: "1125002f832f0876085db34be69de8701a43a5762ae31d49921d530c079ea0b0",
         7: "0f37570f3995218e4ca893f254ce3476290e4b96429ee5bd4152cfe223f63cdc",
+        8: "6e30ca0b65ab9d8935b72afb7abfdedf8c69815bf753f2da26bae6b9dc3c31c4",
     },
     "tools/mutate.py": {
         1: "d33f7ddedc923388af4582ffb6c04a1434c09f695738ca34f191839f21847901",
