@@ -429,7 +429,7 @@ def packet(generate, model, overlay, item, identity):
                  if depends else "**`dependsOn`**: none.\n")
     for other in depends:
         lines.append(f"- {entry_line(model, other)}")
-    for field, meaning in (("enabledBy", "this entry applies only where these hold"),
+    for field, meaning in (("enabledBy", "this entry does not apply until one of these holds"),
                            ("suspendedBy", "these suspend it")):
         values = entry.get(field) or []
         lines.append(f"\n**`{field}`** — {meaning}; reachability orders nothing:\n"
