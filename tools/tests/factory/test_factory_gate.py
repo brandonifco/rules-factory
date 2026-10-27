@@ -1890,7 +1890,13 @@ class TestValidateShWithDotnet(GateCase):
         with open(os.path.join(engine, "src", NAME, "SpeedLimitRequest.cs"), "w", encoding="utf-8") as handle:
             handle.write("namespace FaaPart107.Requests;\n\npublic sealed partial class SpeedLimitRequest\n{\n"
                          "    /// <summary>An engine-declared input.</summary>\n"
-                         "    public int Knots { get; init; } = 87;\n}\n")
+                         "    public int Knots { get; init; } = 87;\n"
+                         "    /// <summary>A second input, declared after the first and sorting before it.</summary>\n"
+                         "    public int Floor { get; set; }\n"
+                         "    /// <summary>Not an input: no setter.</summary>\n"
+                         "    public int Derived => Knots * 2;\n"
+                         "    /// <summary>Not an input: a private setter.</summary>\n"
+                         "    public int Hidden { get; private set; }\n}\n")
         with open(os.path.join(engine, "tests", f"{NAME}.Tests", "InputTests.cs"), "w", encoding="utf-8") as handle:
             handle.write("using RulesKernel.Resolution;\nusing Xunit;\n\nnamespace FaaPart107.Tests;\n\n"
                          "public sealed class InputTests\n{\n"
@@ -1899,6 +1905,13 @@ class TestValidateShWithDotnet(GateCase):
                          "    {\n"
                          "        Assert.Equal(100, EntryPoints.SpeedLimit.Resolve(new Requests.SpeedLimitRequest { Knots = 100 }).Match<object?>(v => v, _ => null));\n"
                          "        Assert.Equal(87, Registry.Resolve(\"speed-limit\", RuleRequest.Empty).Match<object?>(v => v, _ => null));\n"
+                         "    }\n\n"
+                         "    [Fact]\n"
+                         "    public void declared_inputs_names_what_the_engine_declared_and_refuses_an_unknown_id()\n"
+                         "    {\n"
+                         "        Assert.Equal([\"Knots\", \"Floor\"], Registry.DeclaredInputs(\"speed-limit\").ToArray());\n"
+                         "        Assert.Empty(Registry.DeclaredInputs(\"altitude-limit\").ToArray());\n"
+                         "        Assert.Throws<KeyNotFoundException>(() => Registry.DeclaredInputs(\"no-such-entry\"));\n"
                          "    }\n}\n")
         code, output = self.validate(engine, "full")
         self.assertEqual(code, 0, output[-4000:])

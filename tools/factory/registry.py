@@ -180,10 +180,11 @@ REGISTRY_BODY = """
     /// <summary>
     /// The inputs the engine declared on the request type of <paramref name="entryId"/>: its public
     /// instance properties with a public <c>set</c> or <c>init</c> accessor, other than
-    /// <see cref="IEntryRequest.EntryId"/> and <see cref="IEntryRequest.Assertions"/>, in declaration
-    /// order. Empty for an entry that declares none. These are what
-    /// <see cref="Resolve(string, RuleRequest)"/> cannot state: a <see cref="RuleRequest"/> carries
-    /// assertions only, so on that path an entry resolves as though the caller stated none of them.
+    /// <see cref="IEntryRequest.EntryId"/> and <see cref="IEntryRequest.Assertions"/>, in
+    /// metadata-token order (stable for a build; the order of declaration within one file). Empty for
+    /// an entry that declares none. These are what <see cref="Resolve(string, RuleRequest)"/> cannot
+    /// state: a <see cref="RuleRequest"/> carries assertions only, so on that path an entry resolves
+    /// as though the caller stated none of them.
     /// To state them, resolve through <see cref="Resolve(IEntryRequest)"/> or <see cref="EntryPoints"/>.
     /// </summary>
     /// <param name="entryId">A map entry id.</param>
@@ -222,6 +223,9 @@ REGISTRY_BODY = """
     /// input property at its default value. To state them, resolve through
     /// <see cref="Resolve(IEntryRequest)"/> or <see cref="EntryPoints"/>.
     /// </summary>
+    /// <param name="entryId">A map entry id.</param>
+    /// <param name="request">What the caller asserts.</param>
+    /// <returns>The resolution.</returns>
     public static Resolution<object> Resolve(string entryId, RuleRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
