@@ -15,6 +15,7 @@ IMAGE_RELEASE="${FACTORY_CI_IMAGE_RELEASE:-release-20260926}"
 IMAGE_SHA256="${FACTORY_CI_IMAGE_SHA256:-6a81c37564db9b1ee84e141922625e1d7c5b389b99bb3c572e0243607d5bb4d2}"
 VCPUS="${FACTORY_CI_VCPUS:-6}" MEMORY_MB="${FACTORY_CI_MEMORY_MB:-12288}" DISK="${FACTORY_CI_DISK:-100G}"
 LABELS='["self-hosted","linux","x64","factory-ci"]'
+HOSTED='"ubuntu-24.04"'  # FACTORY_RUNS_ON exactly this: every run hosted, the owner's decision (decision 0087)
 virsh() { command virsh -c qemu:///system "$@"; }
 guest() { ssh -i "$KEY" -o UserKnownHostsFile="$KNOWN" -o StrictHostKeyChecking=accept-new -o BatchMode=yes \
             -o ConnectTimeout=5 "ciadmin@$IP" "$@"; }
@@ -92,21 +93,24 @@ cmd_trust() { # OWNER/REPO: serve a public repository's owner runs by dispatch (
 }
 cmd_untrust() { # OWNER/REPO: stop serving a repository by dispatch; its runs go back to hosted runners
   need_repo "${1:-}"
-  "$GH" variable delete FACTORY_RUNS_ON_TRUSTED --repo "$1" 2>/dev/null || true
+  cmd_disable "$1"
   guest "sudo /opt/factory-ci/bin/dispatch-guest untrust '$(name_of "$1")'"
 }
 cmd_enable() { # OWNER/REPO: send its runs to the VM: all of a private one's, the owner's of a public one
   need_repo "${1:-}"
   if is_private "$1"; then "$GH" variable set FACTORY_RUNS_ON --repo "$1" --body "$LABELS"; return; fi
   guest "test -f /etc/factory-ci/dispatch/$(name_of "$1")" || die "$1 is public and not served by dispatch: trust it first"
-  "$GH" variable list --repo "$1" --json name --jq '.[].name' | grep -qx FACTORY_RUNS_ON &&
-    die "$1 is public and has FACTORY_RUNS_ON, which sends a fork's run to the VM too; delete it (disable)"
+  local every; every="$("$GH" variable list --repo "$1" --json name,value --jq '.[] | select(.name == "FACTORY_RUNS_ON") | .value')"
+  [[ -z $every || $every == "$HOSTED" ]] ||
+    die "$1 is public and has FACTORY_RUNS_ON $every, which sends a fork's run to the VM too; delete it"
   "$GH" variable set FACTORY_RUNS_ON_TRUSTED --repo "$1" --body "$LABELS"
+  [[ -z $every ]] || "$GH" variable delete FACTORY_RUNS_ON --repo "$1"  # both set fail every job (0087)
 }
 cmd_disable() { # OWNER/REPO: return its runs to GitHub-hosted runners (billable when private; owner's decision)
-  need_repo "${1:-}"; local v gone=
-  for v in FACTORY_RUNS_ON FACTORY_RUNS_ON_TRUSTED; do "$GH" variable delete "$v" --repo "$1" 2>/dev/null && gone=1; done
-  [[ -n $gone ]] || die "$1 had neither variable"
+  # There is no hosted default (decision 0087): with neither variable every job fails, so hosted is said, not implied.
+  need_repo "${1:-}"
+  "$GH" variable delete FACTORY_RUNS_ON_TRUSTED --repo "$1" 2>/dev/null || true
+  "$GH" variable set FACTORY_RUNS_ON --repo "$1" --body "$HOSTED"
 }
 cmd_dispatch() { # the trusted dispatcher in the foreground (the user service runs this)
   exec python3 -I "$kit/dispatch.py" run; }

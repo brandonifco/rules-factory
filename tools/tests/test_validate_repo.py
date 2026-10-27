@@ -930,6 +930,7 @@ class TestNoBytecodeReachesTheCheckout(unittest.TestCase):
             "examples/srd-52-combat/check-locators-pdf-text.py",
             "tools/check-locators-joint.py",
             "tools/check-readme-status.py",
+            "tools/ci-runner/dispatch.py",
             "tools/ci-runner/onboard.py",
             "tools/factory/__main__.py",
             "tools/factory/acceptance.py",

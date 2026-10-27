@@ -33,7 +33,10 @@ capacity. `judge` is pure and is what the tests hold; everything else is I/O aro
 Usage:
   dispatch.py run                      the dispatcher loop (factory-ci dispatch; a user service)
   dispatch.py audit                    the boundary as one: registrations, visibility, variables,
-                                       fork approval; exit 1 on any finding (factory-ci audit)
+                                       fork approval, and `onboard-check` of every repository the
+                                       guest serves; exit 1 on any finding (factory-ci audit). The
+                                       dispatcher runs it itself every AUDIT_EVERY seconds (an
+                                       hour), logs each finding and writes AUDIT_RECORD
   dispatch.py timings OWNER/REPO [N]   queue and run time of the last N runs' jobs, by runner
   dispatch.py check                    prove the dispatcher's token file can do everything the
                                        dispatcher does, on every served repository
@@ -46,6 +49,8 @@ Actions read/write, Administration read/write, Contents read and Metadata read. 
 `timings` read every repository and always use `gh`.
 Standard library only.
 """
+import importlib.util
+import io
 import json
 import os
 import re
@@ -61,6 +66,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
+sys.dont_write_bytecode = True  # it loads onboard.py by path (the audit)
 KIT = os.path.dirname(os.path.abspath(__file__))
 FACTORY_CI = os.path.join(KIT, "factory-ci")
 VM = os.environ.get("FACTORY_CI_VM", "factory-ci-1")
@@ -501,20 +507,57 @@ def run_forever():
     dispatcher = Dispatcher()
     log(f"dispatcher up: VM {VM}, labels {','.join(LABELS)}, poll {POLL}s, at most {JIT_MAX} one-job runners, "
         f"token from {dispatcher.github.source}")
+    audited = None
     while True:
         started = time.monotonic()
-        try:
-            dispatcher.cycle()
-        except Exception as error:  # the loop outlives one bad cycle; systemd restarts it if it dies
-            log(f"cycle failed: {type(error).__name__}: {error}")
+        audited = tick(dispatcher, audited)
         time.sleep(max(1.0, POLL - (time.monotonic() - started)))
+
+
+def tick(dispatcher, audited, clock=time.monotonic, audit=None):
+    """One turn of the loop: a cycle, and the audit when it is due (first at start, then every
+    AUDIT_EVERY seconds). Returns when the audit last ran."""
+    try:
+        dispatcher.cycle()
+    except Exception as error:  # the loop outlives one bad cycle; systemd restarts it if it dies
+        log(f"cycle failed: {type(error).__name__}: {error}")
+    if audited is None or clock() - audited >= AUDIT_EVERY:
+        (audit or audit_now)(dispatcher)
+        return clock()
+    return audited
 
 
 # -------------------------------------------------------------------------------------- audit --
 
-def audit(github=None, guest=None):
-    """Registrations, labels, visibility, variables and fork approval, reviewed as one boundary."""
+#: `FACTORY_RUNS_ON` holding exactly this is the owner's decision that every run is hosted (`factory-ci
+#: disable`, decision 0087); a fork's run reads it too, and is hosted, so a public repository may hold it.
+HOSTED = '"ubuntu-24.04"'
+#: How often the dispatcher runs the audit itself, and where it leaves the last verdict.
+AUDIT_EVERY = float(os.environ.get("FACTORY_CI_AUDIT_EVERY", "3600"))
+AUDIT_RECORD = os.environ.get("FACTORY_CI_AUDIT_RECORD", os.path.expanduser("~/.local/state/factory-ci/audit.json"))
+
+
+def onboard_module():
+    """tools/ci-runner/onboard.py, whose `verify` is `onboard-check`: loaded by path and on first use, because
+    it loads this module itself."""
+    key = "_factory_ci_onboard"
+    if key not in sys.modules:
+        spec = importlib.util.spec_from_file_location(key, os.path.join(KIT, "onboard.py"))
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[key] = module
+        spec.loader.exec_module(module)
+    return sys.modules[key]
+
+
+def audit(github=None, guest=None, out=None):
+    """Registrations, labels, visibility, variables, fork approval and routing, reviewed as one boundary.
+
+    Every repository the guest serves, by a standing runner or by dispatch, is also held to `onboard-check`
+    (decision 0084): its variables, its runners and the `runs-on` of every job on its default branch against
+    the contract line, which has no hosted default (decision 0087). A repository that check cannot read is a
+    finding, never a pass. Returns (exit code, findings)."""
     github = github or GitHub()
+    out = out or sys.stdout
     inventory = (guest or Guest()).inventory()
     findings, notes = [], []
     owner = github.get("/user")["login"]
@@ -529,31 +572,63 @@ def audit(github=None, guest=None):
         policy = github.get(f"/repos/{repository}/actions/permissions/fork-pr-contributor-approval").get("approval_policy")
         if policy != "all_external_contributors":
             findings.append(f"{repository}: fork pull requests from outside contributors run without approval ({policy})")
-        variables = {v["name"]: v["value"] for v in github.get(f"/repos/{repository}/actions/variables?per_page=30").get("variables", [])}
-        trusted = variables.get("FACTORY_RUNS_ON_TRUSTED")
-        try:
-            value = json.loads(trusted) if trusted is not None else list(LABELS)
-        except ValueError:
-            value = trusted
-        if sorted(str(v).casefold() for v in (value if isinstance(value, list) else [value])) != sorted(LABELS):
-            findings.append(f"{repository}: FACTORY_RUNS_ON_TRUSTED is {trusted}, not factory-ci's labels")
-        notes.append(f"{repository}: dispatch (fci-{name}, fcj-{name}), FACTORY_RUNS_ON_TRUSTED {'set' if trusted else 'unset'}, fork approval {policy}")
+        notes.append(f"{repository}: dispatch (fci-{name}, fcj-{name}), fork approval {policy}")
     for repository in sorted(public):
         runners = github.get(f"/repos/{repository}/actions/runners?per_page=100").get("runners", [])
         standing = [r["name"] for r in runners if not r["name"].startswith(f"{VM}-jit-")]
         if standing:
             findings.append(f"{repository}: public, with standing runner(s) {', '.join(standing)}")
-        variables = {v["name"] for v in github.get(f"/repos/{repository}/actions/variables?per_page=30").get("variables", [])}
-        if "FACTORY_RUNS_ON" in variables:
-            findings.append(f"{repository}: public, with FACTORY_RUNS_ON set: every fork pull request would ask for it")
+        variables = {v["name"]: v["value"] for v in github.get(f"/repos/{repository}/actions/variables?per_page=30").get("variables", [])}
+        if "FACTORY_RUNS_ON" in variables and variables["FACTORY_RUNS_ON"] != HOSTED:
+            findings.append(f"{repository}: public, with FACTORY_RUNS_ON set: every fork pull request would ask for it "
+                            f"(`factory-ci disable {repository}` makes it exactly {HOSTED}, which sends every run hosted)")
         if "FACTORY_RUNS_ON_TRUSTED" in variables and repository not in inventory["dispatch"].values():
             findings.append(f"{repository}: FACTORY_RUNS_ON_TRUSTED set, but the guest does not serve it by dispatch")
+    managed = sorted({url.removeprefix("https://github.com/") for url in inventory["persistent"].values()}
+                     | set(inventory["dispatch"].values()), key=str.casefold)
+    onboard = onboard_module()
+    for repository in managed:
+        try:
+            record = onboard.verify(repository, github)
+        except onboard.OnboardError as error:
+            findings.append(f"{repository}: routing NOT VERIFIED, which is not a pass: {error}")
+            continue
+        findings.extend(f"{repository}: {finding} (`factory-ci onboard-check {repository}`)" for finding in record["findings"])
+        if record["verdict"] == "pass":
+            notes.append(f"{repository}: routing verified, {record['routing']['mode']}, every job on the contract line")
     for line in notes:
-        print(f"  ok  {line}")
+        print(f"  ok  {line}", file=out)
     for line in findings:
-        print(f"  X   {line}")
-    print(f"audit of {owner}'s repositories: {len(findings)} finding(s)")
-    return 1 if findings else 0
+        print(f"  X   {line}", file=out)
+    print(f"audit of {owner}'s repositories: {len(findings)} finding(s)", file=out)
+    return (1 if findings else 0), findings
+
+
+def audit_now(dispatcher, path=AUDIT_RECORD):
+    """The audit, run by the dispatcher itself so a change made on GitHub is found without anyone asking
+    (decision 0087). It reads with the `gh` login, as `factory-ci audit` does, never the dispatch token file,
+    which is scoped to the public repositories. Each finding is logged; the verdict is written to `path`
+    (repo-hygiene.py reports a failing or stale one); an audit that could not finish is a failure too."""
+    checked = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        code, findings = audit(GitHub(), dispatcher.guest, out=io.StringIO())
+    except Exception as error:  # an audit that did not finish is not a pass
+        code, findings = 2, [f"the audit did not finish: {type(error).__name__}: {error}"]
+    for finding in findings:
+        log(f"audit: X {finding}")
+    log(f"audit: {'pass' if code == 0 else 'FAIL'}, {len(findings)} finding(s)")
+    record = {"schema": "factory-ci/audit/1", "checked_at": checked, "verdict": "pass" if code == 0 else "fail",
+              "findings": findings}
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        temporary = f"{path}.tmp"
+        with open(temporary, "w", encoding="utf-8") as handle:
+            json.dump(record, handle, indent=2)
+            handle.write("\n")
+        os.replace(temporary, path)
+    except OSError as error:
+        log(f"audit: could not write {path}: {error}")
+    return record
 
 
 def paginate(github, path):
@@ -645,7 +720,7 @@ def main(argv):
     if argv[:1] == ["run"]:
         run_forever()
     if argv[:1] == ["audit"]:
-        return audit()
+        return audit()[0]
     if argv[:1] == ["check"]:
         return check()
     if argv[:1] == ["timings"] and len(argv) in (2, 3):

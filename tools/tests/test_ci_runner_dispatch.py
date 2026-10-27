@@ -8,6 +8,7 @@ would otherwise reach the owner's machine.
 import importlib.util
 import os
 import sys
+import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -459,22 +460,51 @@ class TestTheDispatcherSTokenFile(unittest.TestCase):
 
 
 class TestThisRepositoryAsksForTheVmOnlyThroughTheContract(unittest.TestCase):
-    """rules-factory is public: a literal self-hosted label in its workflows would be the direct path."""
+    """rules-factory is public: a literal self-hosted label in its workflows would be the direct path, and a
+    hosted one, or a runner line with a hosted default, an implicit fallback (decision 0087). Held by the same
+    rule `onboard-check` and `factory-ci audit` apply to the repository on GitHub, so this gate refuses
+    before a merge what the audit would find after it."""
 
-    def test_every_runs_on_is_the_contract_line_or_the_pinned_hosted_release(self):
-        sys.path.insert(0, os.path.join(os.path.dirname(HERE), "factory"))
-        import repository
-        workflows = os.path.join(os.path.dirname(os.path.dirname(HERE)), ".github", "workflows")
-        seen = {}
-        for name in sorted(os.listdir(workflows)):
-            with open(os.path.join(workflows, name), encoding="utf-8") as handle:
-                for line in handle.read().split("\n"):
-                    if line.lstrip().startswith("runs-on:"):
-                        self.assertIn(line, (repository.RUNS_ON_LINE, "    runs-on: ubuntu-24.04"), name)
-                        seen.setdefault(name, []).append(line == repository.RUNS_ON_LINE)
-        self.assertEqual([True, True], seen["validate.yml"], "validate and engine take the contract")
-        self.assertEqual([True], seen["documentation.yml"])
-        self.assertEqual([False, False], seen["publish-map.yml"], "publishing stays hosted: it holds the NuGet key")
+    def setUp(self):
+        self.onboard = dispatch.onboard_module()
+        self.root = os.path.dirname(os.path.dirname(HERE))
+
+    def test_every_job_is_on_the_contract_line_or_a_listed_hosted_job(self):
+        workflows, paths = self.onboard.scan_checkout(self.root)
+        findings = self.onboard.workflow_findings("brandonifco/rules-factory", False, "this checkout", workflows, paths)
+        self.assertEqual([], findings)
+        on = {(e["path"].rsplit("/", 1)[1], e["job"]): e["ok"] for e in workflows}
+        self.assertEqual(True, on[("validate.yml", "validate")])
+        self.assertEqual(True, on[("validate.yml", "engine")])
+        self.assertEqual(True, on[("documentation.yml", "documentation")])
+        self.assertEqual("hosted", on[("publish-map.yml", "publish")], "publishing stays hosted: it holds the NuGet key")
+
+    def test_the_gate_refuses_the_original_fallback_and_any_other_hosted_route(self):
+        """The mutations this test exists for, applied to a copy of this repository's workflows."""
+        source = os.path.join(self.root, ".github", "workflows", "validate.yml")
+        with open(source, encoding="utf-8") as handle:
+            text = handle.read()
+        line = self.onboard.RUNS_ON_LINE
+        mutations = {
+            "the 0080 line, ending in a hosted default": self.onboard.RUNS_ON_LINE_0080,
+            "the 0079 line": self.onboard.RUNS_ON_LINE_0079,
+            "a literal hosted label": "    runs-on: ubuntu-24.04",
+            "a hosted default with no fallback text": "    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON_TRUSTED || vars.FACTORY_RUNS_ON) }}",
+            "another hosted release": line.replace('"ubuntu-24.04"', '"ubuntu-latest"'),
+            "the contract with its unset group removed": line.replace(
+                "'{\"group\":\"FACTORY_RUNS_ON or FACTORY_RUNS_ON_TRUSTED is unset or invalid\"}'", "'\"ubuntu-24.04\"'"),
+            "a literal self-hosted label": "    runs-on: [self-hosted, linux, x64, factory-ci]",
+        }
+        for what, replacement in mutations.items():
+            self.assertNotEqual(line, replacement, what)
+            with tempfile.TemporaryDirectory() as root:
+                os.makedirs(os.path.join(root, ".github", "workflows"))
+                with open(os.path.join(root, ".github", "workflows", "validate.yml"), "w", encoding="utf-8") as out:
+                    out.write(text.replace(line, replacement, 1))
+                workflows, paths = self.onboard.scan_checkout(root)
+                findings = self.onboard.workflow_findings("brandonifco/rules-factory", False, "a mutation", workflows, paths)
+                self.assertTrue(any("validate.yml: job validate" in f for f in findings), f"{what}: {findings}")
+
 
 if __name__ == "__main__":
     unittest.main()

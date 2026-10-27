@@ -18,6 +18,8 @@ installs. Nothing in it is a credential.
 | The owner's own runs of a public repository (since 2026-10-10: see [Repositories](#repositories)) | `factory-ci` VM, one one-job runner per job | The variable `FACTORY_RUNS_ON_TRUSTED` routes them; the **trusted dispatcher** admits each one and starts its runner ([The boundary](#the-boundary-for-public-repositories)). |
 | Everything else in a public repository: fork pull requests, bots (Dependabot), a re-run of either | GitHub-hosted `ubuntu-24.04` | The runner line sends them there unmodified. A fork that rewrites its `runs-on` gets a job that is never served and is cancelled. Hosted runs are free on public repositories. |
 | Publishing (`publish-map.yml`, a library's `publish.yml`) and manual maintenance workflows | GitHub-hosted `ubuntu-24.04` | Pinned in the file, and declared in `runners.json` `hosted_jobs` (public repositories only; see Adding a repository). The NuGet key is never on the VM. |
+| Every run of a repository the owner returned to hosted runners | GitHub-hosted `ubuntu-24.04` | `FACTORY_RUNS_ON` is exactly `"ubuntu-24.04"`, which `factory-ci disable` writes ([Hosted usage, and going back](#hosted-usage-and-going-back)). |
+| Any run whose variables name no runner: neither set, either empty, both set, or a value naming neither factory-ci nor exactly `"ubuntu-24.04"` | **none: the job fails at once** | The runner line asks for a runner group that cannot exist; GitHub fails the job when it is created, and its check reports `failure` ([decision 0087](decisions/0087-no-run-reaches-a-hosted-runner-because-its-routing-is-missing.md)). |
 
 Every factory workflow, and this repository's own CI jobs, carry the one line `repository.py` holds
 as `RUNS_ON_LINE`. `FACTORY_RUNS_ON_TRUSTED` takes a run only when its actor and triggering actor
@@ -26,9 +28,13 @@ are the owner and its code is this repository's, not a fork's. `FACTORY_RUNS_ON`
 enable` sets the right one for the repository's visibility, and `factory-ci audit` reports the
 wrong one.
 
-There is **no fallback**. When the VM or the dispatcher is down, a run that asked for it waits in
-GitHub's queue and fails after GitHub's 24-hour queue limit. It does not move to a billed hosted
-runner. Moving a repository back to hosted runners is a deliberate act, described below.
+There is **no fallback**, and no default. When the VM or the dispatcher is down, a run that asked for
+it waits in GitHub's queue and fails after GitHub's 24-hour queue limit. It does not move to a billed
+hosted runner, and a run whose variables are missing or wrong does not either: its job fails at once,
+with the annotation "Required runner group 'FACTORY_RUNS_ON or FACTORY_RUNS_ON_TRUSTED is unset or
+invalid' not found". The line used to end in `|| '"ubuntu-24.04"'`, which sent exactly those runs to
+hosted compute; [decision 0087](decisions/0087-no-run-reaches-a-hosted-runner-because-its-routing-is-missing.md)
+removed it. Moving a repository back to hosted runners is a deliberate act, described below.
 
 ## The boundary for public repositories
 
@@ -142,10 +148,19 @@ tools/ci-runner/factory-ci logs brandonifco/reykholt -n 200
 tools/ci-runner/factory-ci start | stop | restart          # the VM (stop is graceful)
 tools/ci-runner/factory-ci runner stop|start|restart [OWNER/REPO]   # the runner services
 tools/ci-runner/factory-ci ssh                             # admin shell in the guest
-tools/ci-runner/factory-ci audit                           # the trust boundary, every repository
+tools/ci-runner/factory-ci audit                           # the trust boundary, and onboard-check of every served repository
 tools/ci-runner/factory-ci logs dispatch -n 200            # what the dispatcher admitted, refused, started
 tools/ci-runner/factory-ci timings brandonifco/rules-factory 20   # queue and run time, by runner
 ```
+
+**The audit runs itself.** The dispatcher runs `factory-ci audit` at start and every hour
+(`FACTORY_CI_AUDIT_EVERY`, seconds), with the `gh` login: the boundary, and `onboard-check` of every
+repository the guest serves (its variables, runners, and every job's `runs-on` on its default branch).
+Each finding goes to its journal as `audit: X ...`, and the verdict to
+`~/.local/state/factory-ci/audit.json`. `tools/repo-hygiene.py`, which every Claude Code session in
+rules-factory runs at its start, reports a failing audit, or one missing or more than three hours old,
+as `LEFTOVER ci-route`, so a variable deleted or a workflow edited on GitHub is said within the hour
+without anybody asking. A finding names the repository, what is wrong and the command to run.
 
 **The dispatcher** is the user service `factory-ci-dispatch` on the host, installed by
 `factory-ci install-dispatcher` from the checkout it should run (the primary one, on `main`). It
@@ -250,21 +265,22 @@ workflow job and its `runs-on`, the findings and a `pass`/`fail` verdict). A fin
 - a private repository with no authorized standing runner online with exactly those labels;
 - routing wrong: a private repository without `FACTORY_RUNS_ON` exactly those labels, or with
   `FACTORY_RUNS_ON_TRUSTED` set; a public one with any standing runner, with `FACTORY_RUNS_ON` set,
-  or without `FACTORY_RUNS_ON_TRUSTED` exactly those labels;
+  or without `FACTORY_RUNS_ON_TRUSTED` exactly those labels (a repository returned to hosted runners
+  by `disable` is a finding too: its setup is not complete, decision 0084);
 - a job in a workflow on the default branch whose `runs-on` is not `RUNS_ON_LINE` (a literal hosted
   label is a silent fallback; a reusable-workflow job with no `runs-on` is reported, not failed), or no
   workflow at all. A trailing YAML comment (a `#` preceded by whitespace, outside quotes) is not part of
   the `runs-on`; a `#` inside the expression's quotes is.
 
-Two lines are accepted, not one. `RUNS_ON_LINE` is the contract. The line decision 0079 put in every
-recipe before 0080, `runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}`
-(`RUNS_ON_LINE_0079` in `tools/ci-runner/onboard.py`), is accepted on a private repository only, and the
-record's `ok` for that job is `"0079"` (a note is printed). On a private repository whose
-`FACTORY_RUNS_ON` is exactly factory-ci's labels and whose `FACTORY_RUNS_ON_TRUSTED` is unset it routes
-exactly as `RUNS_ON_LINE` does (decision 0080 point 5), and its hosted default is reachable only when
-`FACTORY_RUNS_ON` is unset, which the routing check already fails. On a public repository it would send
-a fork's run to the variable and the owner's run to hosted, so there it is a finding. Any other
-expression, such as the same line with `ubuntu-latest`, is a finding too.
+One line is accepted: `RUNS_ON_LINE`. The two that came before it end in a hosted default, which any
+run whose variables name no runner takes: decision 0079's, `runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON ||
+'"ubuntu-24.04"') }}` (`RUNS_ON_LINE_0079`), and decision 0080's, the trusted-run line ending
+`|| vars.FACTORY_RUNS_ON || '"ubuntu-24.04"') }}` (`RUNS_ON_LINE_0080`). Each is a finding that names
+the line, calls it an implicit fallback and says what replaces it (re-produce, or copy `RUNS_ON_LINE`);
+the record marks the job with `legacy`. Any other expression, such as the same line with `ubuntu-latest`,
+is a finding too. The rule that judges a workflow's jobs, `workflow_findings`, is the one the gate
+applies to rules-factory's own workflows, so `validate.sh` refuses before a merge what this check would
+find after it ([decision 0087](decisions/0087-no-run-reaches-a-hosted-runner-because-its-routing-is-missing.md)).
 
 A job that stays hosted on purpose is declared, not assumed. Decision 0080 point 8 keeps two kinds on
 `ubuntu-24.04`: workflows that hold publication credentials (the NuGet key is never on the VM) and
@@ -439,6 +455,8 @@ GitHub; a public repository has none to replace.
   `gh api /users/<owner>/settings/billing/usage`. That API needs a token with the `user` scope
   (`gh auth refresh -h github.com -s user`).
 - **Returning a repository to hosted runners** costs minutes, so it needs the owner's explicit
-  decision. Run `tools/ci-runner/factory-ci disable OWNER/REPO`, which deletes the variable; the
-  next run goes to `ubuntu-24.04`. To undo it, run `enable`. For a public repository this costs
-  nothing; `untrust` also stops the dispatcher serving it.
+  decision. Run `tools/ci-runner/factory-ci disable OWNER/REPO`, which deletes
+  `FACTORY_RUNS_ON_TRUSTED` and sets `FACTORY_RUNS_ON` to exactly `"ubuntu-24.04"`; the next run goes
+  there. Deleting the variables is not the way back: with neither set, every job fails at once
+  (decision 0087). To undo it, run `enable`, which replaces the value. For a public repository this
+  costs nothing; `untrust` does the same and also stops the dispatcher serving it.

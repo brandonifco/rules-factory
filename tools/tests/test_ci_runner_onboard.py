@@ -193,23 +193,22 @@ class TestVerify(unittest.TestCase):
             self.assertIn("validate.yml: job publish has runs-on", "\n".join(record["findings"]))
             self.assertEqual([True, False], [w["ok"] for w in record["workflows"]])
 
-    def test_decision_0079s_line_is_accepted_on_a_private_repository_with_the_variable_exact_and_nowhere_else(self):
+    def test_the_lines_before_0087_are_an_implicit_fallback_and_a_finding_everywhere(self):
+        """0079's and 0080's lines end in a hosted default: whatever their variables, they are findings that
+        name the line and what replaces it, on a private repository and a public one (decision 0087)."""
         self.assertEqual("    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '\"ubuntu-24.04\"') }}", onboard.RUNS_ON_LINE_0079)
-        old = {"validate.yml": workflow(("validate", onboard.RUNS_ON_LINE_0079, ""))}
-        record = verify(FakeGitHub(runners=[runner()], workflows=old))
-        self.assertEqual("pass", record["verdict"], record["findings"])
-        self.assertEqual(["0079"], [w["ok"] for w in record["workflows"]])
-        out = io.StringIO()
-        onboard.report(record, out)
-        self.assertIn("decision 0079's runner line", out.getvalue())
-        # the variable missing: the routing check fails it, as it does for RUNS_ON_LINE
-        text = self.findings(FakeGitHub(runners=[runner()], workflows=old, variables={}))
-        self.assertIn("FACTORY_RUNS_ON is not set", text)
-        # public: it would send a fork's run to the variable, so it stays a finding
-        public = verify(FakeGitHub(private=False, variables={"FACTORY_RUNS_ON_TRUSTED": EXACT}, workflows=old))
-        self.assertEqual("fail", public["verdict"])
-        self.assertEqual([False], [w["ok"] for w in public["workflows"]])
-        self.assertIn("not the contract line", "\n".join(public["findings"]))
+        self.assertTrue(onboard.RUNS_ON_LINE_0080.endswith("|| vars.FACTORY_RUNS_ON || '\"ubuntu-24.04\"') }}"))
+        for name, line in onboard.LEGACY.items():
+            old = {"validate.yml": workflow(("validate", line, ""))}
+            for github in (FakeGitHub(runners=[runner()], workflows=old),
+                           FakeGitHub(private=False, variables={"FACTORY_RUNS_ON_TRUSTED": EXACT}, workflows=old)):
+                record = verify(github)
+                self.assertEqual("fail", record["verdict"], name)
+                self.assertEqual([(False, name)], [(w["ok"], w.get("legacy")) for w in record["workflows"]])
+                text = "\n".join(record["findings"])
+                self.assertIn(f"carries decision {name}'s runner line", text)
+                self.assertIn("implicit fallback", text)
+                self.assertIn("decision 0087", text)
 
     def test_the_ubuntu_latest_variant_of_0079s_line_stays_a_finding(self):
         line = "    runs-on: ${{ fromJSON(vars.FACTORY_RUNS_ON || '\"ubuntu-latest\"') }}"
@@ -221,8 +220,11 @@ class TestVerify(unittest.TestCase):
         for comment in (" # Enabled 2026-10-12", " # As build-and-test", "  #no space after", " #"):
             files = {"validate.yml": workflow(("validate", GOOD + comment, ""), ("again", onboard.RUNS_ON_LINE_0079 + comment, ""))}
             record = verify(FakeGitHub(runners=[runner()], workflows=files))
+            self.assertEqual([True, False], [w["ok"] for w in record["workflows"]])
+            self.assertEqual("0079", record["workflows"][1].get("legacy"), comment)
+            files = {"validate.yml": workflow(("validate", GOOD + comment, ""))}
+            record = verify(FakeGitHub(runners=[runner()], workflows=files))
             self.assertEqual("pass", record["verdict"], (comment, record["findings"]))
-            self.assertEqual([True, "0079"], [w["ok"] for w in record["workflows"]])
             self.assertEqual(onboard.RUNS_ON_LINE.strip()[len("runs-on: "):], record["workflows"][0]["runs_on"])
         # a comment does not make a wrong line right
         files = {"validate.yml": workflow(("validate", "    runs-on: ubuntu-24.04 # " + GOOD.strip(), ""))}
@@ -769,6 +771,161 @@ class TestTheKitAgreesWithItself(unittest.TestCase):
 
     def test_the_gh_reader_cannot_write(self):
         self.assertFalse(hasattr(onboard.GhApi, "call"))
+
+
+class FakeAccount:
+    """The owner's account as `dispatch.audit` reads it: several repositories, each with its own settings."""
+
+    def __init__(self, repositories):
+        self.repositories = repositories
+        self.refuse = set()
+
+    def get(self, path, cache=False):
+        bare, query = (path.split("?", 1) + [""])[:2]
+        if bare == "/user":
+            return {"login": "brandonifco"}
+        if bare == "/user/repos":
+            page = int(re.search(r"(?:^|&)page=(\d+)", query).group(1))
+            return [{"full_name": n} for n, r in sorted(self.repositories.items()) if not r["private"]] if page == 1 else []
+        name = "/".join(bare.split("/")[2:4])
+        repo, rest = self.repositories[name], "/".join(bare.split("/")[4:])
+        if rest in self.refuse:
+            raise urllib.error.HTTPError(path, 403, "Forbidden", {}, None)
+        if rest == "":
+            return {"private": repo["private"], "visibility": "private" if repo["private"] else "public", "default_branch": "main"}
+        if rest == "actions/permissions/fork-pr-contributor-approval":
+            return {"approval_policy": repo.get("approval", "all_external_contributors")}
+        first = re.search(r"(?:^|&)page=(\d+)", query) is None or re.search(r"(?:^|&)page=1(?:&|$)", query) is not None
+        if rest == "actions/runners":
+            return {"runners": repo.get("runners", []) if first else []}
+        if rest == "actions/variables":
+            return {"variables": [{"name": k, "value": v} for k, v in repo["variables"].items()] if first else []}
+        if rest == "contents/.github/workflows":
+            return [{"type": "file", "path": f".github/workflows/{n}"} for n in sorted(repo["workflows"])]
+        if rest.startswith("contents/.github/workflows/"):
+            text = repo["workflows"][rest.rsplit("/", 1)[1]]
+            return {"encoding": "base64", "content": base64.b64encode(text.encode()).decode()}
+        raise AssertionError(path)
+
+
+class AuditGuest:
+    def __init__(self, dispatch_served, persistent):
+        self.served = {"dispatch": dict(dispatch_served), "persistent": dict(persistent), "jit": {}}
+
+    def inventory(self):
+        return self.served
+
+
+PRIVATE, PUBLIC = "brandonifco/private-engine", "brandonifco/public-engine"
+
+
+def account(private=None, public=None):
+    """One private repository served by a standing runner and one public one served by dispatch, both on the
+    route; `private` and `public` change what they hold."""
+    return FakeAccount({
+        PRIVATE: {"private": True, "variables": {"FACTORY_RUNS_ON": EXACT}, "runners": [runner()],
+                  "workflows": {"validate.yml": workflow(("validate", GOOD, ""))}, **(private or {})},
+        PUBLIC: {"private": False, "variables": {"FACTORY_RUNS_ON_TRUSTED": EXACT}, "runners": [],
+                 "workflows": {"validate.yml": workflow(("validate", GOOD, ""))}, **(public or {})},
+    })
+
+
+class TestTheAuditHoldsEveryServedRepositoryToTheRoute(unittest.TestCase):
+    """`factory-ci audit` verifies every repository the guest serves with `onboard-check`'s own `verify`, and
+    the dispatcher runs it every hour (decision 0087): a route GitHub changed is found without anyone asking."""
+
+    guest = AuditGuest({"public-engine": PUBLIC}, {"fci-private-engine": f"https://github.com/{PRIVATE}"})
+
+    def audit(self, github):
+        return dispatch.audit(github, self.guest, out=io.StringIO())
+
+    def test_an_authorized_account_passes(self):
+        self.assertEqual((0, []), self.audit(account()))
+
+    def test_each_routing_violation_fails_naming_the_repository_the_rule_and_the_command(self):
+        legacy = {"validate.yml": workflow(("validate", onboard.RUNS_ON_LINE_0080, ""))}
+        cases = {
+            "trusted variable missing (the audit used to pass this)": (account(public={"variables": {}}), PUBLIC,
+                                                                     "FACTORY_RUNS_ON_TRUSTED is not set"),
+            "the original fallback deployed": (account(public={"workflows": legacy}), PUBLIC, "carries decision 0080's runner line"),
+            "0079's fallback on a private repository": (
+                account(private={"workflows": {"validate.yml": workflow(("validate", onboard.RUNS_ON_LINE_0079, ""))}}),
+                PRIVATE, "carries decision 0079's runner line"),
+            "a literal hosted job": (account(private={"workflows": {"validate.yml": workflow(("validate", "    runs-on: ubuntu-24.04", ""))}}),
+                                     PRIVATE, "not the contract line"),
+            "private variable missing": (account(private={"variables": {}}), PRIVATE, "FACTORY_RUNS_ON is not set"),
+            "private variable hosted": (account(private={"variables": {"FACTORY_RUNS_ON": '"ubuntu-24.04"'}}), PRIVATE, "not exactly"),
+            "private variable malformed": (account(private={"variables": {"FACTORY_RUNS_ON": '["self-hosted",'}}), PRIVATE, "not exactly"),
+            "contradictory on a private repository": (
+                account(private={"variables": {"FACTORY_RUNS_ON": EXACT, "FACTORY_RUNS_ON_TRUSTED": EXACT}}),
+                PRIVATE, "FACTORY_RUNS_ON_TRUSTED is set on a private repository"),
+            "trusted eligibility for every run of a public repository": (
+                account(public={"variables": {"FACTORY_RUNS_ON": EXACT, "FACTORY_RUNS_ON_TRUSTED": EXACT}}),
+                PUBLIC, "public repository with FACTORY_RUNS_ON set"),
+            "a standing runner on a public repository": (account(public={"runners": [runner()]}), PUBLIC, "standing runner"),
+        }
+        for what, (github, repository, rule) in cases.items():
+            code, findings = self.audit(github)
+            self.assertEqual(1, code, what)
+            named = [f for f in findings if f.startswith(f"{repository}: ") and rule in f]
+            self.assertTrue(named, f"{what}: {findings}")
+            if "onboard-check" not in rule:
+                self.assertTrue(any(f"factory-ci" in f for f in named), f"{what}: a finding says what to run: {named}")
+
+    def test_a_repository_the_audit_cannot_read_is_not_verified_and_not_a_pass(self):
+        github = account()
+        github.refuse.add("contents/.github/workflows")
+        code, findings = self.audit(github)
+        self.assertEqual(1, code)
+        self.assertTrue(any("routing NOT VERIFIED, which is not a pass" in f for f in findings), findings)
+
+    def test_a_public_repository_returned_to_hosted_by_disable_is_not_a_fork_route(self):
+        github = account()
+        github.repositories["brandonifco/hosted"] = {"private": False, "variables": {"FACTORY_RUNS_ON": '"ubuntu-24.04"'}, "workflows": {}}
+        self.assertEqual((0, []), self.audit(github))
+        github.repositories["brandonifco/hosted"]["variables"]["FACTORY_RUNS_ON"] = EXACT
+        code, findings = self.audit(github)
+        self.assertIn("brandonifco/hosted: public, with FACTORY_RUNS_ON set", "\n".join(findings))
+
+    def test_the_dispatcher_audits_at_start_and_every_hour_and_records_the_verdict(self):
+        class Dispatcher:
+            cycles = 0
+            guest = self.guest
+
+            def cycle(self):
+                Dispatcher.cycles += 1
+
+        audits, now = [], [1000.0]
+        clock = lambda: now[0]
+        audited = dispatch.tick(Dispatcher(), None, clock, audits.append)
+        self.assertEqual((1, 1), (len(audits), Dispatcher.cycles))
+        now[0] += dispatch.AUDIT_EVERY - 1
+        audited = dispatch.tick(Dispatcher(), audited, clock, audits.append)
+        self.assertEqual(1, len(audits), "not again within the hour")
+        now[0] += 1
+        dispatch.tick(Dispatcher(), audited, clock, audits.append)
+        self.assertEqual((2, 3), (len(audits), Dispatcher.cycles))
+
+    def test_the_recorded_verdict_is_the_audit_s_and_an_audit_that_breaks_is_a_failure(self):
+        class Dispatcher:
+            guest = self.guest
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "state", "audit.json")
+            for github, verdict in ((account(), "pass"), (account(public={"variables": {}}), "fail"), (None, "fail")):
+                factory = (lambda g=github: g) if github else (lambda: (_ for _ in ()).throw(RuntimeError("no gh login")))
+                original = dispatch.GitHub
+                dispatch.GitHub = factory
+                try:
+                    with contextlib.redirect_stdout(io.StringIO()) as logged:
+                        record = dispatch.audit_now(Dispatcher(), path)
+                finally:
+                    dispatch.GitHub = original
+                with open(path, encoding="utf-8") as handle:
+                    self.assertEqual(record, json.load(handle))
+                self.assertEqual(verdict, record["verdict"])
+                self.assertIn(f"audit: {'pass' if verdict == 'pass' else 'FAIL'}", logged.getvalue())
+                if github is None:
+                    self.assertIn("the audit did not finish: RuntimeError: no gh login", record["findings"][0])
 
 
 if __name__ == "__main__":

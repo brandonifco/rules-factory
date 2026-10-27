@@ -35,6 +35,10 @@ This reports every such leftover, and with `--fix` removes the ones that are pro
   * release    an issue labelled `review*-p0` or `review*-p1` closed after the last `factory/v*`
                tag, while `tools/factory/` has changed since it: never fixed here. A tag is a
                decision; this says it is due until one is made
+  * ci-route   on the host that runs the factory-ci dispatcher, its last `factory-ci audit` (it runs
+               one every hour, decision 0087) failed, or is missing or more than three hours old:
+               never fixed here. A runner route GitHub changed under a repository is found by the
+               dispatcher and said here, at the start of the next session
 
 Nothing is ever forced. A worktree with uncommitted or untracked files, a locked detached one, the
 one this command runs in, and a branch with commits outside `main` are reported and left alone.
@@ -53,6 +57,7 @@ Exit 0 clean; 1 leftovers remain; 3 no leftovers found, but part of the check co
 Standard library only.
 """
 import argparse
+import calendar
 import json
 import os
 import re
@@ -72,7 +77,12 @@ CACHE_NAMES = ("__pycache__", ".pytest_cache")
 PRODUCT_PATHS = ("tools/factory", ":(exclude)tools/tests")
 GROUPED_REMEDY = {"remote": "repo-hygiene.py --fix --remote"}
 # Each worktree has its own reason and its own command, so a run of them is never one finding.
-UNGROUPED = ("worktree",)
+UNGROUPED = ("worktree", "ci-route")
+# The factory-ci host: the dispatcher's unit, which `factory-ci install-dispatcher` writes, and the
+# verdict of the audit it runs every hour (tools/ci-runner/dispatch.py, AUDIT_RECORD).
+DISPATCHER_UNIT = "~/.config/systemd/user/factory-ci-dispatch.service"
+AUDIT_RECORD = "~/.local/state/factory-ci/audit.json"
+AUDIT_MAX_AGE_SECONDS = 3 * 60 * 60
 
 
 class Unavailable(Exception):
@@ -464,6 +474,31 @@ def check_map_releases(root, report):
                 "(docs/decisions/0073)")
 
 
+def check_ci_audit(report, unit=None, record=None, now=None):
+    """The dispatcher's last audit, on the host that runs it; nothing anywhere else. The two paths can be
+    moved by FACTORY_CI_DISPATCHER_UNIT and FACTORY_CI_AUDIT_RECORD, as the dispatcher's record can."""
+    unit = os.path.expanduser(unit or os.environ.get("FACTORY_CI_DISPATCHER_UNIT", DISPATCHER_UNIT))
+    record = os.path.expanduser(record or os.environ.get("FACTORY_CI_AUDIT_RECORD", AUDIT_RECORD))
+    if not os.path.exists(unit):
+        return
+    remedy = "tools/ci-runner/factory-ci audit (and factory-ci logs dispatch)"
+    try:
+        with open(record, encoding="utf-8") as handle:
+            found = json.load(handle)
+        checked = calendar.timegm(time.strptime(found["checked_at"], "%Y-%m-%dT%H:%M:%SZ"))
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        report.leftover("ci-route", f"the dispatcher has left no audit verdict at {record} ({type(error).__name__})", remedy)
+        return
+    age = (now if now is not None else time.time()) - checked
+    if age > AUDIT_MAX_AGE_SECONDS:
+        report.leftover("ci-route", f"the dispatcher's last audit is {age / 3600:.1f} hours old ({found['checked_at']}): "
+                                    f"it is not auditing", remedy)
+    if found.get("verdict") != "pass":
+        findings = found.get("findings") or []
+        shown = "; ".join(str(item) for item in findings[:3]) + (f"; and {len(findings) - 3} more" if len(findings) > 3 else "")
+        report.leftover("ci-route", f"factory-ci audit failed at {found['checked_at']}, {len(findings)} finding(s): {shown}", remedy)
+
+
 def remove_caches(root, fix, report):
     found = []
     for directory, subdirs, _ in os.walk(root):
@@ -525,6 +560,7 @@ def main(argv=None):
         except Unavailable as error:
             report.unchecked.append(f"whether a release is due ({error})")
     check_map_releases(root, report)
+    check_ci_audit(report)
     remove_caches(root, args.fix, report)
     return report.print()
 
