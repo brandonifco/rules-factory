@@ -5239,8 +5239,8 @@ class TestPrPolicyAcceptanceCriteria(RailsInAGitEngine):
                 self.assertNotIn("no generated registry", done.stdout, authority)
 
     def test_a_map_basis_cannot_be_verified_where_no_registry_can_be_read(self):
-        # mutation: `if not registries:` -> `if False:` ... with the id found in no registry that is the same refusal,
-        # so the mutation is `return False` -> `return True` in that branch
+        # mutation 1: the `return False` of the `not registries` branch -> `return True`;
+        # mutation 2: `if not self._registry_reported:` -> `if False:` (the finding that says so is not made)
         for authority in ("`night-operation` definedElsewhere", "`altitude-limit` ambiguity"):
             done = self.criteria(f"AUTHORIZED INCOMPLETE — Authority: {authority}. Limitation: declined.",
                                  self.met(), self.met(), registry=False)
