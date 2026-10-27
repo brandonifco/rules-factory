@@ -15,6 +15,9 @@
     A `mapped` entry declines even when its code exists (corpus-map.md, `status`), so the
     override is ignored until the overlay says so;
 
+`Registry.DeclaredInputs(id)` names the inputs an engine declared on an entry's request type, which
+`Registry.Resolve(id, RuleRequest)` cannot state (#692).
+
 `[Implements]` is kept, and is the migrating part. Reflection still discovers it, as the runtime
 cross-check it was: it names a map entry, has the untyped signature, and appears once, and now
 also that the same entry has no typed handler as well. It can still answer an entry whose handler
@@ -175,6 +178,32 @@ REGISTRY_BODY = """
     public static ImmutableArray<SourceLocator> Citations(string entryId) => Entry(entryId).Locators;
 
     /// <summary>
+    /// The inputs the engine declared on the request type of <paramref name="entryId"/>: its public
+    /// instance properties with a public <c>set</c> or <c>init</c> accessor, other than
+    /// <see cref="IEntryRequest.EntryId"/> and <see cref="IEntryRequest.Assertions"/>, in declaration
+    /// order. Empty for an entry that declares none. These are what
+    /// <see cref="Resolve(string, RuleRequest)"/> cannot state: a <see cref="RuleRequest"/> carries
+    /// assertions only, so on that path an entry resolves as though the caller stated none of them.
+    /// To state them, resolve through <see cref="Resolve(IEntryRequest)"/> or <see cref="EntryPoints"/>.
+    /// </summary>
+    /// <param name="entryId">A map entry id.</param>
+    /// <returns>The names of the entry's declared inputs.</returns>
+    /// <exception cref="KeyNotFoundException">The map has no such entry.</exception>
+    public static ImmutableArray<string> DeclaredInputs(string entryId)
+    {
+        var entry = Entry(entryId);
+        const BindingFlags Declared = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+        return RequestTypes[entry.Id]
+            .GetProperties(Declared)
+            .Where(p => p.GetIndexParameters().Length == 0
+                && p.SetMethod is { IsPublic: true }
+                && p.Name is not (nameof(IEntryRequest.EntryId) or nameof(IEntryRequest.Assertions)))
+            .OrderBy(p => p.MetadataToken)
+            .Select(p => p.Name)
+            .ToImmutableArray();
+    }
+
+    /// <summary>
     /// Whether a hand-written handler exists for <paramref name="entryId"/>: a typed partial method
     /// of <see cref="Handlers"/>, or an <see cref="ImplementsAttribute"/> method.
     /// </summary>
@@ -187,13 +216,12 @@ REGISTRY_BODY = """
     /// Resolves <paramref name="entryId"/>: through its hand-written handler when the entry is
     /// <c>implemented</c> and has one (the typed handler first, which answers unless an optional
     /// hook leaves the resolution null), otherwise through the default its correspondence row fixes.
-    /// A typed handler receives a request of its entry's type built from <paramref name="request"/>
-    /// alone, so any input property an engine declares on that type has its default value; to pass
-    /// inputs, resolve through <see cref="Resolve(IEntryRequest)"/> or <see cref="EntryPoints"/>.
+    /// A <see cref="RuleRequest"/> carries assertions only (row 8), so on this path an entry resolves
+    /// as though the caller stated none of its <see cref="DeclaredInputs(string)"/>: a typed handler
+    /// receives a request of its entry's type built from <paramref name="request"/> alone, with every
+    /// input property at its default value. To state them, resolve through
+    /// <see cref="Resolve(IEntryRequest)"/> or <see cref="EntryPoints"/>.
     /// </summary>
-    /// <param name="entryId">A map entry id.</param>
-    /// <param name="request">What the caller asserts.</param>
-    /// <returns>The resolution.</returns>
     public static Resolution<object> Resolve(string entryId, RuleRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -203,9 +231,9 @@ REGISTRY_BODY = """
     /// <summary>
     /// Resolves the entry <paramref name="request"/> is for, exactly as
     /// <see cref="Resolve(string, RuleRequest)"/> does for its id and assertions, except that a
-    /// typed handler receives <paramref name="request"/> itself, with every input property the
-    /// engine declared on its type. The typed entry points in <see cref="EntryPoints"/> resolve
-    /// through here.
+    /// typed handler receives <paramref name="request"/> itself, with every input the engine declared
+    /// on its type (<see cref="DeclaredInputs(string)"/>) as the caller stated it. This is the path
+    /// that can state them; the typed entry points in <see cref="EntryPoints"/> resolve through here.
     /// </summary>
     /// <param name="request">A request for one map entry.</param>
     /// <returns>The resolution.</returns>
@@ -317,7 +345,12 @@ def registry_cs(model):
                      f"[{', '.join(f'MapEntries.{m}.Locator' for m in item['locators'])}]){csharp.asserted_by_init(entry)},\n")
     lines.append("    ];\n\n")
     lines.append("    private static readonly ImmutableDictionary<string, RegisteredEntry> ById =\n"
-                 "        All.ToImmutableDictionary(e => e.Id, StringComparer.Ordinal);\n")
+                 "        All.ToImmutableDictionary(e => e.Id, StringComparer.Ordinal);\n\n")
+    lines.append("    private static readonly ImmutableDictionary<string, Type> RequestTypes =\n"
+                 "        new Dictionary<string, Type>(StringComparer.Ordinal)\n        {\n")
+    for item in model.entries:
+        lines.append(f"            [{csharp.cs_string(item['entry']['id'])}] = typeof({semantics.contract(model, item)['request_cs']}),\n")
+    lines.append("        }.ToImmutableDictionary(StringComparer.Ordinal);\n")
     lines.append(REGISTRY_BODY)
     lines.append("}\n")
     return "".join(lines)
