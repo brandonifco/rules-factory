@@ -1904,6 +1904,21 @@ class TestValidateShWithDotnet(GateCase):
         self.assertEqual(code, 0, output[-4000:])
         self.assertIn("1 test(s) named by 1 entr(ies) (1 implemented), every one found and executed in all 2", output)
 
+    def test_a_handler_answering_the_string_path_unlike_the_typed_path_fails_a_generated_test(self):
+        """#692: with nothing stated the two entry points must agree, and the generated test is what says so.
+
+        The handler tells the two requests apart by the one thing that differs when nothing is stated:
+        the typed path is handed `SpeedLimitRequest.Empty`, the string path a request built from the
+        assertions. The same engine with a handler that ignores the difference passes (the test above).
+        """
+        engine = self.copy()
+        self.implement_speed_limit(engine, "    internal static partial Resolution<object> SpeedLimit("
+                                           "Requests.SpeedLimitRequest request) =>\n"
+                                           "        Resolution<object>.FromValue(ReferenceEquals(request, Requests.SpeedLimitRequest.Empty) ? 87 : 88);\n")
+        code, output = self.validate(engine, "full")
+        self.assertNotEqual(code, 0, output[-4000:])
+        self.assertIn("speed_limit__string_entry_point_is_the_typed_one_with_no_input_stated", output)
+
     def test_a_missing_or_mis_typed_handler_or_request_is_a_build_error(self):
         """#76: what reflection used to refuse at runtime, or never checked, the compiler refuses."""
         engine = self.copy()

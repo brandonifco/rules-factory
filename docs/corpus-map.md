@@ -1628,7 +1628,10 @@ one entry cannot be handed to another. An assertion's request carries the caller
 is what row 8 resolves to, and its generated entry carries `AssertedBy`, who may assert it (0025). The request type is partial, so what the map leaves unnamed, an
 operation's inputs, the engine declares on it in its own code
 ([#93](https://github.com/brandonifco/rules-factory/issues/93)), and the typed entry point passes
-that request, inputs included, to the handler. Each entry's handler is a declared method, so an `implemented` entry
+that request, inputs included, to the handler. The string entry point, `Registry.Resolve(id, RuleRequest)`,
+carries assertions only, so an entry resolves through it as though the caller stated none of its inputs;
+`Registry.DeclaredInputs(id)` names what it cannot state, and a generated test holds it to the typed entry
+point's answer when nothing is stated. Each entry's handler is a declared method, so an `implemented` entry
 that needs one (any not on row 8) and lacks it does not build. The value itself, and every output, is `object` until a field
 declares otherwise.
 
