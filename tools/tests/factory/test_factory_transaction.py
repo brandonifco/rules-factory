@@ -11,6 +11,7 @@ Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -657,6 +658,73 @@ class TestSymlinkInOut(Scratch):
         self.assertEqual((added, changed, removed), (["backlog/002.md"], [], []))
         self.assertTrue(os.path.islink(os.path.join(self.out, "linked")))
         self.assertEqual(listing(self.external), {"old.md": "external old"})
+
+
+class TestGitMetadataIsNotAnInput(Scratch):
+    """#561, #649: a verified commit into a git checkout is held to the engine, not to `.git`.
+
+    `.git` is a directory in an ordinary clone and a *file* (`gitdir: ...`) in a linked worktree,
+    which is where the engine rails send all implementation. The staging copy ignored the name
+    either way, but the drift check pruned it only as a directory, so in a worktree the `.git` file
+    was in --out and not in the snapshot, and every verified commit was refused as `.git (added)`
+    after the gate had passed. Both kinds of checkout are made with git itself, not imitated.
+    """
+
+    def setUp(self):
+        super().setUp()
+        write(os.path.join(self.out, "src", "Engine", "Rule.cs"), "class Rule { }")
+        self.git(self.out, "init", "-q")
+        self.git(self.out, "add", "-A")
+        self.git(self.out, "commit", "-q", "-m", "engine")
+
+    def git(self, cwd, *args):
+        return subprocess.run(["git", "-C", cwd, "-c", "init.defaultBranch=main", "-c", "user.email=t@example.com",
+                               "-c", "user.name=T", *args],
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=True).stdout
+
+    def linked_worktree(self):
+        worktree = os.path.join(self.tmp, "worktree")
+        self.git(self.out, "worktree", "add", "-q", "-b", "produce", worktree)
+        self.assertTrue(os.path.isfile(os.path.join(worktree, ".git")))
+        return worktree
+
+    def commit_verified(self, out, concurrent=lambda out: None):
+        with transaction.Stage(out) as stage:
+            write(os.path.join(stage.root, "src", "Engine", "Generated", "Entries.g.cs"), "// generated")
+            stage.testing()
+            concurrent(out)
+            return stage.commit(verified=True)
+
+    def assertCommitted(self, out):
+        head = self.git(out, "rev-parse", "HEAD")
+        # git writing its own metadata while produce runs (a fetch, a tag, an index refresh) is not
+        # a change to anything the gate built, so it refuses nothing.
+        self.assertEqual(self.commit_verified(out, lambda out: self.git(out, "tag", "concurrent")),
+                         (["src/Engine/Generated/Entries.g.cs"], [], []))
+        with open(os.path.join(out, "src", "Engine", "Generated", "Entries.g.cs"), encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), "// generated")
+        # The checkout is still the same checkout, and git sees the write as an ordinary change.
+        self.assertEqual(self.git(out, "rev-parse", "HEAD"), head)
+        self.assertEqual(self.git(out, "status", "--porcelain"), "?? src/Engine/Generated/\n")
+        self.assertNoStaging()
+
+    def test_a_linked_worktree_whose_git_is_a_file_commits(self):
+        self.assertCommitted(self.linked_worktree())
+
+    def test_an_ordinary_repository_whose_git_is_a_directory_commits(self):
+        self.assertTrue(os.path.isdir(os.path.join(self.out, ".git")))
+        self.assertCommitted(self.out)
+
+    def test_an_input_moved_in_a_linked_worktree_is_still_refused_and_names_only_the_input(self):
+        """No broader than necessary: excluding `.git` excludes nothing the gate built."""
+        worktree = self.linked_worktree()
+        with self.assertRaises(intake.Refused) as caught:
+            self.commit_verified(worktree, lambda out: write(os.path.join(out, "src", "Engine", "Rule.cs"),
+                                                             "class Rule { int mine; }"))
+        message = str(caught.exception)
+        self.assertIn("--out changed after the engine was verified (src/Engine/Rule.cs (changed))", message)
+        self.assertNotIn(".git", message)
+        self.assertNoStaging()
 
 
 if __name__ == "__main__":

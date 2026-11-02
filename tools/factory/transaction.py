@@ -14,7 +14,9 @@ exists when the parent does not), so it is on the same filesystem and `os.replac
 is atomic. It holds `engine/`, the staging copy, and `backup/`. The copy is of `--out` minus
 `bin`, `obj`, `.git` and `.vs` at any depth (provenance.COPY_IGNORE, what `recompute` skips):
 no step reads or writes those, and they are the large ones. They are skipped when computing the
-mutation set too, so they are never touched. Symlinks are followed when copying (a dangling one
+mutation set too, so they are never touched. `.git` is skipped as a file as well as a directory
+(`METADATA`, #561): in a linked worktree it is a file, and the copy and the file walk every
+comparison uses must agree on what was left out. Symlinks are followed when copying (a dangling one
 is not copied, and not counted as removed), so no step can write through a link to outside the
 staging copy.
 
@@ -158,6 +160,12 @@ SKIP = frozenset({"bin", "obj", ".git", ".vs"})
 #: and the guard would say nothing. bin/ and obj/ are the output that does appear at any depth,
 #: and SKIP keeps those out of the copy and out of every comparison already.
 OUTPUT = frozenset({"artifacts", "TestResults"})
+#: Repository metadata: the names in SKIP that are skipped whatever kind of entry they are (#561,
+#: #649). `.git` is a directory in an ordinary clone and a *file* (`gitdir: ...`) in a linked
+#: worktree or a submodule, and the copy ignores the name either way, so a walk that pruned it only
+#: as a directory listed a worktree's `.git` in --out and not in the staging copy, and the verified
+#: commit refused every run into a worktree as `.git (added)`.
+METADATA = frozenset({".git"})
 
 
 class CommitError(Exception):
@@ -169,11 +177,13 @@ class CommitError(Exception):
 
 
 def _files(root):
-    """Relative POSIX path -> absolute path of every regular file under `root`, SKIP pruned."""
+    """Relative POSIX path -> absolute path of every regular file under `root`, SKIP and METADATA pruned."""
     found = {}
     for directory, dirs, names in os.walk(root, followlinks=True):
         dirs[:] = [d for d in dirs if d not in SKIP]
         for name in names:
+            if name in METADATA:
+                continue
             path = os.path.join(directory, name)
             if os.path.isfile(path):
                 found[os.path.relpath(path, root).replace(os.sep, "/")] = path
