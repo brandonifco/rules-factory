@@ -581,15 +581,40 @@ class TestAVerifiedCommitIntoAGitCheckout(Scratch):
         through over a file the gate never built; the independent review reproduced it.
         """
         write(os.path.join(self.worktree, "Assets", "bin"), "lookup table")
+        self.assertEqual(self.refusal_of_an_unchanged_commit(), "Assets/bin (added)")
+
+    def test_a_git_file_below_the_root_is_still_an_input(self):
+        """Only the root `.git` is the checkout's: `Assets/.git` can be a resource, and the copy never staged it.
+
+        Pruning `.git` files at any depth (the second version of this fix) let a verified commit go
+        through over it; the independent review reproduced it.
+        """
+        write(os.path.join(self.worktree, "Assets", ".git"), "lookup table")
+        self.assertEqual(self.refusal_of_an_unchanged_commit(), "Assets/.git (added)")
+
+    def test_a_git_symlink_below_the_root_is_still_a_symlinked_input(self):
+        """`_symlinks()` prunes the same one path, so a linked `Assets/.git` is refused as a link, before drift."""
+        os.makedirs(os.path.join(self.worktree, "Assets"))
+        os.symlink(self.victim, os.path.join(self.worktree, "Assets", ".git"))
+        with transaction.Stage(self.worktree) as stage:
+            stage.testing()
+            with self.assertRaises(intake.Refused) as caught:
+                stage.commit(verified=True)
+        self.assertIn("--out has a symlink where the verified engine has a source or build input (Assets/.git)",
+                      str(caught.exception))
+        self.assertNoStaging()
+
+    def refusal_of_an_unchanged_commit(self):
+        """The paths a verified commit of the worktree, with nothing changed in it, refuses over."""
         with transaction.Stage(self.worktree) as stage:
             write(os.path.join(stage.root, "src", "Engine", "Generated", "Entries.g.cs"), "// generated, new")
             stage.testing()
             with self.assertRaises(intake.Refused) as caught:
                 stage.commit(verified=True)
-        self.assertIn("--out changed after the engine was verified", str(caught.exception))
-        self.assertIn("Assets/bin (added)", str(caught.exception))
-        self.assertNotIn(".git", str(caught.exception))
+        message = str(caught.exception)
+        self.assertIn("--out changed after the engine was verified", message)
         self.assertNoStaging()
+        return message[message.index("(") + 1:message.index(")); ") + 1]
 
     def test_an_input_edited_in_a_worktree_after_verification_still_refuses(self):
         with transaction.Stage(self.worktree) as stage:

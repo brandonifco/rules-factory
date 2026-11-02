@@ -171,17 +171,18 @@ class CommitError(Exception):
 def _files(root):
     """Relative POSIX path -> absolute path of every regular file under `root`, SKIP pruned.
 
-    A `.git` *file* is pruned too: in a linked git worktree that is what `.git` is (`gitdir: ...`),
-    git's as much as the directory, and listing it made every verified commit into a worktree refuse
-    with `.git (added)` (#561, #649). Only `.git`: a file named `bin`, `obj` or `.vs` can be a real
-    input -- an embedded resource `Assets/bin` -- and the copy never staged it, so it stays listed
-    and a verified commit refuses rather than call a tree the gate never built verified.
+    A `.git` *file* at the root is pruned too: in a linked git worktree that is what `.git` is
+    (`gitdir: ...`), the checkout's own metadata as much as the directory, and listing it made every
+    verified commit into a worktree refuse with `.git (added)` (#561, #649). Only that one path: the
+    copy never stages a file named `bin`, `obj`, `.vs` or `.git` anywhere, and one below the root can
+    be a real input -- an embedded resource `Assets/bin` or `Assets/.git` -- so it stays listed and a
+    verified commit refuses rather than call a tree the gate never built verified.
     """
     found = {}
     for directory, dirs, names in os.walk(root, followlinks=True):
         dirs[:] = [d for d in dirs if d not in SKIP]
         for name in names:
-            if name == ".git":
+            if name == ".git" and directory == root:
                 continue
             path = os.path.join(directory, name)
             if os.path.isfile(path):
@@ -234,7 +235,7 @@ def _symlinks(root):
     found = []
     for directory, dirs, names in os.walk(root):
         dirs[:] = [d for d in dirs if d not in SKIP]
-        for name in list(dirs) + [n for n in names if n != ".git"]:
+        for name in list(dirs) + [n for n in names if not (n == ".git" and directory == root)]:
             path = os.path.join(directory, name)
             if os.path.islink(path):
                 found.append(os.path.relpath(path, root).replace(os.sep, "/"))
