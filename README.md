@@ -102,7 +102,9 @@ can: [`tools/check-status-issues.py`](tools/check-status-issues.py) fails when a
 says something is "not yet", "not done" or "not passed", or "is open", and cites a closed issue.
 Everything else in the prose is checked by a person on every pull request: its `## Documentation`
 section accounts for every living document, and the `documentation` check holds that section to
-the diff ([AGENTS.md](AGENTS.md) §3).
+the diff ([AGENTS.md](AGENTS.md) §3). The same check holds the review budget, at most two independent
+review rounds per pull request without a written redesign ([`tools/check-review-budget.py`](tools/check-review-budget.py),
+[AGENTS.md](AGENTS.md) §6).
 
 <!-- factory-cli-status:begin -->
 | Command | Argument | Status | Notes |

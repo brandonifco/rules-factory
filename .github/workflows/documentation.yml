@@ -4,6 +4,9 @@ name: documentation
 # (AGENTS.md section 3). The rules are tools/check-pr-docs.py's; this workflow runs it on the event
 # and does nothing else, so there is one definition to keep true.
 #
+# The same job also holds the review budget (AGENTS.md section 6), which is
+# tools/check-review-budget.py's to define.
+#
 # The description is read from the event payload file by the script, never interpolated into a
 # shell line: a pull request description is text anyone opening one controls.
 
@@ -19,6 +22,8 @@ concurrency:
 
 permissions:
   contents: read
+  # check-review-budget.py reads the pull request's comments with gh.
+  pull-requests: read
 
 jobs:
   documentation:
@@ -41,3 +46,10 @@ jobs:
 
       - name: Every living document is accounted for
         run: python3 tools/check-pr-docs.py --event "$GITHUB_EVENT_PATH"
+
+      - name: The pull request is within its review budget
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 tools/check-review-budget.py --pr "$PR_NUMBER"

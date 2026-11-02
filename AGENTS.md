@@ -158,6 +158,17 @@ Issues are labelled `reviewN-pX` for the round ([docs/backlog.md](docs/backlog.m
 says where it falls in the round's ordered list. When the findings are filed, the pinned worktree
 is removed (§4).
 
+**A pull request has a review budget: one initial independent review and one focused recheck of
+its findings** (#678). #677 took eleven rounds, each narrower than the last, before the owner
+stopped it. Each round is recorded on the pull request as a comment whose body starts with
+`Independent review (`. A third round is not started by default. Exceeding the budget means
+stopping for a root-cause analysis and a redesign (simplify or decompose the change), not another
+repair-and-review pair, and the description then carries a non-empty `## Review budget exceeded`
+section naming the structural cause and the redesign decided. The budget limits process churn, not
+correctness: a genuine safety defect still blocks the merge, inside the budget or outside it.
+[`tools/check-review-budget.py`](tools/check-review-budget.py), run by the `documentation` check
+(§3), fails a pull request with more than two such comments and no such section.
+
 ## 7. Where the rest lives
 
 | Question | Answer |
