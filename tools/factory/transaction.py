@@ -12,8 +12,7 @@ how it started and "Nothing was produced." is true; a fresh `--out` is not creat
 Staging. A working directory is made beside `--out` (in its parent, or the nearest ancestor that
 exists when the parent does not), so it is on the same filesystem and `os.replace` into `--out`
 is atomic. It holds `engine/`, the staging copy, and `backup/`. The copy is of `--out` minus
-`bin`, `obj`, `.git` and `.vs` at any depth, as a directory or a file -- `.git` is a file in a
-linked worktree (provenance.COPY_IGNORE, what `recompute` skips):
+`bin`, `obj`, `.git` and `.vs` at any depth (provenance.COPY_IGNORE, what `recompute` skips):
 no step reads or writes those, and they are the large ones. They are skipped when computing the
 mutation set too, so they are never touched. Symlinks are followed when copying (a dangling one
 is not copied, and not counted as removed), so no step can write through a link to outside the
@@ -172,15 +171,17 @@ class CommitError(Exception):
 def _files(root):
     """Relative POSIX path -> absolute path of every regular file under `root`, SKIP pruned.
 
-    SKIP names a file as well as a directory, as the copy's `ignore` does: in a linked git worktree
-    `.git` is a file (`gitdir: ...`), the copy leaves it out, and listing it here made every verified
-    commit into a worktree refuse with `.git (added)` (#561, #649).
+    A `.git` *file* is pruned too: in a linked git worktree that is what `.git` is (`gitdir: ...`),
+    git's as much as the directory, and listing it made every verified commit into a worktree refuse
+    with `.git (added)` (#561, #649). Only `.git`: a file named `bin`, `obj` or `.vs` can be a real
+    input -- an embedded resource `Assets/bin` -- and the copy never staged it, so it stays listed
+    and a verified commit refuses rather than call a tree the gate never built verified.
     """
     found = {}
     for directory, dirs, names in os.walk(root, followlinks=True):
         dirs[:] = [d for d in dirs if d not in SKIP]
         for name in names:
-            if name in SKIP:
+            if name == ".git":
                 continue
             path = os.path.join(directory, name)
             if os.path.isfile(path):
@@ -233,7 +234,7 @@ def _symlinks(root):
     found = []
     for directory, dirs, names in os.walk(root):
         dirs[:] = [d for d in dirs if d not in SKIP]
-        for name in list(dirs) + [n for n in names if n not in SKIP]:
+        for name in list(dirs) + [n for n in names if n != ".git"]:
             path = os.path.join(directory, name)
             if os.path.islink(path):
                 found.append(os.path.relpath(path, root).replace(os.sep, "/"))

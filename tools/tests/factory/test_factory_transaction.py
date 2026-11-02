@@ -574,6 +574,23 @@ class TestAVerifiedCommitIntoAGitCheckout(Scratch):
         self.assertCommittedAndGitIntact(self.worktree)
         self.assertTrue(os.path.islink(os.path.join(self.worktree, ".git")))
 
+    def test_a_file_named_like_another_skipped_directory_is_still_an_input(self):
+        """Only `.git` is pruned as a file: `Assets/bin` can be an embedded resource the copy never staged.
+
+        Pruning every SKIP name among files (the first version of this fix) let a verified commit go
+        through over a file the gate never built; the independent review reproduced it.
+        """
+        write(os.path.join(self.worktree, "Assets", "bin"), "lookup table")
+        with transaction.Stage(self.worktree) as stage:
+            write(os.path.join(stage.root, "src", "Engine", "Generated", "Entries.g.cs"), "// generated, new")
+            stage.testing()
+            with self.assertRaises(intake.Refused) as caught:
+                stage.commit(verified=True)
+        self.assertIn("--out changed after the engine was verified", str(caught.exception))
+        self.assertIn("Assets/bin (added)", str(caught.exception))
+        self.assertNotIn(".git", str(caught.exception))
+        self.assertNoStaging()
+
     def test_an_input_edited_in_a_worktree_after_verification_still_refuses(self):
         with transaction.Stage(self.worktree) as stage:
             write(os.path.join(stage.root, "src", "Engine", "Generated", "Entries.g.cs"), "// generated, new")
