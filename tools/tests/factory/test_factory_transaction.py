@@ -11,6 +11,7 @@ Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -513,6 +514,80 @@ class TestOutputIsExcludedWhereItIsProduced(Scratch):
             added, changed, removed = stage.commit(verified=True)
         self.assertEqual((added, changed, removed), (["src/Engine/Entries.g.cs"], [], []))
         self.assertEqual(self.read("TestResults/engine.trx"), "<TestRun result='later' />")
+
+
+class TestAVerifiedCommitIntoAGitCheckout(Scratch):
+    """#561, #649: `.git` is skipped whether it is a directory or, in a linked worktree, a file.
+
+    The copy ignores SKIP by name, so a worktree's `.git` file never reached the staging copy; but
+    `_files()` pruned SKIP from directories only, so the drift check listed `.git` in `--out` and
+    refused every verified commit into a worktree with `.git (added)`. Real git makes both shapes
+    here, so what is tested is the `.git` git itself writes.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.main = os.path.join(self.tmp, "main")
+        write(os.path.join(self.main, "src", "Engine", "Rule.cs"), "class Rule { }")
+        write(os.path.join(self.main, "src", "Engine", "Generated", "Entries.g.cs"), "// generated, old")
+        self.git(self.main, "init", "-q", "-b", "main")
+        self.git(self.main, "add", "-A")
+        self.git(self.main, "commit", "-q", "-m", "engine")
+        self.worktree = os.path.join(self.tmp, "worktree")
+        self.git(self.main, "worktree", "add", "-q", self.worktree)
+
+    @staticmethod
+    def git(cwd, *args):
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false",
+                        *args], cwd=cwd, check=True, capture_output=True)
+
+    def commit_generated(self, out):
+        with transaction.Stage(out) as stage:
+            self.assertFalse(os.path.lexists(os.path.join(stage.root, ".git")))
+            write(os.path.join(stage.root, "src", "Engine", "Generated", "Entries.g.cs"), "// generated, new")
+            stage.testing()
+            return stage.commit(verified=True)
+
+    def assertCommittedAndGitIntact(self, out):
+        git_before = os.path.isdir(os.path.join(out, ".git")), os.path.isfile(os.path.join(out, ".git"))
+        self.assertEqual(self.commit_generated(out), ([], ["src/Engine/Generated/Entries.g.cs"], []))
+        with open(os.path.join(out, "src", "Engine", "Generated", "Entries.g.cs"), encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), "// generated, new")
+        self.assertEqual(git_before, (os.path.isdir(os.path.join(out, ".git")), os.path.isfile(os.path.join(out, ".git"))))
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=out, check=True, capture_output=True, text=True)
+        self.assertEqual(status.stdout.strip(), "M src/Engine/Generated/Entries.g.cs")
+        self.assertNoStaging()
+
+    def test_a_checkout_whose_git_is_a_directory_commits(self):
+        self.assertTrue(os.path.isdir(os.path.join(self.main, ".git")))
+        self.assertCommittedAndGitIntact(self.main)
+
+    def test_a_linked_worktree_whose_git_is_a_file_commits(self):
+        self.assertTrue(os.path.isfile(os.path.join(self.worktree, ".git")))
+        self.assertCommittedAndGitIntact(self.worktree)
+
+    def test_a_git_file_that_is_a_symlink_is_not_a_symlinked_input(self):
+        """`_symlinks()` skips the same names: a linked `.git` file is git's, not a source of the engine."""
+        moved = os.path.join(self.tmp, "gitfile")
+        os.rename(os.path.join(self.worktree, ".git"), moved)
+        os.symlink(moved, os.path.join(self.worktree, ".git"))
+        self.assertCommittedAndGitIntact(self.worktree)
+        self.assertTrue(os.path.islink(os.path.join(self.worktree, ".git")))
+
+    def test_an_input_edited_in_a_worktree_after_verification_still_refuses(self):
+        with transaction.Stage(self.worktree) as stage:
+            write(os.path.join(stage.root, "src", "Engine", "Generated", "Entries.g.cs"), "// generated, new")
+            stage.testing()
+            write(os.path.join(self.worktree, "src", "Engine", "Rule.cs"), "class Rule { int mine; }")
+            with self.assertRaises(intake.Refused) as caught:
+                stage.commit(verified=True)
+        message = str(caught.exception)
+        self.assertIn("--out changed after the engine was verified", message)
+        self.assertIn("src/Engine/Rule.cs (changed)", message)
+        self.assertNotIn(".git", message)
+        with open(os.path.join(self.worktree, "src", "Engine", "Generated", "Entries.g.cs"), encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), "// generated, old")
+        self.assertNoStaging()
 
 
 class TestASymlinkedInputIsRefusedByAVerifiedCommit(Scratch):
