@@ -16,7 +16,7 @@
       "name": "The board is sixty-four squares of alternate colours",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 427"
+        "citation": "DRAUGHTS / sixty-four squares / p. 427"
       },
       "kind": "value",
       "scope": "in",
@@ -31,7 +31,7 @@
       "name": "Twenty-four men, twelve a side, of opposite colours",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 427"
+        "citation": "DRAUGHTS / twenty-four pieces / p. 427"
       },
       "kind": "value",
       "scope": "in",
@@ -46,7 +46,7 @@
       "name": "Draughts is played by two persons",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 427"
+        "citation": "DRAUGHTS / two persons / p. 427"
       },
       "kind": "value",
       "scope": "in",
@@ -61,7 +61,7 @@
       "name": "Black (or red) is the first side and white the second",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 427"
+        "citation": "DRAUGHTS / first side, second side / p. 427"
       },
       "kind": "value",
       "scope": "in",
@@ -79,7 +79,7 @@
       "name": "A side none of whose pieces can be played loses",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 427"
+        "citation": "DRAUGHTS / none can be played / p. 427"
       },
       "kind": "operation",
       "scope": "in",
@@ -103,7 +103,7 @@
       "name": "The board is placed with a black square at the bottom left",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 427"
+        "citation": "DRAUGHTS / the bottom corner square / p. 427"
       },
       "kind": "value",
       "scope": "in",
@@ -120,7 +120,7 @@
       "name": "The men are placed on the black squares",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 427"
+        "citation": "DRAUGHTS / on the black squares / p. 427"
       },
       "kind": "value",
       "scope": "in",
@@ -144,7 +144,7 @@
       "name": "Black on the first twelve squares, white on the last twelve",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 428"
+        "citation": "DRAUGHTS / the first twelve squares / p. 428"
       },
       "kind": "value",
       "scope": "in",
@@ -163,7 +163,7 @@
       "name": "The players take black and white in turn",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 428"
+        "citation": "DRAUGHTS / alternately with black and white / p. 428"
       },
       "kind": "operation",
       "scope": "in",
@@ -180,7 +180,7 @@
       "name": "Lots are cast for colour at the start of a match",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 428"
+        "citation": "DRAUGHTS / Lots shall be cast / p. 428"
       },
       "kind": "operation",
       "scope": "in",
@@ -201,7 +201,7 @@
       "name": "The winner of the lots chooses black or white",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 428"
+        "citation": "DRAUGHTS / the choice of taking black or white / p. 428"
       },
       "kind": "assertion",
       "scope": "in",
@@ -212,6 +212,9 @@
       "assertedBy": [
         "winner"
       ],
+      "enabledBy": [
+        "lots-for-colour"
+      ],
       "evidence": "Lots shall be cast for the colour at the commencement of a match, _the winner to have the choice of taking_ black _or_ white.",
       "status": "mapped",
       "note": "A choice delegated to the winner of the lots, from a fixed set of two, black or white. The engine demands it and records who made it."
@@ -221,7 +224,7 @@
       "name": "Black always moves first",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 428"
+        "citation": "DRAUGHTS / the first move / p. 428"
       },
       "kind": "value",
       "scope": "in",
@@ -238,24 +241,30 @@
       "name": "A move not completed a minute after Time is called loses the game",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 428"
+        "citation": "DRAUGHTS / five minutes / p. 428"
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "clear",
+      "clarity": "ambiguous",
       "dependsOn": [
-        "moves-alternate"
+        "moves-alternate",
+        "play-completed-on-release"
       ],
       "evidence": "At the end of five minutes \"Time\" may be called; and if the move be not completed on the expiry of another minute, the game shall be adjudged lost through improper delay.",
       "status": "mapped",
-      "note": "Whether Time was called, and how long the player has taken, are facts the caller states; the corpus says Time may be called after five minutes and not by whom. Demonstrate Time refused before five minutes, a move completed inside the further minute, and the game lost when it is not. time-limit-one-way-of-taking is the shorter limit."
+      "ambiguity": {
+        "question": "'At the end of five minutes \"Time\" may be called; and if the move be not completed on the expiry of another minute' counts the five minutes over the move, but because the call is permissive it does not say whether the further minute runs from the call or from the end of the five minutes. The two differ whenever Time is called late.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "Whether Time was called and when, and how long the player has taken over the move, are facts the caller states. Demonstrate Time refused before five minutes, a move completed in time, the game lost when Time is called at five minutes and the move is not completed a minute later, and a late call declined between the two readings' deadlines."
     },
     {
       "id": "time-limit-one-way-of-taking",
       "name": "With only one way of taking, Time is called after one minute",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 428"
+        "citation": "DRAUGHTS / only one way of taking / p. 428"
       },
       "kind": "operation",
       "scope": "in",
@@ -263,7 +272,8 @@
       "dependsOn": [
         "time-limit",
         "capture-by-leap",
-        "multiple-capture"
+        "multiple-capture",
+        "play-completed-on-release"
       ],
       "evidence": "When there is only _one way_ of taking one or more pieces, \"Time\" shall be called at the end of one minute; and if the move be not completed on the expiry of another minute, the game shall be adjudged lost through improper delay.",
       "status": "mapped",
@@ -274,7 +284,7 @@
       "name": "Arranging a piece without warning forfeits the game",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 428"
+        "citation": "DRAUGHTS / without giving intimation / p. 428"
       },
       "kind": "operation",
       "scope": "in",
@@ -297,37 +307,43 @@
       "name": "A piece touched by the player to move must be played",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 428"
+        "citation": "DRAUGHTS / touch / p. 428"
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "clear",
+      "clarity": "ambiguous",
       "dependsOn": [
         "arranging-without-intimation"
       ],
       "evidence": "After the pieces have been arranged, if the person whose turn it is to play _touch_ one, he must either play that piece or forfeit the game. When the piece is not playable, he is penalised according to the preceding law.",
       "status": "mapped",
+      "ambiguity": {
+        "question": "'When the piece is not playable, he is penalised according to the preceding law' does not say whether it brings in only that law's forfeit or also its condition 'without giving intimation to his opponent'. Whether touching an unplayable piece after intimation forfeits is open.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
       "crossReferences": [
         {
           "cites": "the preceding law",
           "resolvedBy": "arranging-without-intimation"
         }
       ],
-      "note": "The preceding law is arranging-without-intimation, whose penalty is forfeit unless the piece is played; a piece that is not playable cannot be, so touching one forfeits. Which piece was touched is a fact the caller states. Demonstrate the touched piece played, another piece played (forfeit), and an unplayable piece touched (forfeit)."
+      "note": "The preceding law is arranging-without-intimation. A touched piece that can be played must be played; touching an unplayable piece without intimation forfeits on every reading. Which piece was touched, and whether intimation was given, are facts the caller states."
     },
     {
       "id": "angle-crossed-commits-direction",
       "name": "A piece moved over an angle of its square must be played that way",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 428"
+        "citation": "DRAUGHTS / over an angle / p. 428"
       },
       "kind": "operation",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
         "man-moves-forward",
-        "king-movement"
+        "king-movement",
+        "capture-by-leap"
       ],
       "evidence": "If _any part_ of a playable piece be played over an {429} angle of the square on which it is stationed, the play must be completed in _that direction_.",
       "status": "mapped",
@@ -338,7 +354,7 @@
       "name": "A play is complete when the hand leaves the piece",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / the hand is withdrawn / p. 429"
       },
       "kind": "operation",
       "scope": "in",
@@ -355,7 +371,7 @@
       "name": "A player who removes his own piece cannot replace it",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / one of his own pieces / p. 429"
       },
       "kind": "operation",
       "scope": "in",
@@ -372,7 +388,7 @@
       "name": "The opponent chooses to play on or have the piece replaced",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / insist on his replacing it / p. 429"
       },
       "kind": "assertion",
       "scope": "in",
@@ -392,7 +408,7 @@
       "name": "A false or improper move forfeits the game",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / a false or improper move / p. 429"
       },
       "kind": "operation",
       "scope": "in",
@@ -412,7 +428,7 @@
       "name": "The huff removes an adverse piece that might or should have taken",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / the Huff or Blow / p. 429"
       },
       "kind": "operation",
       "scope": "in",
@@ -421,6 +437,9 @@
         "capture-by-leap",
         "multiple-capture",
         "huff-footnote"
+      ],
+      "enabledBy": [
+        "huff-choice"
       ],
       "evidence": "The \"Huff\" or \"Blow\" is, _before one plays his own piece_, to remove from the board any of the adverse pieces that might or should have taken. The \"Huff\" does not constitute a move.",
       "status": "mapped",
@@ -436,7 +455,7 @@
       "name": "The player may huff, compel the take, or let the piece remain",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / huff, compel the take, or let the piece remain / p. 429"
       },
       "kind": "assertion",
       "scope": "in",
@@ -462,12 +481,15 @@
       "name": "The player may compel the take",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / compel the take / p. 429"
       },
       "kind": "operation",
       "scope": "in",
       "clarity": "ambiguous",
       "dependsOn": [
+        "huff-choice"
+      ],
+      "enabledBy": [
         "huff-choice"
       ],
       "evidence": "The player has the power either to _huff_, _compel the take_, or to _let the piece remain on the board_, as he thinks proper.[108]",
@@ -490,7 +512,7 @@
       "name": "A man reaching the far line becomes a King",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / it becomes a King / p. 429"
       },
       "kind": "operation",
       "scope": "in",
@@ -512,27 +534,34 @@
       "name": "The opponent crowns the new King",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / crowned by the opponent / p. 429"
       },
       "kind": "operation",
-      "scope": "out",
+      "scope": "in",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "becomes-king"
+      ],
+      "enabledBy": [
+        "becomes-king"
+      ],
       "evidence": "When a man first reaches any of the squares on the opposite extreme line of the board, it becomes a \"King.\" It must be crowned (by placing a man of the same colour on the top of it) by the opponent, and can afterwards be moved backwards or forwards as the limits of the board permit.",
-      "status": "declined",
-      "note": "Declined: who places the crowning man, and that it is placed on top, is how the board shows a King, and no rule in the extent turns on it. becomes-king holds the change of state the same passage states."
+      "status": "mapped",
+      "note": "The opponent of the side whose man became a King is the party who crowns it, by placing a man of the same colour on top. becomes-king holds the change of state; this entry names who must make it on the board."
     },
     {
       "id": "draw-defined",
       "name": "A draw is when neither player can force a win",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / a Draw / p. 429"
       },
       "kind": "value",
       "scope": "in",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "loss-when-none-can-be-played"
+      ],
       "evidence": "A Draw is when neither of the players can force a win.",
       "status": "mapped",
       "note": "The definition of the result. Whether a player can force a win is a fact about a position the engine is not asked to search for; forty-move-limit is the procedure the corpus gives for ending a game as a draw."
@@ -542,7 +571,7 @@
       "name": "The stronger party must win or show a decided advantage in forty moves",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / within forty of his own moves / p. 429"
       },
       "kind": "operation",
       "scope": "in",
@@ -550,7 +579,8 @@
       "dependsOn": [
         "draw-defined",
         "moves-alternate",
-        "huff-defined"
+        "huff-defined",
+        "loss-when-none-can-be-played"
       ],
       "evidence": "A Draw is when neither of the players can force a win. When one of the sides appears stronger than the other, the stronger party may be required to {430} complete the win, or to show a decided advantage over his opponent _within forty of his own moves_--counted from the point at which notice was given--failing in which, he must relinquish the game as a draw.",
       "status": "mapped",
@@ -566,7 +596,7 @@
       "name": "The players agreeing to a draw",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / a Draw, by agreement / p. 429"
       },
       "kind": "operation",
       "scope": "out",
@@ -589,7 +619,7 @@
       "name": "A draw by repetition of position",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 429"
+        "citation": "DRAUGHTS / a Draw, by repetition / p. 429"
       },
       "kind": "operation",
       "scope": "out",
@@ -612,7 +642,7 @@
       "name": "Fig. 1, the board set for play",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 430"
+        "citation": "DRAUGHTS / Fig. 1 / p. 430"
       },
       "kind": "value",
       "scope": "in",
@@ -630,7 +660,7 @@
       "name": "Fig. 2, the playing squares numbered 1 to 32",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 431"
+        "citation": "DRAUGHTS / Fig. 2 / p. 431"
       },
       "kind": "value",
       "scope": "in",
@@ -658,6 +688,12 @@
       ],
       "evidence": "N.B.--The reader should observe, in studying the position following, that the numbering of the squares always starts from the _black_ side of the board, whether black occupy the upper or the lower rows.",
       "status": "mapped",
+      "crossReferences": [
+        {
+          "cites": "the position following",
+          "resolvedBy": "two-kings-to-one"
+        }
+      ],
       "note": "Square 1 is on Black's side whichever way a diagram is drawn: the end-game figures on pp. 436-445 print Black at the top, and their solutions use the same numbers as Fig. 2. square-numbering is the numbering itself."
     },
     {
@@ -665,7 +701,7 @@
       "name": "The players move alternately, one man along its diagonal",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 431"
+        "citation": "DRAUGHTS / moving alternately / p. 431"
       },
       "kind": "operation",
       "scope": "in",
@@ -689,7 +725,7 @@
       "name": "A man moves forward one square diagonally",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 431"
+        "citation": "DRAUGHTS / only move forward / p. 431"
       },
       "kind": "operation",
       "scope": "in",
@@ -697,6 +733,9 @@
       "dependsOn": [
         "moves-alternate",
         "square-numbering"
+      ],
+      "suspendedBy": [
+        "becomes-king"
       ],
       "evidence": "The men can only move forward either to right or left one square at a time, unless they have attained one of the four squares on the extreme further side of the board (technically termed the \"crown-head\").",
       "status": "mapped",
@@ -707,11 +746,11 @@
       "name": "A King moves forward or backward",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 431"
+        "citation": "DRAUGHTS / forward or backward / p. 431"
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "clear",
+      "clarity": "ambiguous",
       "dependsOn": [
         "becomes-king",
         "man-moves-forward"
@@ -721,14 +760,19 @@
       ],
       "evidence": "This done, they become Kings, and can move either forward or backward.",
       "status": "mapped",
-      "note": "A King moves to a diagonal neighbour in any of the four directions, onto a vacant square. The sentence lifts the restriction to forward; it states no other distance than the one square of the sentence before, every King move printed in the end-game solutions on pp. 436-446 is to a neighbouring square, and capture-by-leap's 'immediately contiguous' applies to every piece."
+      "ambiguity": {
+        "question": "A King 'can afterwards be moved backwards or forwards as the limits of the board permit' (p. 429), and this sentence lifts the man's 'only forward ... one square at a time' without saying whether the one-square limit goes with the forward one. Whether a King's ordinary move may cross more than one vacant square is not settled.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "A King moves along a diagonal in any of the four directions, onto a vacant square. A move of one square is permitted on every reading; a move of more than one is the question. Demonstrate a King moving backward one square, and a longer move declined."
     },
     {
       "id": "capture-by-leap",
       "name": "A piece takes by leaping a contiguous man onto a vacant square",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 432"
+        "citation": "DRAUGHTS / take by leaping / p. 432"
       },
       "kind": "operation",
       "scope": "in",
@@ -746,24 +790,29 @@
       "name": "Several men exposed alternately may all be taken at one capture",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 432"
+        "citation": "DRAUGHTS / all taken at one capture / p. 432"
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "clear",
+      "clarity": "ambiguous",
       "dependsOn": [
         "capture-by-leap"
       ],
       "evidence": "If several men should be exposed by having open spaces behind them alternately, they may be all taken at one capture, and the capturing piece is then placed on the square beyond the last man.",
       "status": "mapped",
-      "note": "A capture continues from each landing square while another take is open, and ends on the square beyond the last man taken. 'May' is permissive: a play that stops sooner is a completed play (play-completed-on-release), and whether it leaves the piece liable to the huff is huff-defined's question."
+      "ambiguity": {
+        "question": "'they may be all taken at one capture' does not say whether the capturing piece may pass through or return to a square it already stood on in the same capture. A capture may turn between takes: White's 22.6 in Variation 2 of the Third Position takes by changing diagonal.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "A capture continues from each landing square while another take is open, and ends on the square beyond the last man taken; it may change diagonal between takes. 'May' is permissive: a play that stops sooner is a completed play (play-completed-on-release), and whether it leaves the piece liable to the huff is huff-defined's question. A capture that lands again on a square it already stood on is the question."
     },
     {
       "id": "captured-piece-removed",
       "name": "A captured man is removed from the board",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 432"
+        "citation": "DRAUGHTS / removing the captured piece / p. 432"
       },
       "kind": "operation",
       "scope": "in",
@@ -780,7 +829,7 @@
       "name": "A player who could take and does not is liable to be huffed",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 432"
+        "citation": "DRAUGHTS / liable to be huffed / p. 432"
       },
       "kind": "operation",
       "scope": "in",
@@ -798,12 +847,15 @@
       "name": "The huffer removes the man and then plays his own move",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "DRAUGHTS / p. 432"
+        "citation": "DRAUGHTS / removes the man huffed / p. 432"
       },
       "kind": "operation",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
+        "huff-choice"
+      ],
+      "enabledBy": [
         "huff-choice"
       ],
       "evidence": "When one party \"huffs\" the other in preference to compelling the take, he does not replace the piece his opponent moved, but simply removes the man huffed from the board, and then plays his own move.",
@@ -874,6 +926,12 @@
       "dependsOn": [],
       "evidence": "The proper course for White is either to pin one of Black's men, and then go for the other, or to force an exchange, so as to be left with two Kings to one, when the game, as we have seen, is a foregone conclusion.",
       "status": "declined",
+      "crossReferences": [
+        {
+          "cites": "as we have seen",
+          "resolvedBy": "two-kings-to-one"
+        }
+      ],
       "note": "Declined as advice on how to play the ending, with Fig. 4."
     },
     {
@@ -956,7 +1014,7 @@
       "name": "Playing on the white squares",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "NOTES / p. 475"
+        "citation": "NOTES / [107] / p. 475"
       },
       "kind": "operation",
       "scope": "out",
@@ -977,7 +1035,7 @@
       "name": "Huffed for not taking the full number",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "NOTES / p. 475"
+        "citation": "NOTES / [108] / p. 475"
       },
       "kind": "operation",
       "scope": "out",

@@ -1,0 +1,17 @@
+{
+  "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
+  "reviews": {
+    "corpus-map.json": {
+      "sha256": "73ce1ffa0fb931009fd8376076df788772452e9b94ce5b60962c1369626baab0",
+      "method": "blind-second-mapping",
+      "comparison": "blind-mapping/results.json",
+      "resolutions": "blind-mapping/resolutions.json",
+      "staged": "blind-mapping/staged-inputs.json",
+      "compared": {
+        "commit": "0f613b8d169f9fc27d8f45c2c508558894d859f8",
+        "sha256": "4bfb3194e227135174bbb52f468e0054c9f6226a5850ec105aaa28ebb73440d5"
+      },
+      "note": "Issue #705. The blind second mapping was made by OpenAI Codex, a different model family from the first mapper, from the staged inputs alone (blind-mapping/staged-inputs.json): 96 entries, 15 unresolved. compare.py read the map at 0f613b8 (52 entries) and raised 211 flags; each has a row in resolutions.json, answered by an adjudicator that mapped neither side (136 not-a-disagreement, 55 reference-right, 12 blind-right, 8 corpus-does-not-settle). sha256 is the map corrected to those rows; compared.sha256 is the map before correction. Every blind-right row was applied: seven edges, one entry brought into scope (crowned-by-opponent) and two cross-references. The four unsettled questions (each a clarity row and an ambiguity row) were added as unresolved ambiguities on king-movement, multiple-capture, time-limit and touched-piece-must-be-played. Separately from the adjudication, every entry's citation was given the passage's own words in its section slot, so that no two entries share a locator: the rules on pp. 427-432 print no headings, and an engine names a decline by its entry's locator."
+    }
+  }
+}
