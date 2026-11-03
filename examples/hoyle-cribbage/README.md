@@ -57,6 +57,13 @@ leads. The three- and four-handed sections say "the player to the dealer's left"
 played through both have the non-dealer lead, and `non-dealer-leads` takes that as the rule's
 authority under 0031.
 
+## Corrected in 1.0.1
+
+Two notes said three for last could win a game, and asked an engine to show a win by it. Under
+0089 three for last is scored only at the game's first deal, from nothing, so it cannot. The
+engine's independent conformance review found the contradiction. 1.0.1 corrects those two notes
+and changes nothing else.
+
 ## Review
 
 `review.json` records an exemption, the same way the other first mappings do: no second reading
