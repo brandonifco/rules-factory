@@ -63,10 +63,13 @@ class TestEveryRowOfTheTable(unittest.TestCase):
                 self.assertEqual((), scope.maps)
 
     def test_a_change_to_one_map_narrows_to_that_map(self):
-        scope = vr.classify(["examples/hoyle-backgammon/corpus-map.json"])
+        # Part 107's directory is read by no other map. The backgammon map's is read by the
+        # Draughts slice too, which cites the corpus committed there (#705), so a change in it
+        # widens to both: test_a_shared_corpus_narrows_to_every_map_that_reads_it.
+        scope = vr.classify(["examples/faa-part-107/corpus-map.json"])
         self.assertEqual("changed", scope.name)
-        self.assertEqual(("examples/hoyle-backgammon/corpus-map.json",), scope.maps)
-        self.assertEqual(("examples/hoyle-backgammon/map-package.json",), scope.packages)
+        self.assertEqual(("examples/faa-part-107/corpus-map.json",), scope.maps)
+        self.assertEqual(("examples/faa-part-107/map-package.json",), scope.packages)
         # It is packable, and an engine is produced from a package: see
         # TestTheEngineJobIsOwedByWhatProducesAnEngine. This asserted False until #347.
         self.assertTrue(scope.engine)
