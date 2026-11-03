@@ -13,7 +13,7 @@ manifest points at it.
 | Extent | `{"unit": "page", "from": 427, "to": 446}`, the whole article |
 | Entries | 52 — 39 in scope, 13 declined |
 | Kinds | 36 `operation`, 13 `value`, 3 `assertion` (the colour the lot's winner chooses, the opponent's choice when a player removes his own piece, the player's choice to huff, compel or let the piece remain) |
-| Ambiguous | 9 of 39 in scope (23%): eight unresolved, one decided by [0088](../../docs/decisions/0088-a-huff-is-read-with-the-footnote-that-the-passage-calls.md) |
+| Ambiguous | 9 of 39 in scope (23%): eight unresolved, one decided by [0090](../../docs/decisions/0090-a-huff-is-read-with-the-footnote-that-the-passage-calls.md) |
 | Relations | 66 `dependsOn` edges, no cycle; 8 entries gated by `enabledBy` or `suspendedBy` |
 | Pointers | 10 `crossReferences`, one `unmapped` |
 | Draws | 1 entry, `lots-for-colour`; the corpus is `randomness: seeded` |
@@ -53,7 +53,7 @@ takes fewer men is not. The Gutenberg edition prints every footnote together aft
 page, so the footnote's page marker is p. 475, and a page extent is a range: one reaching p. 475
 would claim every chapter from Draughts to the end of the book. Both mappers, working apart, did
 the same thing: the footnote is a `scope: out` entry citing p. 475, and the entry that needs it
-names it in `dependsOn`. [0088](../../docs/decisions/0088-a-huff-is-read-with-the-footnote-that-the-passage-calls.md)
+names it in `dependsOn`. [0090](../../docs/decisions/0090-a-huff-is-read-with-the-footnote-that-the-passage-calls.md)
 then rules that `huff-defined` is implemented with the footnote's answer. Whether an extent should
 be able to reach a footnote its passage calls is a contract question, and it is not decided here.
 

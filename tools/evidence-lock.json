@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "ccb72ff1c4bcf9a67bf6efc6369f49abc8219d6f",
+  "measuredAt": "e61891b9d91751a5417356864f2476ce2b589555",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,14 +17,14 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 624,
-    "trackedBytes": 27469671
+    "trackedFiles": 613,
+    "trackedBytes": 26849281
   },
   "artifacts": [
     {
       "path": "examples/README.md",
-      "sha256": "0a07821c1f221c506d382d1da3b3ed69cf18a942dc4ff6130695a10e4502ba45",
-      "bytes": 38997,
+      "sha256": "a1a6e126e8ea0318855be472cb810a7c0713db9589217763d4e0b634c4501fa4",
+      "bytes": 38970,
       "role": "active",
       "readBy": [
         "links"
@@ -1754,7 +1754,7 @@
       "archive": null
     },
     {
-      "path": "examples/hoyle-draughts/CORPUS-LICENCE.txt",
+      "path": "examples/hoyle-cribbage/CORPUS-LICENCE.txt",
       "sha256": "5367c00541b227a17bfbec03ae5f0839bf717362e3ac7b816f6eb7f9e65a5118",
       "bytes": 1321,
       "role": "release",
@@ -1764,9 +1764,9 @@
       "archive": null
     },
     {
-      "path": "examples/hoyle-draughts/README.md",
-      "sha256": "3e81e0231b09970baaa2ad225864e6c6f9f16a9304072c5f95ea572bdb8a8aab",
-      "bytes": 7961,
+      "path": "examples/hoyle-cribbage/README.md",
+      "sha256": "55961f42672b1e14757a8916f3f5920ea8f9304b771934683811f112c9cf0f41",
+      "bytes": 4204,
       "role": "active",
       "readBy": [
         "links"
@@ -1774,124 +1774,9 @@
       "archive": null
     },
     {
-      "path": "examples/hoyle-draughts/blind-mapping/MAPPER-NOTES.md",
-      "sha256": "e803228c828a8852094f3f209d3526e362bd595aa67ad4a41f6c97507af01b93",
-      "bytes": 13903,
-      "role": "active",
-      "readBy": [
-        "links"
-      ],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/blind-mapping/REDACTIONS.md",
-      "sha256": "ad66c9b8c05725036265b2ceb0097bab4212f059aa7be31affc463d33037d403",
-      "bytes": 14679,
-      "role": "active",
-      "readBy": [
-        "checks",
-        "links"
-      ],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/blind-mapping/blind-map.json",
-      "sha256": "fdaaf4bd4d1658a224bccf688a8d6c26794ed991d7b3a0f57b96f787340f0bd4",
-      "bytes": 94563,
-      "role": "archived",
-      "readBy": [],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/blind-mapping/build.py",
-      "sha256": "e1a1b2f5c97a8a3339d1c93512effc45bd8b12f2b2cec59b4bb74e4524ef116b",
-      "bytes": 39537,
-      "role": "archived",
-      "readBy": [],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/blind-mapping/check.py",
-      "sha256": "1c3e4baa4400c8d761a8374252af6ad6b870ff860def9a9d41f7ec32892a54e8",
-      "bytes": 4676,
-      "role": "archived",
-      "readBy": [],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/blind-mapping/compare.py",
-      "sha256": "5bcf86139e089fd3be85da6e81950d93cc1556a46665d0a4598d94e30f6b8e98",
-      "bytes": 18967,
-      "role": "archived",
-      "readBy": [],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/blind-mapping/corpus-map.md",
-      "sha256": "65269f6777aabec4a0e289cb78504382444a5eaa6af8cfe65b7728f075ae0124",
-      "bytes": 128196,
-      "role": "active",
-      "readBy": [
-        "checks",
-        "links"
-      ],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/blind-mapping/method.md",
-      "sha256": "8c791dc5a11b4bfd05b7e140a45d32e4b8d75e1d1c3a074c1f4ed58a00059893",
-      "bytes": 68003,
-      "role": "active",
-      "readBy": [
-        "checks",
-        "links"
-      ],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/blind-mapping/resolutions.json",
-      "sha256": "74adf8bde942df08f95142eb8aeec9f8825dfcec77f2e1a664c44c687a468b3c",
-      "bytes": 116110,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/blind-mapping/results.json",
-      "sha256": "80d667432553111fdef7bd866f43e50bda16989dad65ddb6ba29e36f3063f682",
-      "bytes": 109903,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/blind-mapping/staged-inputs.json",
-      "sha256": "c92d2e0c1e87f8dac39ae4d945b30550d54bfb3884c5ea39ec1e93ee9d15786f",
-      "bytes": 10298,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/blind-mapping/staging.json",
-      "sha256": "c7d048d98be6ad66376f668ac473b96af9785371c9abfb02e43ec08cff787225",
-      "bytes": 10885,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
-      "archive": null
-    },
-    {
-      "path": "examples/hoyle-draughts/corpus-manifest.json",
-      "sha256": "c16510f9ac43912b4e5ef06ba56bec30133ac350c2a5653e039e468d039417ee",
-      "bytes": 1014,
+      "path": "examples/hoyle-cribbage/corpus-manifest.json",
+      "sha256": "66cdc7148f5ebc4338acd0236e9e313f80ee8a1c111abd664ea24c9e5b68b66e",
+      "bytes": 1418,
       "role": "release",
       "readBy": [
         "checks",
@@ -1900,9 +1785,9 @@
       "archive": null
     },
     {
-      "path": "examples/hoyle-draughts/corpus-map.json",
-      "sha256": "73ce1ffa0fb931009fd8376076df788772452e9b94ce5b60962c1369626baab0",
-      "bytes": 50190,
+      "path": "examples/hoyle-cribbage/corpus-map.json",
+      "sha256": "f27f450812064d0cee8d69dc3e708dc50a35e7db8ebad1aff53553f881f6af87",
+      "bytes": 64918,
       "role": "release",
       "readBy": [
         "checks",
@@ -1911,7 +1796,7 @@
       "archive": null
     },
     {
-      "path": "examples/hoyle-draughts/map-package.json",
+      "path": "examples/hoyle-cribbage/map-package.json",
       "sha256": "3a09fa17e74ce91fdd2164291fca9495437630469f73ea8f1546ec289bc2f38b",
       "bytes": 207,
       "role": "release",
@@ -1921,9 +1806,9 @@
       "archive": null
     },
     {
-      "path": "examples/hoyle-draughts/mapping-inventory.json",
-      "sha256": "c92e616a58037f8fb3dec6a5abb8edf3e04f240e28ed415dc9105e9aac503655",
-      "bytes": 20604,
+      "path": "examples/hoyle-cribbage/mapping-inventory.json",
+      "sha256": "d239559caa4682bc85534a42cca333dc610137a4430e9904081e2936b4704637",
+      "bytes": 14930,
       "role": "active",
       "readBy": [
         "checks"
@@ -1931,9 +1816,9 @@
       "archive": null
     },
     {
-      "path": "examples/hoyle-draughts/mapping-protocol.json",
-      "sha256": "d3fbf3af99ab6b7a6f9d0a7c40b106bca5467895625032a0c41706daf6d9f1fc",
-      "bytes": 526,
+      "path": "examples/hoyle-cribbage/mapping-protocol.json",
+      "sha256": "a4c28e2eff7750e2f24c32f0f9854729492995228c48b92dd985478e2cead4c6",
+      "bytes": 454,
       "role": "active",
       "readBy": [
         "checks"
@@ -1941,9 +1826,9 @@
       "archive": null
     },
     {
-      "path": "examples/hoyle-draughts/review.json",
-      "sha256": "e5ff24359159148dc4f9e883ce4fbfde2072793d266069a4b1b0e4191721170c",
-      "bytes": 1832,
+      "path": "examples/hoyle-cribbage/review.json",
+      "sha256": "87418a25242815d84eb6c41d2421ded31558b4d7b06cff0220972f7cba2f7949",
+      "bytes": 1273,
       "role": "active",
       "readBy": [
         "checks"

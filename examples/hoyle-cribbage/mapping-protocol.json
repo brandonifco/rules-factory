@@ -1,0 +1,27 @@
+{
+  "protocolVersion": 1,
+  "corpus": "hoyle-1909",
+  "units": [
+    "section",
+    "paragraph",
+    "sentence"
+  ],
+  "pointerMechanisms": [
+    {
+      "mechanism": "phrase"
+    }
+  ],
+  "requiredSweeps": [
+    "definitions",
+    "vocabulary",
+    "applicability",
+    "exceptions",
+    "cross-references",
+    "extent-coverage"
+  ],
+  "adapterReach": {
+    "text": "readable",
+    "formatting": "unsupported",
+    "illustrations": "unsupported"
+  }
+}

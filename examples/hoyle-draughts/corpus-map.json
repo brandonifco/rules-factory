@@ -446,7 +446,7 @@
       "ambiguity": {
         "question": "The passage makes a piece that 'might or should have taken' liable, and does not say whether a piece that took, but fewer men than the play it adopted could have taken, is one; nor whether a piece that took by one capturing play when another would have taken more men is one. Footnote 108 answers both and is printed outside this map's extent.",
         "fate": "decision",
-        "decision": "docs/decisions/0088-a-huff-is-read-with-the-footnote-that-the-passage-calls.md"
+        "decision": "docs/decisions/0090-a-huff-is-read-with-the-footnote-that-the-passage-calls.md"
       },
       "note": "One piece is removed, of the huffer's choosing among those that could have taken on the opponent's last turn, and only before the huffer plays. The huff is not a move, so it is not counted where moves are counted. huff-choice is the choice to huff at all; huff-then-play is what follows it."
     },
@@ -1049,7 +1049,7 @@
           "resolvedBy": "huff-choice"
         }
       ],
-      "note": "Out of scope only because the edition prints the footnote after its last page and a page extent cannot reach it without claiming every chapter between. It answers huff-defined's question, and 0088 adopts its answer: a capture stopped short of what the same play could have taken leaves the piece liable; taking by the play that takes fewer men does not."
+      "note": "Out of scope only because the edition prints the footnote after its last page and a page extent cannot reach it without claiming every chapter between. It answers huff-defined's question, and 0090 adopts its answer: a capture stopped short of what the same play could have taken leaves the piece liable; taking by the play that takes fewer men does not."
     }
   ]
 }
