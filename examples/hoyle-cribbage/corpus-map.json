@@ -1,0 +1,1335 @@
+{
+  "schemaVersion": 1,
+  "corpus": "hoyle-1909",
+  "baseline": {
+    "contentHash": "5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e",
+    "hashDerivation": "gutenberg-plain-text-including-boilerplate"
+  },
+  "extent": {
+    "unit": "page",
+    "from": 34,
+    "to": 52
+  },
+  "entries": [
+    {
+      "id": "player-count",
+      "name": "Cribbage is primarily a game for two players",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Introduction / p. 34"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Cribbage is primarily a game for two players, though it may also be played by three, or even four persons; in the latter case, two playing against two, as at Whist.",
+      "status": "mapped",
+      "crossReferences": [
+        {
+          "cites": "as at Whist",
+          "unmapped": "Whist is another chapter of this corpus, outside this slice. The pointer says only how four players sit, which four-handed-partnerships declines."
+        }
+      ],
+      "note": "The engine plays the two-handed game. Three- and four-handed play are the corpus's own variants, stated in their own sections and declined there (three-handed-deal, four-handed-partnerships), so the count this entry demonstrates is two."
+    },
+    {
+      "id": "varieties-by-cards-dealt",
+      "name": "Five-, six- and seven-card cribbage",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Introduction / p. 34"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Of the two-handed game there are three varieties, known, from the number of cards dealt to each player, as \"five-card,\" \"six-card,\" and \"seven-card\" cribbage.",
+      "status": "mapped",
+      "note": "Three varieties, named and distinguished by how many cards each player is dealt: five, six or seven. A game is one of the three, chosen by the caller. Demonstrate the three counts."
+    },
+    {
+      "id": "game-points",
+      "name": "The points a game is played to",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Introduction / p. 34"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "varieties-by-cards-dealt"
+      ],
+      "evidence": "The number of points to be made in the first case is 61; in the second, 121; and in the third, 181.",
+      "status": "mapped",
+      "note": "61 at five-card, 121 at six-card, 181 at seven-card, in the order the previous sentence names the varieties. six-card-game-points and seven-card-game-points state the second and third figures again, as custom, and agree."
+    },
+    {
+      "id": "lurch",
+      "name": "A loser short of half the points is lurched and pays double",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Introduction / p. 34"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "game-points",
+        "game-won"
+      ],
+      "evidence": "If the loser has made less than half the specified number of points, he is \"lurched,\" and pays double the agreed stake.",
+      "status": "mapped",
+      "note": "Total: half of 61 is 30.5, so a loser on 30 or fewer is lurched and one on 31 or more is not; at 121 the line falls between 60 and 61, at 181 between 90 and 91. The stake is whatever was agreed and is a caller-supplied parameter with no entry: the engine reports the multiple, one or two, and never a sum. Demonstrate both sides of the line at each variety."
+    },
+    {
+      "id": "scoring-board",
+      "name": "Scoring with pegs on the cribbage-board",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Introduction / p. 34"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The score is marked by means of pegs of ivory or bone, on a special board, as depicted above. It will be observed that there is on either side of the board a double row of holes, thirty in each, divided, for convenience in counting, into sets of five. The board is placed cross-wise between the players, and {35} both start from the same end (which should be that to the left of the first dealer), each travelling up the outer and down the inner row (once round in the \"five-card,\" twice in the \"six-card,\" and thrice in the \"seven-card\" game), terminating with the \"game-hole\" at the end from which they started. In scoring, the hinder peg for the time being is advanced the requisite number of points beyond the foremost.",
+      "status": "declined",
+      "crossReferences": [
+        {
+          "cites": "as depicted above",
+          "unmapped": "The picture is the edition's '[Illustration: Cribbage Board.]', an image this text does not contain (adapterReach illustrations: unsupported). The prose describes the board in full."
+        }
+      ],
+      "note": "Read and declined: the board is the device the score is kept on, and the corpus attaches no rule to it that a number does not carry. Its circuits (once, twice and thrice round) restate game-points, the game-hole is reaching them, and advancing the hinder peg beyond the foremost is how a running total is shown with two pegs. The engine keeps each player's score as a number."
+    },
+    {
+      "id": "pack",
+      "name": "The full pack of fifty-two cards",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Five-card / p. 35"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The pack of fifty-two cards is used, and the players cut for deal, the lowest dealing.",
+      "status": "mapped",
+      "note": "Fifty-two cards: four suits of ace to king. The suits are not named here; the corpus's own play of two hands names hearts, clubs, diamonds and spades, and nothing in the rules distinguishes one suit from another except sameness."
+    },
+    {
+      "id": "cut-for-deal",
+      "name": "Cutting for deal: the lowest deals",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Five-card / p. 35"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The players cut for deal, the lowest dealing, and the corpus does not say what happens when the two cards cut are of equal rank. Either a tie is cut again, or some other rule (suit, or the first cutter) breaks it; the text chooses neither.",
+        "fate": "decision",
+        "decision": "docs/decisions/0089-cribbage-deals-from-a-recut-and-gives-three-for-last-once.md"
+      },
+      "dependsOn": [
+        "pack",
+        "card-rank"
+      ],
+      "draws": {
+        "dice": "pack",
+        "count": "one card per player, and one per player again after each tie"
+      },
+      "evidence": "The pack of fifty-two cards is used, and the players cut for deal, the lowest dealing.",
+      "status": "mapped",
+      "note": "Decided by 0089, on the owner's ruling: a tie is cut again. Rank for the cut is card-rank's, ace lowest; the lower card deals. Demonstrate the lower card dealing, an ace beating nothing, and a tie re-cut."
+    },
+    {
+      "id": "card-rank",
+      "name": "Rank: ace lowest, king highest",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Five-card / p. 35"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "For this and for \"sequence\" purposes, the cards rank in regular order from ace (lowest) up to king (highest), but in counting court cards count as tens.",
+      "status": "mapped",
+      "note": "Ace, two ... ten, knave, queen, king, in that order, for the cut and for sequences. Ace is only low: no-round-the-corner says ace, king, queen is not a sequence."
+    },
+    {
+      "id": "card-count-value",
+      "name": "Counting value: court cards count ten",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Five-card / p. 35"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "For this and for \"sequence\" purposes, the cards rank in regular order from ace (lowest) up to king (highest), but in counting court cards count as tens.",
+      "status": "mapped",
+      "note": "Court cards (knave, queen, king) count ten; every other card counts its rank, ace one. That the ace counts one is what the corpus's own tables require: 'Three sevens and an ace' is 'Fifteen six' on p. 39, which only seven, seven and one make. The counting value is used for fifteens and for the thirty-one limit; rank, not counting value, decides pairs and sequences (pairs-in-play)."
+    },
+    {
+      "id": "deal",
+      "name": "Shuffle, cut, and deal one at a time",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Five-card / p. 35"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The dealer deals 'one at a time, five cards to each player', and the corpus does not say which player receives the first card. Either player may be first; for a shuffled pack replayed from a seed the choice decides which hand each player holds.",
+        "fate": "decision",
+        "decision": "docs/decisions/0089-cribbage-deals-from-a-recut-and-gives-three-for-last-once.md"
+      },
+      "dependsOn": [
+        "pack",
+        "varieties-by-cards-dealt"
+      ],
+      "draws": {
+        "dice": "pack",
+        "count": 1
+      },
+      "evidence": "The pack having been shuffled, the non-dealer cuts, and his opponent deals, one at a time, five cards to each player.",
+      "status": "mapped",
+      "note": "Decided by 0089, on the owner's ruling: the deal begins with the non-dealer and alternates. One draw, the shuffle; the non-dealer's cut of a shuffled pack does not change what is dealt and is not a second draw. Five cards at five-card, six at six-card (six-card-deal), seven at seven-card (seven-card-deal)."
+    },
+    {
+      "id": "three-for-last",
+      "name": "Three for last, to the non-dealer",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Five-card / p. 35"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The non-dealer scores three holes, 'regarded as a set-off for the advantage of first deal'. Either every non-dealer scores them at every deal, as the sentence's place in the procedure suggests, or only the non-dealer of the game's first deal does, which is what a set-off for the advantage of first deal would be -- and the corpus's own two illustrative hands score them once: B, non-dealer at the second deal, finishes it on 27 (illustrative-hands), which is 15 + 12 without three for last.",
+        "fate": "decision",
+        "decision": "docs/decisions/0089-cribbage-deals-from-a-recut-and-gives-three-for-last-once.md"
+      },
+      "dependsOn": [
+        "deal"
+      ],
+      "suspendedBy": [
+        "six-card-no-three-for-last"
+      ],
+      "evidence": "Meanwhile the non-dealer scores three holes, known as \"three for last,\" and regarded as a set-off for the advantage of first deal.",
+      "status": "mapped",
+      "note": "Decided by 0089: only the non-dealer of the game's first deal scores three for last, at the deal. Five-card only: six-card-no-three-for-last omits it, and the seven-card game is 'played in the same manner as the six-card game' (seven-card-deal). Three points can win a game (game-won)."
+    },
+    {
+      "id": "undealt-pack",
+      "name": "The undealt pack lies face down",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Five-card / p. 35"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The undealt portion of the pack is placed face downwards between the players.",
+      "status": "declined",
+      "note": "Read and declined: where the stock lies is table protocol. The engine never shows the undealt cards, and cut-start draws the start from them."
+    },
+    {
+      "id": "lay-out-crib",
+      "name": "Each player lays out two cards to the crib",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Five-card / p. 35"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "deal"
+      ],
+      "evidence": "Each player now \"lays out\" two of his cards (placed face downwards to the right hand of the dealer) to form what is called the \"crib.\" The principles which govern the \"lay out\" will be discussed later.",
+      "status": "mapped",
+      "crossReferences": [
+        {
+          "cites": "will be discussed later",
+          "resolvedBy": "laying-out-advice"
+        }
+      ],
+      "note": "Two cards from each player, of his own choosing, to the crib: four cards in all at five-, six- and seven-card alike (six-card-deal, seven-card-deal). Which two is the player's move. Face down and to the dealer's right is table protocol. The crib is the dealer's (crib-belongs-to-dealer)."
+    },
+    {
+      "id": "cut-start",
+      "name": "The start is cut and turned up",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Five-card / p. 35"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "lay-out-crib"
+      ],
+      "draws": {
+        "dice": "pack",
+        "count": 1
+      },
+      "evidence": "The crib having been laid out, the non-dealer cuts, by lifting off the upper half of the pack. The dealer turns up the card left uppermost and places it on the top of the pack. This card is known as the \"start.\"",
+      "status": "mapped",
+      "note": "One card from the undealt pack, turned up after the crib is laid out and before the play. It belongs to every hand and to the crib in the show (start-belongs-to-every-show)."
+    },
+    {
+      "id": "his-heels",
+      "name": "Two for his heels",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Five-card / p. 35"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "cut-start"
+      ],
+      "evidence": "Should it chance to be a knave, the dealer is entitled to \"two for his heels,\" and scores two points.",
+      "status": "mapped",
+      "note": "A knave turned up as the start scores two to the dealer, at once. Any other start scores nothing. Demonstrate a knave and a queen start."
+    },
+    {
+      "id": "show-at-close-of-hand",
+      "name": "Play first, then the show",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Five-card / p. 35"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "cut-start"
+      ],
+      "evidence": "The score depends partly upon the course of play, {36} and partly upon the player's holding certain combinations of cards. These latter are scored at the close of the hand.",
+      "status": "mapped",
+      "note": "Two kinds of score and their order: the play scores as cards are played, and the holdings are scored once the play is over. show-order says who shows first."
+    },
+    {
+      "id": "non-dealer-leads",
+      "name": "The non-dealer leads",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Illustrative hands / p. 47"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "show-at-close-of-hand"
+      ],
+      "evidence": "A leads the seven of spades, saying, \"seven.\" This is his best lead.",
+      "status": "mapped",
+      "note": "No operative sentence of the two-handed game says who leads; the three- and four-handed sections say the player to the dealer's left. The corpus's only authority for the two-handed lead is its own play of two hands, and both answer it the same way: A, 'elder hand' to B's dealer, leads at the first deal, and at the second, with A dealing, 'B leads the eight of hearts' (p. 48). The example is the entry under 0031. Demonstrate the non-dealer leading at each deal."
+    },
+    {
+      "id": "alternate-play",
+      "name": "The players play alternately",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Six-card / p. 50"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "non-dealer-leads"
+      ],
+      "evidence": "Each plays alternately as before, the player of the \"last card\" scoring \"one\" for so doing.",
+      "status": "mapped",
+      "crossReferences": [
+        {
+          "cites": "as before",
+          "resolvedBy": "pairs-in-play"
+        }
+      ],
+      "note": "Play alternates, one card each, from the lead. 'As before' points at the five-card game, whose scoring rules are written for alternation ('the card last played by his adversary'). A player who has no card left is passed over, which is the only way 'played out to the end' (six-card-play-out) can be met when the hands empty unevenly. The last-card point in the same sentence is last-card's."
+    },
+    {
+      "id": "pairs-in-play",
+      "name": "Two for a pair in play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Pairs / p. 36"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "A pair is 'a similar card to the card last played by his adversary'. After a go one player may play two cards in succession, and the corpus does not say whether a card matching his own previous card pairs it: read literally it cannot, because that card was not played by his adversary.",
+        "fate": "decision",
+        "decision": "docs/decisions/0088-cribbage-play-counts-the-cards-most-recently-played.md"
+      },
+      "dependsOn": [
+        "alternate-play",
+        "card-rank"
+      ],
+      "evidence": "PAIRS.--A player playing a similar card to the card last played by his adversary (as a king to a king, or a seven to a seven) is entitled to score _two_ for a _pair_.[14]",
+      "status": "mapped",
+      "crossReferences": [
+        {
+          "cites": "[14]",
+          "unmapped": "Footnote 14 is printed with the volume's other footnotes after p. 475, outside this map's page extent, and the plain-text page grammar has no address for a footnote, so no entry can quote it. It says court cards keep their own rank for pairing: a knave pairs only a knave. The entry's own examples, a king to a king and a seven to a seven, already read 'similar' as the same rank, and card-rank supplies it."
+        }
+      ],
+      "note": "Decided by 0088, on the owner's ruling: a card pairs the card played immediately before it in the current series, whoever played it. Similar means the same rank, not the same counting value: a queen does not pair a knave. Two to the player of the second card."
+    },
+    {
+      "id": "pair-royal-in-play",
+      "name": "Six for a pair-royal in play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Pairs / p. 36"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The third card is played by 'the first player in the case last supposed', following his adversary's pair. Whether a third card of the rank scores when the same player played two of the three, after a go, is the same question pairs-in-play asks.",
+        "fate": "decision",
+        "decision": "docs/decisions/0088-cribbage-play-counts-the-cards-most-recently-played.md"
+      },
+      "dependsOn": [
+        "pairs-in-play"
+      ],
+      "evidence": "PAIRS-ROYAL.--If the first player in the case last supposed can follow with a third card of the same description, he scores _six_ for a _pair-royal_.",
+      "status": "mapped",
+      "crossReferences": [
+        {
+          "cites": "in the case last supposed",
+          "resolvedBy": "pairs-in-play"
+        }
+      ],
+      "note": "Decided by 0088: three cards of one rank played in immediate succession in the current series score six to the player of the third, whoever played the first two. Six replaces the pair's two; it is not added to it."
+    },
+    {
+      "id": "double-pair-royal-in-play",
+      "name": "Twelve for a double pair-royal in play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Pairs / p. 36"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The fourth card is played by 'the second player', replying. Whether a fourth card of the rank scores when its player also played an earlier one of the four, after a go, is the same question pairs-in-play asks.",
+        "fate": "decision",
+        "decision": "docs/decisions/0088-cribbage-play-counts-the-cards-most-recently-played.md"
+      },
+      "dependsOn": [
+        "pair-royal-in-play"
+      ],
+      "evidence": "DOUBLE PAIRS-ROYAL.--If the second player replies with a fourth card of the same description, he scores _twelve_ for a _double pair-royal_.",
+      "status": "mapped",
+      "note": "Decided by 0088: four cards of one rank in immediate succession score twelve to the player of the fourth. Twelve replaces the pair-royal's six. Only ranks of seven or less can make one within thirty-one, which is what p. 45's 'unless the card be over seven' says from the other side."
+    },
+    {
+      "id": "runs-in-play",
+      "name": "A run in play counts one a card",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Sequences / p. 36"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "A run scores 'so long as the cards exposed for the time being form an unbroken series'. Either the run is the longest unbroken series among the most recently played cards, or every card exposed in the current series must belong to it. The corpus's examples are all series in which every card belongs to the run, so they agree with both readings; they part when an earlier card breaks it, as after nine, five, four, three.",
+        "fate": "decision",
+        "decision": "docs/decisions/0088-cribbage-play-counts-the-cards-most-recently-played.md"
+      },
+      "dependsOn": [
+        "alternate-play",
+        "card-rank"
+      ],
+      "evidence": "SEQUENCES, OR RUNS.--Three or more cards of any suit but forming a regular numerical succession (as two, three, four; knave, ten, nine), count one for each card to the last player. The sequence need not be played in regular order, so long as the cards exposed for the time being form an unbroken series. Thus, suppose that A plays a five, and B a four. If A now plays either a six or a three, he is entitled to score a run of three (three points). We will suppose that he plays a three. If B can play either a six or a two, he will be entitled to score _four_; and if A can then add another card at either end, he will score _five_. Suppose, again, that A has played a five and a three, and B a two and a six. If A now plays a four, he is entitled to score five for the complete sequence.",
+      "status": "mapped",
+      "note": "Decided by 0088, on the owner's ruling: the player of a card scores, one a card, the longest run of three or more formed by that card and the cards played immediately before it in the current series, in any order. Nine, five, four, three scores three. Suit does not matter. Demonstrate each of the corpus's three examples: three, then four, then five; and five for 5, 4 / 3, 2 / 6 ... 4 played as A five, B two, A three, B six, A four."
+    },
+    {
+      "id": "longest-run-in-play",
+      "name": "Seven is the longest run in play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Sequences / p. 36"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "runs-in-play",
+        "go"
+      ],
+      "evidence": "The highest number that can be scored {37} for a sequence is _seven_, for ace, two, three, four, five, six, seven.",
+      "status": "mapped",
+      "note": "A consequence of the thirty-one limit the corpus states as a value: ace to seven count twenty-eight, and an eighth card in sequence would pass thirty-one. Demonstrate a run of seven, and that no run of eight can be played."
+    },
+    {
+      "id": "no-round-the-corner",
+      "name": "Ace, king, queen is not a sequence",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Sequences / p. 37"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "card-rank"
+      ],
+      "evidence": "Ace, king, queen, do not count as a sequence.",
+      "status": "mapped",
+      "note": "The ace is low only, so a sequence never runs from king to ace. Stated in the play and true of the show, whose sequences are card-rank's too."
+    },
+    {
+      "id": "fifteen-in-play",
+      "name": "Two for fifteen in play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Fifteen or thirty-one / p. 37"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "alternate-play",
+        "card-count-value"
+      ],
+      "evidence": "FIFTEEN or THIRTY-ONE.--A player whose card makes, with those already exposed, the number _fifteen_, scores two.",
+      "status": "mapped",
+      "note": "When the count of the current series reaches exactly fifteen with a player's card, he scores two. The count is card-count-value's."
+    },
+    {
+      "id": "thirty-one-in-play",
+      "name": "Two for thirty-one",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Fifteen or thirty-one / p. 37"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "fifteen-in-play"
+      ],
+      "evidence": "If either player makes _thirty-one_, he scores two in like manner.",
+      "status": "mapped",
+      "crossReferences": [
+        {
+          "cites": "in like manner",
+          "resolvedBy": "fifteen-in-play"
+        }
+      ],
+      "note": "Exactly thirty-one scores two, and ends the series: no card can follow it. A card that makes thirty-one does not also score one for last card (go: 'if not, he scores one')."
+    },
+    {
+      "id": "go",
+      "name": "Go, and one for last card",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Fifteen or thirty-one / p. 37"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "After a go 'his opponent then plays any other card or cards up to that limit', and the corpus does not say whether he must play every card he can, or may stop. The player who says go does so only when he 'can go no further without passing that number', which is a compulsion; the opponent's is not stated.",
+        "fate": "decision",
+        "decision": "docs/decisions/0088-cribbage-play-counts-the-cards-most-recently-played.md"
+      },
+      "dependsOn": [
+        "thirty-one-in-play"
+      ],
+      "evidence": "If, when the cards on the table approach thirty-one, the player whose turn it is can go no further without passing that number, he says, \"Go.\" His opponent then plays any other card or cards up to that limit. If they make thirty-one exactly, he scores two; if not, he scores one for \"last card,\" _i.e._ the last card played.",
+      "status": "mapped",
+      "note": "Decided by 0088: a player who can play without passing thirty-one must play, before a go and after it. A player says go only when no card of his fits; his opponent then plays every card he can; thirty-one exactly scores two, and otherwise the last card scores one. No card may take the count past thirty-one."
+    },
+    {
+      "id": "five-card-play-ends",
+      "name": "At five-card the go ends the play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Fifteen or thirty-one / p. 37"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The go '(at five-card cribbage) terminates the hand', but six cards counting less than thirty-one can all be played with no go at all, and the corpus does not say whether the last of them scores one for last card, as it does in the six-card game, or nothing.",
+        "fate": "decision",
+        "decision": "docs/decisions/0088-cribbage-play-counts-the-cards-most-recently-played.md"
+      },
+      "dependsOn": [
+        "go"
+      ],
+      "suspendedBy": [
+        "six-card-play-out"
+      ],
+      "evidence": "This (at five-card cribbage) terminates the hand.",
+      "status": "mapped",
+      "note": "Decided by 0088, on the owner's ruling: the last card scores one when every card has been played below thirty-one. The play ends at the go and its last card, or at thirty-one, and cards then unplayed stay in hand for the show."
+    },
+    {
+      "id": "show-order",
+      "name": "The non-dealer shows first",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 37"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "show-at-close-of-hand"
+      ],
+      "evidence": "The hand being over, the players, beginning with the non-dealer, proceed to \"show,\" _i.e._ turn up their cards, and reckon how many points they may contain conjointly with the turn-up card, which is regarded as belonging, for this purpose, to the hand of each player, as also to the \"crib\" of the dealer.",
+      "status": "mapped",
+      "note": "The non-dealer's hand is scored first, then the dealer's hand, then the crib (dealer-shows-hand-then-crib). The order decides the game when both would reach its points in one show (game-won)."
+    },
+    {
+      "id": "start-belongs-to-every-show",
+      "name": "The start counts with every hand and the crib",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 37"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "cut-start",
+        "show-order"
+      ],
+      "evidence": "The hand being over, the players, beginning with the non-dealer, proceed to \"show,\" _i.e._ turn up their cards, and reckon how many points they may contain conjointly with the turn-up card, which is regarded as belonging, for this purpose, to the hand of each player, as also to the \"crib\" of the dealer.",
+      "status": "mapped",
+      "note": "Every holding is scored with the start added to it: each player's hand and the crib. Demonstrate one start scoring in both hands and the crib."
+    },
+    {
+      "id": "crib-belongs-to-dealer",
+      "name": "The crib is the dealer's",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 37"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "lay-out-crib"
+      ],
+      "evidence": "The hand being over, the players, beginning with the non-dealer, proceed to \"show,\" _i.e._ turn up their cards, and reckon how many points they may contain conjointly with the turn-up card, which is regarded as belonging, for this purpose, to the hand of each player, as also to the \"crib\" of the dealer.",
+      "status": "mapped",
+      "note": "The crib's score goes to the dealer. four-handed-deal-and-crib says the same of the two-handed game."
+    },
+    {
+      "id": "fifteens-in-show",
+      "name": "Two for every fifteen in the show",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 37"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "start-belongs-to-every-show",
+        "card-count-value"
+      ],
+      "evidence": "The first point noted is the _fifteens_ they may contain, _two_ points being reckoned for each, and the cards being combined in every possible way to make that number. Thus three fives and a ten or court card make (apart from their value under other aspects) four fifteens (technically spoken of as \"fifteen eight\"[15]), each of the fives forming one fifteen with the ten, and the three fives united forming another.",
+      "status": "mapped",
+      "crossReferences": [
+        {
+          "cites": "[15]",
+          "unmapped": "Footnote 15 is printed with the volume's other footnotes after p. 475, outside this map's page extent, and the plain-text page grammar has no address for a footnote, so no entry can quote it. It names the call (fifteen two, fifteen four ...) and says four is the most fifteens four cards can make, which this entry's rule entails."
+        }
+      ],
+      "note": "Two for every distinct set of cards in the holding, start included, whose counting values total fifteen. Demonstrate the corpus's own: three fives and a ten are four fifteens, eight."
+    },
+    {
+      "id": "pairs-in-show",
+      "name": "Pairs, pairs-royal and double pairs-royal in the show",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 37"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "start-belongs-to-every-show",
+        "pairs-in-play"
+      ],
+      "evidence": "The next thing to be noted is the presence of any pairs, pair-royal, or double pair-royal. Thus, in the {38} case supposed, the player, after claiming \"fifteen eight,\" would go on to say \"and six for a pair-royal, fourteen.\"",
+      "status": "mapped",
+      "crossReferences": [
+        {
+          "cites": "in the {38} case supposed",
+          "resolvedBy": "fifteens-in-show"
+        }
+      ],
+      "note": "Two for each pair of cards of one rank in the holding: a pair is two, three of a rank (three pairs) six for a pair-royal, four (six pairs) twelve for a double pair-royal, and two pairs of different ranks four. The figures are the play's (pairs-in-play, pair-royal-in-play, double-pair-royal-in-play) and the tables' -- 'two pairs' at 12 on p. 39 is fifteen eight and four."
+    },
+    {
+      "id": "runs-in-show",
+      "name": "Runs in the show",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 38"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "start-belongs-to-every-show",
+        "card-rank",
+        "no-round-the-corner"
+      ],
+      "evidence": "If all the three cards in the hand are in sequence (independent of suit), three points are reckoned for this, or if the three form a sequence with the turn-up card, four.",
+      "status": "mapped",
+      "note": "One a card for every run of three or more in the holding, counted at its greatest length: three in the hand and the start in sequence with them is a run of four, not a run of three and another. A run is counted once for every distinct set of cards forming it (double-run-in-show, treble-run-in-show), which is how the tables' 'run of three four times repeated' scores twelve. Total because the corpus fixes both length and multiplicity; the same rule serves the six- and seven-card hands, whose longer runs no sentence names."
+    },
+    {
+      "id": "double-run-in-show",
+      "name": "A double run is six, and a pair two more",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 38"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "runs-in-show",
+        "pairs-in-show"
+      ],
+      "evidence": "If three of the cards are in sequence, and the fourth is a duplicate of one of them, such fourth card is regarded as making a fresh sequence with the other two, the \"double run,\" as it is called, scoring six points. Besides this, the holder is entitled to two for his \"pair\" (the two duplicate cards), bringing the total value (irrespective of \"fifteens\") up to eight.",
+      "status": "mapped",
+      "note": "Three in sequence and a duplicate of one of them: two runs of three, six, and the pair, two -- eight. The instance of runs-in-show's multiplicity the corpus names."
+    },
+    {
+      "id": "treble-run-in-show",
+      "name": "A treble run is nine, and a pair-royal six more",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 38"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "runs-in-show",
+        "pairs-in-show"
+      ],
+      "evidence": "Where (as in crib at five-card, or hand or crib at six-card Cribbage) five cards have to be reckoned, it may happen that three are in sequence, and that the other two are duplicates of one of them. In this case they constitute a treble run of three (nine points) and a pair-royal (six points), total fifteen.",
+      "status": "mapped",
+      "note": "Three in sequence and two duplicates of one of them: three runs of three, nine, and the pair-royal, six -- fifteen."
+    },
+    {
+      "id": "hand-flush",
+      "name": "A flush in hand",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 38"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "start-belongs-to-every-show"
+      ],
+      "evidence": "If the three cards of the hand are all of one suit, the player scores three points for a _flush_. If the turn-up is of the same suit, four points.",
+      "status": "mapped",
+      "note": "Every card of the hand, start excluded, of one suit: one a card, and one more if the start is of that suit too. Three cards (five-card) are three or four; the p. 39 sentence flush-in-the-tables quotes gives the four-card figure, and at six- and seven-card a hand of four or five scores four or five, and one more with the start. A hand some of whose cards differ in suit scores no flush."
+    },
+    {
+      "id": "his-nob",
+      "name": "One for his nob",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 38"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "start-belongs-to-every-show"
+      ],
+      "evidence": "If the hand chance to contain a _knave of the same suit as the turn-up card_, the holder is entitled to score one point, \"for his nob.\"",
+      "status": "mapped",
+      "note": "A knave in the holding of the start's suit scores one: in either hand, and in the crib ('in like manner', dealer-shows-hand-then-crib; and 'either' in flush-in-the-tables). The start itself is never the nob: a knave start is his-heels."
+    },
+    {
+      "id": "dealer-shows-hand-then-crib",
+      "name": "The dealer shows his hand, then the crib",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 38"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "show-order",
+        "crib-belongs-to-dealer"
+      ],
+      "evidence": "The non-dealer having scored his points, as above indicated, the dealer proceeds to score any points, first in his hand, and then in the crib, in like manner.",
+      "status": "mapped",
+      "crossReferences": [
+        {
+          "cites": "as above indicated",
+          "resolvedBy": "fifteens-in-show"
+        },
+        {
+          "cites": "in like manner",
+          "resolvedBy": "fifteens-in-show"
+        }
+      ],
+      "note": "After the non-dealer's hand: the dealer's hand, then the crib, each scored by the same rules, with the one exception crib-flush states."
+    },
+    {
+      "id": "crib-flush",
+      "name": "A crib flush needs the start, and is five",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 38"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "dealer-shows-hand-then-crib",
+        "hand-flush"
+      ],
+      "evidence": "There is only one distinction, viz., that, in counting crib, a flush is not reckoned unless the \"start\" is of the same suit as the rest. In this case the flush is worth five points (one for each card).",
+      "status": "mapped",
+      "note": "The crib's four cards and the start all of one suit score five. Four of one suit with a start of another score no flush, as in hand they would score four."
+    },
+    {
+      "id": "flush-in-the-tables",
+      "name": "The tables add flush and nob",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 39"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Where the four cards of the hand (or all four of the crib, and the start) are of the same suit, the value of the flush (four or five, as the case may be) must be added. Where either includes a knave of {40} the same suit as the start, one \"for his nob\" will be scored in addition.",
+      "status": "declined",
+      "note": "Read and declined: it restates hand-flush, crib-flush and his-nob for the rows of the table above it and adds no rule. 'The four cards of the hand' counts the start, as the table's heading does ('including the start'), so its 'four or five' are hand-flush's four and crib-flush's five."
+    },
+    {
+      "id": "five-card-hand-table",
+      "name": "The table of five-card hands",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 39"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The following table indicates the method of counting some of the more important combinations (including the start) of the hand at five-card Cribbage:--",
+      "status": "declined",
+      "note": "Read and declined: the table applies the show rules to sixteen four-card holdings and states no rule of its own; each row is a test (Phase 6). One row is misprinted. 'Two eights, a six (or nine), and a seven', 'Two sevens, a six, and an eight' and 'Six, five, and two fours' are printed at 13 for 'Fifteen four, pair, and double run of three', which is four, two and six -- 12, the figure the table itself gives the same combination two rows above. The rules, not the misprint, are what the engine scores."
+    },
+    {
+      "id": "twenty-nine",
+      "name": "Twenty-nine, the highest possible score",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 40"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The highest possible score is twenty-nine, which is made by three fives and a knave, with a fourth five, of the same suit as the knave, turned up by way of start.[16] The mode of reckoning is as follows: the four fives, in four combinations of three, score fifteen eight. Each of them again scores a fifteen in conjunction with the knave, making eight more. To these are added twelve for the double pair-royal, and \"one for his nob,\" making twenty-nine.",
+      "status": "declined",
+      "crossReferences": [
+        {
+          "cites": "[16]",
+          "unmapped": "Footnote 16 is printed with the volume's other footnotes after p. 475, outside this map's page extent, and the plain-text page grammar has no address for a footnote, so no entry can quote it. It computes two further holdings by rules this map has."
+        }
+      ],
+      "note": "Read and declined: a worked example of fifteens-in-show, pairs-in-show and his-nob, and the test those three owe together. Footnote 16, outside the extent, adds that a knave of another suit makes it twenty-eight, and four fives in crib with a knave turned up twenty-eight and two for his heels."
+    },
+    {
+      "id": "five-card-crib-table",
+      "name": "The table of five-card cribs",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / The show / p. 41"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Three tenth cards in sequence and two fives (_Fifteen twelve, pair, and run of three_)[18] 11",
+      "status": "declined",
+      "crossReferences": [
+        {
+          "cites": "[18]",
+          "unmapped": "Footnote 18 is printed with the volume's other footnotes after p. 475, outside this map's page extent, and the plain-text page grammar has no address for a footnote, so no entry can quote it. It gives the score without the pair and the run, fourteen."
+        }
+      ],
+      "note": "Read and declined: the table on pp. 40-41 applies the show rules to five-card holdings and states no rule of its own. This row is misprinted. Three tenth cards in sequence and two fives are six fifteens, twelve, a pair, two, and a run of three, three -- 17, which is what the row's own words add up to; footnote 18 says that without the pair and the run the score would be fourteen, which is 17 less three, not 11 plus anything. Every other row adds up. The engine scores the rules."
+    },
+    {
+      "id": "laying-out-advice",
+      "name": "How to lay out for crib",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Laying out / p. 40"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A study of the foregoing table should be a material aid to the player in discarding for \"crib.\" If he is dealer, he desires the crib to be as productive as possible; if non-dealer, the reverse.",
+      "status": "declined",
+      "note": "Read and declined as advice: what to discard is the player's choice, which lay-out-crib leaves to him. This and the paragraphs to p. 43 are strategy and oblige nothing."
+    },
+    {
+      "id": "crib-matters-more",
+      "name": "The crib matters more than the hand",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Laying out / p. 42"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A comparison of the foregoing tables show that the crib at five-card Cribbage is likely to be much more important than the hand, and this furnishes us with a safe principle for the guidance of the player in laying out.",
+      "status": "declined",
+      "note": "Read and declined as advice, continuing laying-out-advice. It states a principle of play, not a rule."
+    },
+    {
+      "id": "baulking-the-crib",
+      "name": "Baulking the crib",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Laying out / p. 43"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The non-dealer should never throw out a knave if he can help it, as the start may cause it to score a point for \"nob.\"",
+      "status": "declined",
+      "note": "Read and declined as advice. 'Should never ... if he can help it' is counsel; nothing forbids the throw."
+    },
+    {
+      "id": "leading-advice",
+      "name": "What to lead",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Play advice / p. 43"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "In the play of the hand the guiding principle should be to give to the adversary the fewest possible opportunities of scoring.",
+      "status": "declined",
+      "note": "Read and declined as advice: which card to lead is the leader's choice."
+    },
+    {
+      "id": "second-player-advice",
+      "name": "How the second player should play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Play advice / p. 44"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "As regards the second player, he will generally do well to make fifteen if he can.",
+      "status": "declined",
+      "note": "Read and declined as advice."
+    },
+    {
+      "id": "counts-to-avoid",
+      "name": "Counts to avoid",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Play advice / p. 45"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The points of \"five\" and \"twenty-one\" are to be avoided, as a tenth card played by the adversary will in such case make him fifteen or thirty-one.",
+      "status": "declined",
+      "note": "Read and declined as advice. Its pair-royal remark on p. 45, 'unless the card be over seven', is the arithmetic double-pair-royal-in-play's note gives."
+    },
+    {
+      "id": "playing-off-and-on",
+      "name": "Playing off and playing on",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Play advice / p. 45"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A further point to be considered, in deciding whether to make a pair or sequence, is the state of the score.",
+      "status": "declined",
+      "note": "Read and declined as advice: the averages, being 'home', playing off and playing on are counsel about risk, on pp. 45-46."
+    },
+    {
+      "id": "illustrative-hands",
+      "name": "Two hands played through",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Illustrative hands / p. 46"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "It may be useful to illustrate these elementary principles by the play of a couple of imaginary hands.",
+      "status": "declined",
+      "note": "Read and declined: pp. 46-49 play two hands to illustrate the advice, and every point they score is a rule this map has; both deals are tests. The first ends 'eight to fifteen' with A's three for last. The second ends 'A 20, B 27' (second-hand-score), which gives B, non-dealer at that deal, no three for last; that is the arithmetic three-for-last's question rests on. The lead in each is non-dealer-leads' evidence."
+    },
+    {
+      "id": "second-hand-lead",
+      "name": "B leads at A's deal",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Illustrative hands / p. 48"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "B leads the eight of hearts. This is a safe lead,",
+      "status": "declined",
+      "note": "Read and declined: the second illustrative deal's lead, which non-dealer-leads cites as its second instance. Declined because that entry carries the rule; this is its witness."
+    },
+    {
+      "id": "second-hand-score",
+      "name": "The score after two deals",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Illustrative hands / p. 49"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The game now stands--A 20, B 27. Both have made their full average in the two deals;",
+      "status": "declined",
+      "note": "Read and declined: an illustration's running score. A is 8 + 2 + 2 + 8 and B is 15 + 12; B is the non-dealer of the second deal and is given no three for last, which is what decision 0089 relies on (three-for-last)."
+    },
+    {
+      "id": "six-card-deal",
+      "name": "Six-card: six dealt, four kept",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Six-card / p. 49"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "varieties-by-cards-dealt",
+        "deal",
+        "lay-out-crib"
+      ],
+      "evidence": "In this form of the game _six_ cards are dealt to each player. Two being laid out for crib, four are still left in hand,",
+      "status": "mapped",
+      "note": "Six cards to each player, two laid out, four in hand: with the start, five to a hand in the show, as the crib has."
+    },
+    {
+      "id": "six-card-no-three-for-last",
+      "name": "Six-card: no three for last",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Six-card / p. 49"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "three-for-last"
+      ],
+      "evidence": "The only material difference of procedure is {50} that in the six-card game the scoring of three extra points by the non-dealer is omitted, both players being considered to start on an equal footing;",
+      "status": "mapped",
+      "note": "Three for last is not scored. Seven-card is played 'in the same manner as the six-card game' and omits it too. Suspends three-for-last."
+    },
+    {
+      "id": "six-card-play-out",
+      "name": "Six-card: the cards are played out",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Six-card / p. 50"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "go"
+      ],
+      "evidence": "and secondly, that the cards, instead of being thrown down as soon as thirty-one or the nearest possible approach to it, is reached, are played out to the end. The player who failed to score for the \"go\" leads again, giving the adversary the opportunity to make fifteen, or pair him if he can.",
+      "status": "mapped",
+      "note": "After a go, or thirty-one, the count starts again and play continues until every card is played. The player who failed to score for the go -- the one who said it, or whose opponent made thirty-one -- leads the next series. 'Giving the adversary the opportunity to make fifteen' is what says the count begins again at nothing. Applies at seven-card too (seven-card-deal). Suspends five-card-play-ends."
+    },
+    {
+      "id": "last-card",
+      "name": "One for the last card",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Six-card / p. 50"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "six-card-play-out"
+      ],
+      "evidence": "If there is only one card left after the \"go,\" the leader still scores it as \"last card.\"",
+      "status": "mapped",
+      "note": "The player of the last card of the play scores one; alternate-play's sentence says so and this one adds that a single card led after the go is still the last card. Thirty-one on the last card scores two and not three (go)."
+    },
+    {
+      "id": "six-card-advice",
+      "name": "Laying out at six-card",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Six-card / p. 50"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The general principles laid down as to five-card cribbage apply equally to the six-card game,",
+      "status": "declined",
+      "note": "Read and declined as advice: the balance between hand and crib at six-card."
+    },
+    {
+      "id": "six-card-game-points",
+      "name": "Six-card is played to 121",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Six-card / p. 50"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "In consequence of the greater facility of scoring, it is customary to play six-card cribbage twice round the board, _i.e._ to make the game 121 points.",
+      "status": "declined",
+      "note": "Read and declined as a restatement: game-points already states 121 for six-card, and this agrees. One value, held there."
+    },
+    {
+      "id": "seven-card-deal",
+      "name": "Seven-card: seven dealt, five kept",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Seven-card / p. 50"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "six-card-deal"
+      ],
+      "evidence": "Seven-card cribbage is played in the same manner as the six-card game, save that _seven_ cards are dealt to each player, two being thrown out for crib, and _five_ left in hand, or, with the start, six.",
+      "status": "mapped",
+      "crossReferences": [
+        {
+          "cites": "in the same manner as the six-card game",
+          "resolvedBy": "six-card-play-out"
+        }
+      ],
+      "note": "Seven cards to each player, two laid out, five in hand, six with the start; the crib is four and the start, as at five- and six-card. Everything else is the six-card game: no three for last, and the cards played out."
+    },
+    {
+      "id": "seven-card-game-points",
+      "name": "Seven-card is played to 181",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Seven-card / p. 50"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "With such a largely increased number of possible combinations, very high scores are frequent, and for this reason it {51} is customary to make the game three times round the board, _i.e._ 181 points.",
+      "status": "declined",
+      "note": "Read and declined as a restatement of game-points' 181."
+    },
+    {
+      "id": "three-handed-deal",
+      "name": "Three-handed: five each, one to the crib",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Three-handed / p. 51"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "When three persons play, five cards are dealt to each, one card of each hand being laid out for crib, with one card from the top of the pack to complete it. The start is then cut for in the usual manner.",
+      "status": "declined",
+      "crossReferences": [
+        {
+          "cites": "in the usual manner",
+          "resolvedBy": "cut-start"
+        }
+      ],
+      "note": "Declined: this engine plays the two-handed game. The three-handed section states the deal and the crib and nothing of how the play's pairs and runs, written for two alternating players, are scored among three."
+    },
+    {
+      "id": "three-handed-lead",
+      "name": "Three-handed: the dealer's left leads, shows and deals next",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Three-handed / p. 51"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The player to the dealer's left has first lead and first show, and deals in the succeeding hand.",
+      "status": "declined",
+      "note": "Declined with the three-handed game."
+    },
+    {
+      "id": "three-handed-board",
+      "name": "Three-handed: the board",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Three-handed / p. 51"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The score is usually marked on a triangular board, open in the centre, or the ordinary cribbage-board may be furnished (see illustration) with a supplementary arm, turning on a pivot, and duly provided with holes, to keep the score of a third player.",
+      "status": "declined",
+      "crossReferences": [
+        {
+          "cites": "(see illustration)",
+          "unmapped": "The edition's '[Illustration: Cribbage-board for Three-handed Game.]', an image this text does not contain."
+        }
+      ],
+      "note": "Declined: a scoring device, as scoring-board is."
+    },
+    {
+      "id": "four-handed-partnerships",
+      "name": "Four-handed: two partnerships",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Four-handed / p. 51"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Where four persons engage in the game, two play as partners against the other two, each pair sitting facing each other. Partners and deal are cut for, as at Whist, the two lowest playing against the two highest, and the lowest dealing.",
+      "status": "declined",
+      "crossReferences": [
+        {
+          "cites": "as at Whist",
+          "unmapped": "Whist is another chapter of this corpus, outside this slice, and the game that would need its cut is declined."
+        }
+      ],
+      "note": "Declined: this engine plays the two-handed game."
+    },
+    {
+      "id": "four-handed-deal-and-crib",
+      "name": "Four-handed: five each, one to the crib",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Four-handed / p. 51"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Five cards are dealt to each player, and each puts out one for the crib, which {52} belongs, as in the two-handed game, to the dealer.",
+      "status": "declined",
+      "crossReferences": [
+        {
+          "cites": "as in the two-handed game",
+          "resolvedBy": "crib-belongs-to-dealer"
+        }
+      ],
+      "note": "Declined with the four-handed game."
+    },
+    {
+      "id": "four-handed-play",
+      "name": "Four-handed: the play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Four-handed / p. 52"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The player to the dealer's left has the lead, and each of the others play to it in rotation. No consultation is allowed during the play, but partner may assist partner in counting his hand or crib. One partner scores for both. The cards are played right out, as in the six-card game.",
+      "status": "declined",
+      "crossReferences": [
+        {
+          "cites": "as in the six-card game",
+          "resolvedBy": "six-card-play-out"
+        }
+      ],
+      "note": "Declined with the four-handed game."
+    },
+    {
+      "id": "four-handed-game-points",
+      "name": "Four-handed is played to 121",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "CRIBBAGE / Four-handed / p. 52"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The score is usually twice up and down the board, _i.e._ 121 points.",
+      "status": "declined",
+      "note": "Declined with the four-handed game."
+    },
+    {
+      "id": "game-won",
+      "name": "The first to make the game's points wins",
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "derivedFrom": [
+        "game-points",
+        "show-order"
+      ],
+      "dependsOn": [
+        "game-points"
+      ],
+      "status": "mapped",
+      "note": "Derived, not stated (0012). game-points names 'the number of points to be made', and lurch has a winner and a loser; no sentence says the game ends the moment the number is made. It follows from the corpus fixing the order in which every score is made -- three for last and his heels at the deal, the play card by card, then show-order's non-dealer, dealer and crib -- that the first player whose score reaches the game's points has made them first, and nothing scored after can undo it. Demonstrate a win during the play, a non-dealer winning on his show before the dealer's higher hand is counted, and a win by three for last."
+    }
+  ]
+}

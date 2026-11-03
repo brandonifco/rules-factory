@@ -63,13 +63,24 @@ class TestEveryRowOfTheTable(unittest.TestCase):
                 self.assertEqual((), scope.maps)
 
     def test_a_change_to_one_map_narrows_to_that_map(self):
-        scope = vr.classify(["examples/hoyle-backgammon/corpus-map.json"])
+        # faa-part-107's directory is read by no other map. This test used hoyle-backgammon until
+        # hoyle-cribbage became a second slice of the text committed there (#704).
+        scope = vr.classify(["examples/faa-part-107/corpus-map.json"])
         self.assertEqual("changed", scope.name)
-        self.assertEqual(("examples/hoyle-backgammon/corpus-map.json",), scope.maps)
-        self.assertEqual(("examples/hoyle-backgammon/map-package.json",), scope.packages)
+        self.assertEqual(("examples/faa-part-107/corpus-map.json",), scope.maps)
+        self.assertEqual(("examples/faa-part-107/map-package.json",), scope.packages)
         # It is packable, and an engine is produced from a package: see
         # TestTheEngineJobIsOwedByWhatProducesAnEngine. This asserted False until #347.
         self.assertTrue(scope.engine)
+
+    def test_the_hoyle_text_narrows_to_both_of_its_maps(self):
+        # hoyle-cribbage cites the Gutenberg text committed under hoyle-backgammon (#704).
+        scope = vr.classify(["examples/hoyle-backgammon/hoyle.txt"])
+        self.assertEqual(
+            ("examples/hoyle-backgammon/corpus-map.json",
+             "examples/hoyle-cribbage/corpus-map.json"),
+            scope.maps,
+        )
 
     def test_a_shared_corpus_narrows_to_every_map_that_reads_it(self):
         # srd-52-conditions, srd-52-playing-the-game and srd-52-damage-and-healing all cite the

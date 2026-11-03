@@ -1,0 +1,275 @@
+{
+  "inventoryVersion": 2,
+  "rejected": [
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 34 block 1",
+      "ground": "heading",
+      "note": "The chapter's title, 'CRIBBAGE.', alone on its line. It names the game; the first rule is the next paragraph, which player-count, varieties-by-cards-dealt, game-points and lurch quote."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 34 block 3",
+      "ground": "beyond-adapter",
+      "note": "The edition's placeholder '[Illustration: Cribbage Board.]'. The image is not in the text this corpus pins (adapterReach illustrations: unsupported); the board is described in prose in the next paragraph, which scoring-board quotes and declines."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 35 block 1",
+      "ground": "preamble",
+      "note": "'We will commence with the five-card game.' It says which variety the following pages describe and obliges nothing."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 36 block 1",
+      "ground": "preamble",
+      "note": "'The scores which may be made in course of play are as under:--' It announces the run-in sections below it, each of which is an entry: pairs-in-play, pair-royal-in-play, double-pair-royal-in-play, runs-in-play, fifteen-in-play, thirty-one-in-play and go."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 2",
+      "ground": "heading",
+      "note": "The column heading 'Points.' over the table of five-card hands."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 3",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, Four fives: fifteen eight and a double pair-royal, 20. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 4",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, Three fives and a ten: fifteen eight and a pair-royal, 14. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 5",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, two fives, a four and a six and its two companions: fifteen four, pair and double run, 12. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 6",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, three of a rank and a fourth making fifteen six with them: fifteen six and a pair-royal, 12. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 7",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, two eights, a six (or nine) and a seven and its two companions, printed at 13; the row's own words, fifteen four, pair and double run of three, are 4 + 2 + 6 = 12, the figure block 5 gives the same combination, and five-card-hand-table records the misprint. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 8",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, two fives and two tenth cards of one rank: fifteen eight and two pairs, 12. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 9",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, two nines and two sixes: fifteen eight and two pairs, 12. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 10",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, two fives, a ten and a court card: fifteen eight and a pair, 10. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 11",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, two sixes, a seven and an eight: fifteen two, pair and double run, 10. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 12",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, a five and three court cards in sequence: fifteen six and a run of three, 9. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 13",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, a five and three court cards, or a ten and court cards, in sequence: 9. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 39 block 14",
+      "ground": "restatement",
+      "note": "A row of the table of five-card hands, a run of three with a duplicate and no fifteen: pair and double run, 8. It applies fifteens-in-show, pairs-in-show, runs-in-show and double-run-in-show and adds no rule; every figure is their output, and five-card-hand-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 40 block 4",
+      "ground": "restatement",
+      "note": "A row of the table of five-card cribs: two fives, two fours and a six and its companions, fifteen eight, two pairs and a run of three four times, 24. It applies the show rules and adds none; five-card-crib-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 41 block 1",
+      "ground": "restatement",
+      "note": "A row of the table of five-card cribs, four threes and a nine: fifteen twelve and a double pair-royal, 24. It applies the show rules and adds none; every figure is their output, and five-card-crib-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 41 block 2",
+      "ground": "restatement",
+      "note": "A row of the table of five-card cribs, three fives, a four and a six: fifteen eight, a pair-royal and a treble run, 23. It applies the show rules and adds none; every figure is their output, and five-card-crib-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 41 block 3",
+      "ground": "restatement",
+      "note": "A row of the table of five-card cribs, three of a rank in a run of three: fifteen six, a pair-royal and a treble run, 21. It applies the show rules and adds none; every figure is their output, and five-card-crib-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 41 block 4",
+      "ground": "restatement",
+      "note": "A row of the table of five-card cribs, four twos and a nine, four threes and a six: fifteen eight and a double pair-royal, 20. It applies the show rules and adds none; every figure is their output, and five-card-crib-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 41 block 5",
+      "ground": "restatement",
+      "note": "A row of the table of five-card cribs, two pairs in a run of three: fifteen four, two pairs and a run four times, 20. It applies the show rules and adds none; every figure is their output, and five-card-crib-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 41 block 6",
+      "ground": "restatement",
+      "note": "A row of the table of five-card cribs, three tenth cards of a rank and two fives, and its companions: fifteen twelve, pair-royal and pair, 20. It applies the show rules and adds none; every figure is their output, and five-card-crib-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 41 block 7",
+      "ground": "restatement",
+      "note": "A row of the table of five-card cribs, three threes and two sixes: fifteen ten, pair and pair-royal, 18, which footnote 17 works out. It applies the show rules and adds none; every figure is their output, and five-card-crib-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 41 block 8",
+      "ground": "restatement",
+      "note": "A row of the table of five-card cribs, three fours, a three and a five: fifteen two, pair-royal and treble run, 17. It applies the show rules and adds none; every figure is their output, and five-card-crib-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 41 block 10",
+      "ground": "restatement",
+      "note": "A row of the table of five-card cribs, a run of three with duplicates of two of them and no fifteen: two pairs and a run four times, 16. It applies the show rules and adds none; every figure is their output, and five-card-crib-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 41 block 11",
+      "ground": "restatement",
+      "note": "A row of the table of five-card cribs, a run of three with one card thrice repeated and no fifteen: pair-royal and treble run, 15. It applies the show rules and adds none; every figure is their output, and five-card-crib-table declines the table."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 41 block 12",
+      "ground": "preamble",
+      "note": "'As for combinations of minor value, their name is legion.' It closes the table and states nothing."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 42 block 1",
+      "ground": "advice",
+      "note": "'With four cards only, the general average is very much lower' -- a remark on the tables' averages that leads into the laying-out counsel crib-matters-more declines."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 45 block 1",
+      "ground": "advice",
+      "note": "Counsel on pairing the card first led, for fear of a pair-royal. It obliges nothing; double-pair-royal-in-play's note gives the arithmetic of its 'unless the card be over seven'."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 47 block 1",
+      "ground": "advice",
+      "note": "A's reasoning about what to lay out in the first illustrative hand. It is counsel, and the choice is the player's (lay-out-crib)."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 47 block 2",
+      "ground": "advice",
+      "note": "B's reasoning about what to lay out in the first illustrative hand. Counsel; the choice is the player's (lay-out-crib)."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 47 block 3",
+      "ground": "restatement",
+      "note": "'The cards are cut, and B turns up the queen of clubs.' The first illustrative deal's start, by cut-start; no rule of its own."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 48 block 1",
+      "ground": "restatement",
+      "note": "A's show in the first illustrative deal: fifteen two and a run of three, five. The output of fifteens-in-show and runs-in-show; a test, not a rule."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 48 block 2",
+      "ground": "restatement",
+      "note": "B's hand and crib in the first illustrative deal: eight and six. The output of the show rules; a test, not a rule."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 48 block 3",
+      "ground": "restatement",
+      "note": "The score after the first illustrative deal, eight to fifteen, with A's three for last, and the second deal's cards. The output of three-for-last and the show rules; a test."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 48 block 4",
+      "ground": "restatement",
+      "note": "The second illustrative deal's lay-out and start. It applies lay-out-crib and cut-start and adds nothing; second-hand-lead quotes the play that follows it."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 49 block 1",
+      "ground": "restatement",
+      "note": "The second illustrative deal's show: B twelve, A two in hand and eight in crib. The output of the show rules; a test."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 49 block 3",
+      "ground": "heading",
+      "note": "The section title 'SIX-CARD CRIBBAGE.', alone on its line. Its rules are in the paragraphs beneath, which six-card-deal, six-card-no-three-for-last, six-card-play-out, alternate-play and last-card quote."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 50 block 2",
+      "ground": "heading",
+      "note": "The section title 'SEVEN-CARD CRIBBAGE.', alone on its line; seven-card-deal quotes the section."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 51 block 1",
+      "ground": "heading",
+      "note": "The section title 'THREE-HANDED CRIBBAGE.', alone on its line; the declined three-handed entries quote the section."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 51 block 3",
+      "ground": "beyond-adapter",
+      "note": "The edition's placeholder '[Illustration: Cribbage-board for Three-handed Game.]', an image not in this text. three-handed-board quotes the prose describing it."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 51 block 5",
+      "ground": "heading",
+      "note": "The section title 'FOUR-HANDED CRIBBAGE.', alone on its line; the declined four-handed entries quote the section."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 52 block 2",
+      "ground": "page-furniture",
+      "note": "The printer's rule '* * * * *' that ends the chapter."
+    }
+  ]
+}

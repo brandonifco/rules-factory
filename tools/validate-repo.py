@@ -128,6 +128,18 @@ FIXTURES = (
             "examples/hoyle-backgammon/hoyle.txt",
         ),),
     ),
+    # A second slice of the same Gutenberg text: Cribbage, pp. 34-52. Its manifest points
+    # `committedPath` at the backgammon trial's one copy, as the SRD slices share theirs, so a
+    # change to that directory is a change to this map too.
+    Fixture(
+        map="examples/hoyle-cribbage/corpus-map.json",
+        corpora=("examples/hoyle-cribbage", "examples/hoyle-backgammon"),
+        locators=((
+            "tools/check-locators.py",
+            "examples/hoyle-cribbage/corpus-map.json",
+            "examples/hoyle-backgammon/hoyle.txt",
+        ),),
+    ),
     Fixture(
         map="examples/faa-part-107/corpus-map.json",
         corpora=("examples/faa-part-107",),
