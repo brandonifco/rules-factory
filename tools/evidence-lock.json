@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "f7833a25b8c248dd7d75100c4a681bfd988f93d1",
+  "measuredAt": "e61891b9d91751a5417356864f2476ce2b589555",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,14 +17,14 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 596,
-    "trackedBytes": 26498533
+    "trackedFiles": 613,
+    "trackedBytes": 26849281
   },
   "artifacts": [
     {
       "path": "examples/README.md",
-      "sha256": "0516745e128c1ed92d121264e3e3b4e6f86b054c2919538fbaa8fcecc9878b78",
-      "bytes": 37916,
+      "sha256": "a1a6e126e8ea0318855be472cb810a7c0713db9589217763d4e0b634c4501fa4",
+      "bytes": 38970,
       "role": "active",
       "readBy": [
         "links"
@@ -1747,6 +1747,88 @@
       "path": "examples/hoyle-blind-rebuild/search-transcript.py",
       "sha256": "9edb8b7d10c0342860d97ca90b8b7c3a9400c813fbe9f2f72a6b8d7ac77d571b",
       "bytes": 6708,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-cribbage/CORPUS-LICENCE.txt",
+      "sha256": "5367c00541b227a17bfbec03ae5f0839bf717362e3ac7b816f6eb7f9e65a5118",
+      "bytes": 1321,
+      "role": "release",
+      "readBy": [
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-cribbage/README.md",
+      "sha256": "55961f42672b1e14757a8916f3f5920ea8f9304b771934683811f112c9cf0f41",
+      "bytes": 4204,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-cribbage/corpus-manifest.json",
+      "sha256": "66cdc7148f5ebc4338acd0236e9e313f80ee8a1c111abd664ea24c9e5b68b66e",
+      "bytes": 1418,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-cribbage/corpus-map.json",
+      "sha256": "f27f450812064d0cee8d69dc3e708dc50a35e7db8ebad1aff53553f881f6af87",
+      "bytes": 64918,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-cribbage/map-package.json",
+      "sha256": "3a09fa17e74ce91fdd2164291fca9495437630469f73ea8f1546ec289bc2f38b",
+      "bytes": 207,
+      "role": "release",
+      "readBy": [
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-cribbage/mapping-inventory.json",
+      "sha256": "d239559caa4682bc85534a42cca333dc610137a4430e9904081e2936b4704637",
+      "bytes": 14930,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-cribbage/mapping-protocol.json",
+      "sha256": "a4c28e2eff7750e2f24c32f0f9854729492995228c48b92dd985478e2cead4c6",
+      "bytes": 454,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-cribbage/review.json",
+      "sha256": "87418a25242815d84eb6c41d2421ded31558b4d7b06cff0220972f7cba2f7949",
+      "bytes": 1273,
       "role": "active",
       "readBy": [
         "checks"
