@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "e61891b9d91751a5417356864f2476ce2b589555",
+  "measuredAt": "68df97c6b6f49c562a0d25af8eb5d62e38e962e7",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -18,7 +18,7 @@
   },
   "repository": {
     "trackedFiles": 613,
-    "trackedBytes": 26849281
+    "trackedBytes": 26853093
   },
   "artifacts": [
     {
@@ -1765,8 +1765,8 @@
     },
     {
       "path": "examples/hoyle-cribbage/README.md",
-      "sha256": "55961f42672b1e14757a8916f3f5920ea8f9304b771934683811f112c9cf0f41",
-      "bytes": 4204,
+      "sha256": "b065b91e14289447f986f80f93515d1de73ec60baac88de2065b5390cdd9b7da",
+      "bytes": 4538,
       "role": "active",
       "readBy": [
         "links"
@@ -1786,8 +1786,8 @@
     },
     {
       "path": "examples/hoyle-cribbage/corpus-map.json",
-      "sha256": "f27f450812064d0cee8d69dc3e708dc50a35e7db8ebad1aff53553f881f6af87",
-      "bytes": 64918,
+      "sha256": "55e2d1d7fe6d6a8498c97e246ea17331f3ea8a2f6b6b0c9d647389f2c1744e92",
+      "bytes": 64961,
       "role": "release",
       "readBy": [
         "checks",
@@ -1797,7 +1797,7 @@
     },
     {
       "path": "examples/hoyle-cribbage/map-package.json",
-      "sha256": "3a09fa17e74ce91fdd2164291fca9495437630469f73ea8f1546ec289bc2f38b",
+      "sha256": "a3095df4e5837669d474aa17cf176af8fddc930bd74705f9a928db1b3b85e224",
       "bytes": 207,
       "role": "release",
       "readBy": [
@@ -1827,8 +1827,8 @@
     },
     {
       "path": "examples/hoyle-cribbage/review.json",
-      "sha256": "87418a25242815d84eb6c41d2421ded31558b4d7b06cff0220972f7cba2f7949",
-      "bytes": 1273,
+      "sha256": "03b7e93bbe9dcccd64477b13213aab575730fde8e7118ea601348c5cc3e3e268",
+      "bytes": 2210,
       "role": "active",
       "readBy": [
         "checks"
