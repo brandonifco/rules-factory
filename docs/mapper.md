@@ -326,9 +326,9 @@ is migrated to version 2 by moving that `corpus` value onto every rejection as `
 version 1 inventory can truthfully account for a multi-corpus walk. No committed inventory file
 uses version 1.
 
-All nine carry one. Six were written by re-reading each unaccounted unit against the map that
-left it ([#267](https://github.com/brandonifco/rules-factory/issues/267)); trials 11 and 12 and
-the map of pp. 16-18 wrote theirs with the walk, which is what it is for:
+Every map carries one. Six were written by re-reading each unaccounted unit against the map that
+left it ([#267](https://github.com/brandonifco/rules-factory/issues/267)); trials 11 and 12, the map of pp. 16-18
+and the Cribbage map wrote theirs with the walk, which is what it is for:
 
 | map | rejections | still unaccounted | what the rejections are |
 |---|---:|---:|---|
@@ -339,6 +339,7 @@ the map of pp. 16-18 wrote theirs with the walk, which is what it is for:
 | `srd-52-conditions` | 28 | 407 | the folios and running heads only |
 | `frcp-6-12-81` | 15 | 0 | the three rules' own titles, the nine subdivision captions that open paragraphs carrying the whole of what they name, and three amendment histories |
 | `srd-52-damage-and-healing` | 32 | 0 | 24 section headings, six folios and running heads, the chapter's lead-in and the Saving Throws and Damage lead-in |
+| `hoyle-cribbage` | 45 | 0 | five section titles and a column heading, the two `[Illustration]` placeholders, the printer's rule; 23 table rows and six paragraphs of the illustrative hands under `restatement`, because each applies rules the map has; four paragraphs of counsel; and three lead-ins |
 | `srd-52-playing-the-game` | 73 | 0 | 54 section headings and table header cells the extraction gives as blocks of their own, 15 folios and running heads, two halves of the Rhythm of Play advice, and two lead-ins that point at a table. A 74th rejected the Round Down sidebar under `restatement`, which its own note said was not the true reason; the true reason was that no citation could name the earlier of two identical printings, and with [0066](decisions/0066-the-cited-page-chooses-among-the-printings-the-heading-path-selects.md) one can, so the passage is an entry |
 | `tax-121-principal-residence` | 14 | 0 | the section heading and the thirteen worked examples the map's own `scope: out` entries declined, one per example |
 
