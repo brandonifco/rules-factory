@@ -1,0 +1,2146 @@
+{
+  "schemaVersion": 1,
+  "corpus": "hoyle-1909",
+  "baseline": {
+    "contentHash": "5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e",
+    "hashDerivation": "gutenberg-plain-text-including-boilerplate"
+  },
+  "extent": {
+    "unit": "page",
+    "from": 427,
+    "to": 446
+  },
+  "entries": [
+    {
+      "id": "board-square-count",
+      "name": "Sixty-four board squares",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 427"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The game of Draughts is played on a board of sixty-four squares of alternate colours, and with twenty-four pieces, called men (twelve on each side), also of opposite colours.",
+      "status": "mapped",
+      "note": "Verify the stated total of sixty-four squares. Grid geometry is separately anchored in Fig. 2."
+    },
+    {
+      "id": "board-colours",
+      "name": "Alternate board colours",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 427"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The game of Draughts is played on a board of sixty-four squares of alternate colours, and with twenty-four pieces, called men (twelve on each side), also of opposite colours.",
+      "status": "mapped",
+      "note": "Verify alternation of the two square colours; do not infer board orientation from this sentence."
+    },
+    {
+      "id": "piece-total",
+      "name": "Twenty-four pieces",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 427"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The game of Draughts is played on a board of sixty-four squares of alternate colours, and with twenty-four pieces, called men (twelve on each side), also of opposite colours.",
+      "status": "mapped",
+      "note": "Verify the total of twenty-four pieces."
+    },
+    {
+      "id": "pieces-per-side",
+      "name": "Twelve men on each side",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 427"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The game of Draughts is played on a board of sixty-four squares of alternate colours, and with twenty-four pieces, called men (twelve on each side), also of opposite colours.",
+      "status": "mapped",
+      "note": "Verify twelve men for each side."
+    },
+    {
+      "id": "men-definition",
+      "name": "Pieces called men",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 427"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The game of Draughts is played on a board of sixty-four squares of alternate colours, and with twenty-four pieces, called men (twelve on each side), also of opposite colours.",
+      "status": "mapped",
+      "note": "This is the printed definition of men; promoted pieces are addressed separately.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "men"
+        }
+      ]
+    },
+    {
+      "id": "two-players",
+      "name": "Two persons",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 427"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "It is played by two persons;",
+      "status": "mapped",
+      "note": "Verify the number of players."
+    },
+    {
+      "id": "sides-and-colours",
+      "name": "First side and second side",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 427"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "pieces-per-side"
+      ],
+      "evidence": "the one having the twelve black or red pieces is technically said to be playing the _first side_, and the other, having the twelve white, to be playing the _second side_.",
+      "status": "mapped",
+      "note": "Record both names and the printed black-or-red alternative. Subsequent operative rules call the first colour black.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "first side"
+        },
+        {
+          "vocabulary": "draughts-terms",
+          "term": "second side"
+        }
+      ]
+    },
+    {
+      "id": "no-play-loss",
+      "name": "Loss when none of a side can be played",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 427"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "man-movement",
+        "king-movement",
+        "single-capture",
+        "multiple-capture"
+      ],
+      "evidence": "Each player endeavours to confine the pieces of the other in situations where they cannot be played, or both to capture and fix, so that _none can be played_; the person whose side is brought to this state loses the game.",
+      "status": "mapped",
+      "note": "Apply the loss predicate to playable pieces. The account of endeavour is descriptive motivation, not a separate obligation."
+    },
+    {
+      "id": "board-orientation",
+      "name": "Black bottom left corner",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 427"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-colours"
+      ],
+      "evidence": "The board shall be so placed that the bottom corner square on the left hand shall be black.",
+      "status": "mapped",
+      "note": "Apply the actual-board orientation. Footnote 107 distinguishes the printed diagram convention.",
+      "crossReferences": [
+        {
+          "cites": "black",
+          "resolvedBy": "diagram-square-convention"
+        }
+      ]
+    },
+    {
+      "id": "black-square-placement",
+      "name": "Men on black squares",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 427"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-orientation"
+      ],
+      "evidence": "The men shall be placed on the black squares.[107]",
+      "status": "mapped",
+      "note": "Use the operative black squares. The footnote explains why illustrations show white squares.",
+      "crossReferences": [
+        {
+          "cites": "[107]",
+          "resolvedBy": "diagram-square-convention"
+        }
+      ]
+    },
+    {
+      "id": "initial-numbered-placement",
+      "name": "Black first twelve, White last twelve",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board",
+        "black-square-placement",
+        "pieces-per-side"
+      ],
+      "evidence": "The black men shall be placed upon the supposed first twelve squares of the board; the white upon the last twelve squares.",
+      "status": "mapped",
+      "note": "Verify both complete sets against the numbered board and the separate setup diagram."
+    },
+    {
+      "id": "match-colour-alternation",
+      "name": "Alternate colours during a match",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "sides-and-colours"
+      ],
+      "evidence": "Each player shall play alternately with black and white men.",
+      "status": "mapped",
+      "note": "Apply alternation of colours between games; first-game colour selection has separate entries."
+    },
+    {
+      "id": "initial-colour-lots",
+      "name": "Cast lots at commencement of a match",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "Lots shall be cast for the colour at the commencement of a match, _the winner to have the choice of taking_ black _or_ white.",
+      "status": "mapped",
+      "note": "The text requires lots but supplies no apparatus, number of draws, distribution or tie procedure. Do not substitute dice or another random method.",
+      "ambiguity": {
+        "question": "\"Lots shall be cast\" does not specify a drawing mechanism, its distribution, the number of draws, or what happens on a tie. How is the winner of the lots determined?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation",
+        "affectsDraws": true
+      },
+      "draws": {
+        "dice": "Lots",
+        "count": "Unspecified mechanism and number of lots/draws at match commencement."
+      }
+    },
+    {
+      "id": "lot-winner-colour-choice",
+      "name": "Winner chooses black or white",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "initial-colour-lots"
+      ],
+      "evidence": "Lots shall be cast for the colour at the commencement of a match, _the winner to have the choice of taking_ black _or_ white.",
+      "status": "mapped",
+      "note": "Demand the winner's choice from the printed two-colour set; do not infer it.",
+      "enabledBy": [
+        "initial-colour-lots"
+      ],
+      "assertedBy": [
+        "winner"
+      ]
+    },
+    {
+      "id": "black-first-move",
+      "name": "Black invariably moves first",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "sides-and-colours"
+      ],
+      "evidence": "The first move must _invariably_ be made by the person having the black men.",
+      "status": "mapped",
+      "note": "Apply first move to the player with black men."
+    },
+    {
+      "id": "ordinary-time-limit",
+      "name": "Five minutes before ordinary Time call",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "At the end of five minutes \"Time\" may be called;",
+      "status": "mapped",
+      "note": "Record the five-minute duration; the triggering clock event is not specified in this fragment."
+    },
+    {
+      "id": "forced-take-time-limit",
+      "name": "One minute before forced-take Time call",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "When there is only _one way_ of taking one or more pieces, \"Time\" shall be called at the end of one minute;",
+      "status": "mapped",
+      "note": "Record one minute and retain the one-way-of-taking condition."
+    },
+    {
+      "id": "time-grace-period",
+      "name": "Another minute after Time",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "At the end of five minutes \"Time\" may be called; and if the move be not completed on the expiry of another minute, the game shall be adjudged lost through improper delay.",
+      "status": "mapped",
+      "note": "Record the additional minute; the same grace duration is printed in the forced-take rule."
+    },
+    {
+      "id": "ordinary-time-forfeit",
+      "name": "Ordinary Time call and loss for delay",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "ordinary-time-limit",
+        "time-grace-period",
+        "play-completion"
+      ],
+      "evidence": "At the end of five minutes \"Time\" may be called; and if the move be not completed on the expiry of another minute, the game shall be adjudged lost through improper delay.",
+      "status": "mapped",
+      "note": "The call is permissive; forfeiture is conditional on failure to complete after the additional minute. Clock readings and the fact of a call are caller-supplied facts, not assertion rules.",
+      "ambiguity": {
+        "question": "\"At the end of five minutes\" leaves the event starting the clock unstated. Does it run from the start of the turn, from a previous action, or from some other notice?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "forced-take-time-forfeit",
+      "name": "One way of taking: earlier Time and loss for delay",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "forced-take-time-limit",
+        "time-grace-period",
+        "single-capture",
+        "multiple-capture",
+        "play-completion"
+      ],
+      "evidence": "When there is only _one way_ of taking one or more pieces, \"Time\" shall be called at the end of one minute; and if the move be not completed on the expiry of another minute, the game shall be adjudged lost through improper delay.",
+      "status": "mapped",
+      "note": "Apply the special mandatory call for one available taking route, and loss for noncompletion after the additional minute. The source does not expressly say that this cancels the ordinary five-minute provision; no cancellation gate is invented.",
+      "ambiguity": {
+        "question": "\"at the end of one minute\" specifies a duration but does not say when the clock starts or is reset. The source also gives no procedure for an omitted mandatory Time call.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "unannounced-arrangement-forfeit",
+      "name": "Unannounced arrangement after first move",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "arrangement-play-exception"
+      ],
+      "evidence": "After the first move has been made, if either player arrange any piece without giving intimation to his opponent, he shall forfeit the game; but, if it is his turn to play, he may avoid the penalty by playing that piece, if possible.",
+      "status": "mapped",
+      "note": "Apply the first-move boundary, prior-intimation condition and stated exception. Notice, handling and whose turn it is are event inputs."
+    },
+    {
+      "id": "arrangement-play-exception",
+      "name": "Playing the arranged piece avoids the penalty",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "man-movement",
+        "king-movement",
+        "single-capture",
+        "multiple-capture"
+      ],
+      "evidence": "but, if it is his turn to play, he may avoid the penalty by playing that piece, if possible.",
+      "status": "mapped",
+      "note": "Apply only within the preceding unannounced-arrangement law after the first move. The chosen piece must actually be playable."
+    },
+    {
+      "id": "touch-move",
+      "name": "Touch a piece: play it or forfeit",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "initial-numbered-placement",
+        "man-movement",
+        "king-movement",
+        "single-capture",
+        "multiple-capture"
+      ],
+      "evidence": "After the pieces have been arranged, if the person whose turn it is to play _touch_ one, he must either play that piece or forfeit the game.",
+      "status": "mapped",
+      "note": "Require the player on turn to play the touched piece or forfeit. The next sentence's unplayable case is separate."
+    },
+    {
+      "id": "unplayable-touch-penalty",
+      "name": "Penalty for touching an unplayable piece",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "unannounced-arrangement-forfeit"
+      ],
+      "evidence": "When the piece is not playable, he is penalised according to the preceding law.",
+      "status": "mapped",
+      "note": "The backward reference is recorded, without silently equating an unplayable touch with an unannounced arrangement.",
+      "ambiguity": {
+        "question": "\"penalised according to the preceding law\" points to the arrangement law, but does it import that law's intimation condition and turn exception, or only its forfeiture penalty, for an unplayable touched piece?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "crossReferences": [
+        {
+          "cites": "according to the preceding law",
+          "resolvedBy": "unannounced-arrangement-forfeit"
+        }
+      ]
+    },
+    {
+      "id": "direction-commitment",
+      "name": "Crossing an angle commits the direction",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 428"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "man-movement",
+        "king-movement",
+        "single-capture"
+      ],
+      "evidence": "If _any part_ of a playable piece be played over an {429} angle of the square on which it is stationed, the play must be completed in _that direction_.",
+      "status": "mapped",
+      "note": "Verify the any-part threshold and commitment to that direction. Retain the page marker inside the quoted rule; handling geometry is supplied as an event."
+    },
+    {
+      "id": "play-completion",
+      "name": "Withdrawing the hand completes the play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A capturing play, as well as an ordinary one, is completed the moment the hand is withdrawn from the piece played, even though two or more pieces should have been taken.",
+      "status": "mapped",
+      "note": "Verify completion for ordinary and capturing play. Huff liability for an incomplete adopted capture is separately recorded.",
+      "crossReferences": [
+        {
+          "cites": "two or more pieces should have been taken",
+          "resolvedBy": "huff-short-adopted-capture"
+        }
+      ]
+    },
+    {
+      "id": "own-piece-removed",
+      "name": "Own piece removed while taking cannot be self-replaced",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "own-piece-removal-election"
+      ],
+      "evidence": "When taking, if a player remove one of his own pieces, he cannot replace it, but his opponent can either play or insist on his replacing it.",
+      "status": "mapped",
+      "note": "Apply the restriction on voluntary replacement and consume the opponent's election. Do not treat the erroneously removed piece as an opposing capture."
+    },
+    {
+      "id": "own-piece-removal-election",
+      "name": "Opponent elects play or replacement",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "When taking, if a player remove one of his own pieces, he cannot replace it, but his opponent can either play or insist on his replacing it.",
+      "status": "mapped",
+      "note": "Demand the opponent's choice between the two printed responses.",
+      "assertedBy": [
+        "opponent"
+      ]
+    },
+    {
+      "id": "improper-move-forfeit",
+      "name": "False or improper move forfeits immediately",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "man-movement",
+        "king-movement",
+        "single-capture",
+        "multiple-capture",
+        "huff-election"
+      ],
+      "evidence": "Either player making a false or improper move shall forfeit the game to his opponent, without another move being made.",
+      "status": "mapped",
+      "note": "Verify immediate forfeiture on a determined false or improper move. Explicit huff choices are a separate rule for missed captures.",
+      "ambiguity": {
+        "question": "\"a false or improper move\" is not exhaustively defined. In particular, what distinguishes such a forfeiting move from a failure to take for which the text expressly gives a huff, compelled take, or waiver?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "huff-removal",
+      "name": "Huff or Blow: remove an adverse piece before own play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "single-capture",
+        "multiple-capture",
+        "huff-short-adopted-capture",
+        "huff-route-choice"
+      ],
+      "evidence": "The \"Huff\" or \"Blow\" is, _before one plays his own piece_, to remove from the board any of the adverse pieces that might or should have taken.",
+      "status": "mapped",
+      "note": "Apply removal before the huffing player's own play, and check that the removed opposing piece could or should have captured. The footnote adds the incomplete-route case.",
+      "ambiguity": {
+        "question": "\"any of the adverse pieces\" does not fix how many pieces can be removed by one huff when several different pieces could have taken. Is removal limited to one eligible piece or may several be removed?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "enabledBy": [
+        "huff-election"
+      ],
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Huff"
+        },
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Blow"
+        }
+      ]
+    },
+    {
+      "id": "huff-not-move",
+      "name": "Huff does not constitute a move",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "huff-removal"
+      ],
+      "evidence": "The \"Huff\" does not constitute a move.",
+      "status": "mapped",
+      "note": "Do not count the huff itself as a move; the subsequent own play is distinct."
+    },
+    {
+      "id": "huff-election",
+      "name": "Huff, compel the take, or leave the piece",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The player has the power either to _huff_, _compel the take_, or to _let the piece remain on the board_, as he thinks proper.[108]",
+      "status": "mapped",
+      "note": "Demand the player's election among the three printed remedies. Footnote 108 qualifies capture obligations.",
+      "crossReferences": [
+        {
+          "cites": "[108]",
+          "resolvedBy": "huff-short-adopted-capture"
+        },
+        {
+          "cites": "[108]",
+          "resolvedBy": "huff-route-choice"
+        }
+      ],
+      "assertedBy": [
+        "player"
+      ]
+    },
+    {
+      "id": "compelled-take",
+      "name": "Compel the take",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "single-capture",
+        "multiple-capture",
+        "huff-short-adopted-capture",
+        "huff-route-choice"
+      ],
+      "evidence": "The player has the power either to _huff_, _compel the take_, or to _let the piece remain on the board_, as he thinks proper.[108]",
+      "status": "mapped",
+      "note": "The compelled take is a stated remedy, but its rollback mechanics are not explained. The practical example explains rollback only for huffing.",
+      "ambiguity": {
+        "question": "\"compel the take\" gives no procedure for restoring an already moved piece, choosing among several eligible taking pieces, or handling a prematurely ended capture. How is the compelled take applied to the current board?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "enabledBy": [
+        "huff-election"
+      ],
+      "crossReferences": [
+        {
+          "cites": "[108]",
+          "resolvedBy": "huff-short-adopted-capture"
+        },
+        {
+          "cites": "[108]",
+          "resolvedBy": "huff-route-choice"
+        }
+      ]
+    },
+    {
+      "id": "huff-waiver",
+      "name": "Leave the piece on the board",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The player has the power either to _huff_, _compel the take_, or to _let the piece remain on the board_, as he thinks proper.[108]",
+      "status": "mapped",
+      "note": "Apply the elected option to leave the adverse piece. The rule permits waiver rather than automatically forfeiting for every missed capture.",
+      "enabledBy": [
+        "huff-election"
+      ],
+      "crossReferences": [
+        {
+          "cites": "[108]",
+          "resolvedBy": "huff-short-adopted-capture"
+        },
+        {
+          "cites": "[108]",
+          "resolvedBy": "huff-route-choice"
+        }
+      ]
+    },
+    {
+      "id": "promotion",
+      "name": "Reaching the opposite extreme line makes a King",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-grid",
+        "crown-head"
+      ],
+      "evidence": "When a man first reaches any of the squares on the opposite extreme line of the board, it becomes a \"King.\"",
+      "status": "mapped",
+      "note": "Verify the first arrival at the opposite extreme line. Continuation after arrival during a capture is a separate unresolved question.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "King"
+        }
+      ]
+    },
+    {
+      "id": "crowning",
+      "name": "Opponent crowns with a same-colour man",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "promotion"
+      ],
+      "evidence": "It must be crowned (by placing a man of the same colour on the top of it) by the opponent,",
+      "status": "mapped",
+      "note": "Verify both the opponent as actor and the same-colour piece placed on top.",
+      "enabledBy": [
+        "promotion"
+      ]
+    },
+    {
+      "id": "king-movement",
+      "name": "Kings may move backwards or forwards",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "promotion",
+        "board-grid",
+        "king-directions"
+      ],
+      "evidence": "When a man first reaches any of the squares on the opposite extreme line of the board, it becomes a \"King.\" It must be crowned (by placing a man of the same colour on the top of it) by the opponent, and can afterwards be moved backwards or forwards as the limits of the board permit.",
+      "status": "mapped",
+      "note": "Retain the stated two directions and board bounds. Do not supply a king range from familiarity with another ruleset.",
+      "ambiguity": {
+        "question": "\"backwards or forwards as the limits of the board permit\" and the later \"unless they have attained\" exception do not unambiguously fix a King's travel distance or which restrictions on ordinary men survive promotion. Must a noncapturing King also move exactly one diagonal square?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "enabledBy": [
+        "promotion"
+      ],
+      "crossReferences": [
+        {
+          "cites": "\"King.\"",
+          "resolvedBy": "promotion"
+        }
+      ]
+    },
+    {
+      "id": "promotion-capture-continuation",
+      "name": "Capture reaching the crown line",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "promotion",
+        "multiple-capture",
+        "king-movement"
+      ],
+      "evidence": "When a man first reaches any of the squares on the opposite extreme line of the board, it becomes a \"King.\"",
+      "status": "mapped",
+      "note": "Record the interaction rather than silently ending or extending the capture on promotion.",
+      "ambiguity": {
+        "question": "\"When a man first reaches\" fixes promotion on arrival, while \"can afterwards be moved\" does not say whether a capture reaching that line ends there or may continue in the same play using King movement.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "enabledBy": [
+        "promotion"
+      ]
+    },
+    {
+      "id": "draw-definition",
+      "name": "Draw when neither player can force a win",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "no-play-loss"
+      ],
+      "evidence": "A Draw is when neither of the players can force a win.",
+      "status": "mapped",
+      "note": "Use the printed no-forced-win predicate. Do not add repetition or other draw rules.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Draw"
+        }
+      ]
+    },
+    {
+      "id": "draw-notice-limit",
+      "name": "Forty of the stronger player's own moves",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 430"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "within forty of his own moves_--counted from the point at which notice was given--",
+      "status": "mapped",
+      "note": "Verify forty moves by the specified player, counted from notice, rather than forty combined plies."
+    },
+    {
+      "id": "stronger-side-assessment",
+      "name": "A side appears stronger",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "When one of the sides appears stronger than the other, the stronger party may be required to {430} complete the win, or to show a decided advantage over his opponent _within forty of his own moves_--counted from the point at which notice was given--failing in which, he must relinquish the game as a draw.",
+      "status": "mapped",
+      "note": "Do not replace relative strength with a material count. The text neither names an assessor nor states a determinate criterion.",
+      "ambiguity": {
+        "question": "\"one of the sides appears stronger than the other\" supplies no test of strength and names nobody whose assessment governs. Who can require the notice procedure and decide which side is stronger?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "decided-advantage",
+      "name": "Decided advantage in the forty-move test",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 430"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "to show a decided advantage over his opponent _within forty of his own moves_--counted from the point at which notice was given--",
+      "status": "mapped",
+      "note": "This is a gap rather than an assertion: no operative decider or bounded assessment is supplied.",
+      "ambiguity": {
+        "question": "\"a decided advantage over his opponent\" supplies no criterion for deciding whether an advantage is decided, or whether it must be newly gained since notice. What satisfies this alternative to winning?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "forty-move-draw",
+      "name": "After notice win or show advantage within forty own moves",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 429"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "draw-notice-limit",
+        "decided-advantage",
+        "no-play-loss"
+      ],
+      "evidence": "When one of the sides appears stronger than the other, the stronger party may be required to {430} complete the win, or to show a decided advantage over his opponent _within forty of his own moves_--counted from the point at which notice was given--failing in which, he must relinquish the game as a draw.",
+      "status": "mapped",
+      "note": "Verify the notice boundary, own-move count, two success alternatives and draw on failure. Mere greater material is not a supplied success test.",
+      "ambiguity": {
+        "question": "\"complete the win, or to show a decided advantage\" leaves unresolved whether showing advantage once discharges the notice permanently, resets the forty-move count, or requires a fresh notice. What happens after the advantage alternative is satisfied?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "enabledBy": [
+        "stronger-side-assessment"
+      ],
+      "crossReferences": [
+        {
+          "cites": "decided advantage",
+          "resolvedBy": "decided-advantage"
+        }
+      ]
+    },
+    {
+      "id": "setup-diagram",
+      "name": "Fig. 1: board set for play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 430"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-orientation",
+        "black-square-placement"
+      ],
+      "evidence": "White. +---------------------------------------+ | | W | | W | | W | | W | |---------------------------------------| | W | | W | | W | | W | | |---------------------------------------| | | W | | W | | W | | W | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | B | | B | | B | | B | | |---------------------------------------| | | B | | B | | B | | B | |---------------------------------------| | B | | B | | B | | B | | +---------------------------------------+ Black. FIG. 1.",
+      "status": "mapped",
+      "note": "Read all eight rows and all twenty-four occupied cells, with White at the top and Black at the bottom. ASCII cells and labels are available to this plain-text adapter; no image reconstruction was used.",
+      "crossReferences": [
+        {
+          "cites": "FIG. 1.",
+          "unmapped": "This is the label of the setup diagram quoted in this entry, not a further passage."
+        }
+      ]
+    },
+    {
+      "id": "board-grid",
+      "name": "Eight by eight board geometry",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 431"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "White. +---------------------------------------+ | | 32 | | 31 | | 30 | | 29 | |---------------------------------------| | 28 | | 27 | | 26 | | 25 | | |---------------------------------------| | | 24 | | 23 | | 22 | | 21 | |---------------------------------------| | 20 | | 19 | | 18 | | 17 | | |---------------------------------------| | | 16 | | 15 | | 14 | | 13 | |---------------------------------------| | 12 | | 11 | | 10 | | 9 | | |---------------------------------------| | | 8 | | 7 | | 6 | | 5 | |---------------------------------------| | 4 | | 3 | | 2 | | 1 | | +---------------------------------------+ Black. FIG. 2.",
+      "status": "mapped",
+      "note": "Verify every row and column of the ASCII grid; this is the evidence for eight rows and eight columns, rather than inferring shape from sixty-four alone.",
+      "crossReferences": [
+        {
+          "cites": "FIG. 2.",
+          "unmapped": "This is the label of the numbered diagram quoted here."
+        }
+      ]
+    },
+    {
+      "id": "numbered-board",
+      "name": "Fig. 2: all thirty-two numbered playing squares",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 431"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-grid"
+      ],
+      "evidence": "White. +---------------------------------------+ | | 32 | | 31 | | 30 | | 29 | |---------------------------------------| | 28 | | 27 | | 26 | | 25 | | |---------------------------------------| | | 24 | | 23 | | 22 | | 21 | |---------------------------------------| | 20 | | 19 | | 18 | | 17 | | |---------------------------------------| | | 16 | | 15 | | 14 | | 13 | |---------------------------------------| | 12 | | 11 | | 10 | | 9 | | |---------------------------------------| | | 8 | | 7 | | 6 | | 5 | |---------------------------------------| | 4 | | 3 | | 2 | | 1 | | +---------------------------------------+ Black. FIG. 2.",
+      "status": "mapped",
+      "note": "Transcribe and verify every cell, not a sample: from the displayed Black edge, rows read 4 3 2 1; 8 7 6 5; 12 11 10 9; 16 15 14 13; 20 19 18 17; 24 23 22 21; 28 27 26 25; 32 31 30 29. Preserve the alternating column offsets.",
+      "crossReferences": [
+        {
+          "cites": "FIG. 2.",
+          "unmapped": "This is the label of the numbering diagram quoted here."
+        }
+      ]
+    },
+    {
+      "id": "diagram-purposes",
+      "name": "Setup and move-recording diagram functions",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 430"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The above diagram (Fig. 1) shows the board set for play, and Fig. 2 shows the draught-board numbered for the purpose of recording moves.",
+      "status": "mapped",
+      "note": "Both diagram references have mapped targets.",
+      "crossReferences": [
+        {
+          "cites": "(Fig. 1)",
+          "resolvedBy": "setup-diagram"
+        },
+        {
+          "cites": "Fig. 2",
+          "resolvedBy": "numbered-board"
+        }
+      ]
+    },
+    {
+      "id": "alternate-turns",
+      "name": "Alternate one-man plays along diagonals",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 431"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "black-first-move",
+        "man-movement",
+        "king-movement"
+      ],
+      "evidence": "The men being placed as shown in Fig. 1, the game is begun by each player moving alternately one of his men along the diagonal on which it is situated.",
+      "status": "mapped",
+      "note": "Verify alternating turns and the one-moving-piece diagonal structure. Capture chains use the separately stated capture rule.",
+      "enabledBy": [
+        "initial-numbered-placement"
+      ],
+      "crossReferences": [
+        {
+          "cites": "as shown in Fig. 1",
+          "resolvedBy": "setup-diagram"
+        }
+      ]
+    },
+    {
+      "id": "ordinary-step-distance",
+      "name": "One square at a time for ordinary men",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 431"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The men can only move forward either to right or left one square at a time, unless they have attained one of the four squares on the extreme further side of the board (technically termed the \"crown-head\").",
+      "status": "mapped",
+      "note": "Record the ordinary non-King step distance as one square; captures are separately defined."
+    },
+    {
+      "id": "crown-head",
+      "name": "Four extreme further squares: crown-head",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 431"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "one of the four squares on the extreme further side of the board (technically termed the \"crown-head\").",
+      "status": "mapped",
+      "note": "Record four furthest-side squares and the printed name.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "crown-head"
+        }
+      ]
+    },
+    {
+      "id": "man-movement",
+      "name": "Ordinary men move diagonally forward right or left",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 431"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "board-grid",
+        "ordinary-step-distance"
+      ],
+      "evidence": "The men can only move forward either to right or left one square at a time, unless they have attained one of the four squares on the extreme further side of the board (technically termed the \"crown-head\").",
+      "status": "mapped",
+      "note": "Preserve direction, side alternatives and one-square step. The destination occupancy condition is not stated for an ordinary noncapture, although it is stated for a capture landing.",
+      "ambiguity": {
+        "question": "\"one square at a time\" specifies distance but does not say whether a noncapturing destination must be vacant, unlike the explicit \"vacant square\" in the capture rule. Which occupied destinations, if any, are prohibited for an ordinary move?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "suspendedBy": [
+        "promotion"
+      ],
+      "crossReferences": [
+        {
+          "cites": "\"crown-head\"",
+          "resolvedBy": "crown-head"
+        }
+      ]
+    },
+    {
+      "id": "king-directions",
+      "name": "Kings move forward or backward",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 431"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "promotion"
+      ],
+      "evidence": "This done, they become Kings, and can move either forward or backward.",
+      "status": "mapped",
+      "note": "Record the two printed King directions. This repeated statement settles direction without adding a travel-distance restriction.",
+      "crossReferences": [
+        {
+          "cites": "This done",
+          "resolvedBy": "promotion"
+        }
+      ],
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Kings"
+        }
+      ]
+    },
+    {
+      "id": "single-capture",
+      "name": "Leap a contiguous opponent into a vacant square",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 431"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "man-movement",
+        "king-movement",
+        "board-grid"
+      ],
+      "evidence": "The {432} pieces take in the direction they move, by leaping over any opposing man that may be immediately contiguous, provided there be a vacant square behind it.",
+      "status": "mapped",
+      "note": "Verify an opposing adjacent piece, permitted movement direction and vacant landing beyond it. Do not permit taking one's own pieces from this rule.",
+      "ambiguity": {
+        "question": "\"a vacant square behind it\" does not explicitly limit a capture landing to the immediately next square beyond the contiguous opposing man. The 15-to-22 illustration shows that landing in one case; does the general rule allow a farther vacant square, especially for a King?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "multiple-capture",
+      "name": "Several exposed men in one capture",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 432"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "single-capture",
+        "capture-removal",
+        "huff-short-adopted-capture",
+        "huff-route-choice"
+      ],
+      "evidence": "If several men should be exposed by having open spaces behind them alternately, they may be all taken at one capture, and the capturing piece is then placed on the square beyond the last man.",
+      "status": "mapped",
+      "note": "Record the multi-piece capture and final landing. Footnote 108 differentiates completion of the adopted play from choosing a route of maximum captures.",
+      "ambiguity": {
+        "question": "\"open spaces behind them alternately\" does not say whether a capture may turn between jumps, whether captured pieces are removed during the sequence or after it, or whether earlier squares may be revisited. Which multiple-capture routes does the phrase permit?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "capture-removal",
+      "name": "Remove a captured opposing piece",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 432"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Black can take the white man on 18 by leaping from 15 to 22, and removing the captured piece from the board.",
+      "status": "mapped",
+      "note": "This worked illustration supplies the explicit removal of a captured enemy piece. Only that general mechanic is admitted from the example; its particular opening is declined separately."
+    },
+    {
+      "id": "huff-does-not-undo-other-move",
+      "name": "Huffing leaves the opponent's other move in place",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 432"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "huff-removal",
+        "huff-not-move"
+      ],
+      "evidence": "When one party \"huffs\" the other in preference to compelling the take, he does not replace the piece his opponent moved, but simply removes the man huffed from the board, and then plays his own move.",
+      "status": "mapped",
+      "note": "This illustration states a procedural detail absent from the earlier huff definition: do not restore the unrelated piece moved by the opponent; huff and then play.",
+      "enabledBy": [
+        "huff-election"
+      ],
+      "crossReferences": [
+        {
+          "cites": "\"huffs\"",
+          "resolvedBy": "huff-removal"
+        },
+        {
+          "cites": "compelling the take",
+          "resolvedBy": "compelled-take"
+        }
+      ]
+    },
+    {
+      "id": "diagram-square-convention",
+      "name": "Footnote 107: white squares in treatise diagrams",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / Footnote 107 / p. 475"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "[107] In England it was formerly the custom to play on the white squares, but the Scottish practice of using the black squares is now generally adopted. So far as the course of play is concerned, the one plan is as good as the other; and in all treatises on the game the men are, for typographical reasons, shown on the _white_ squares. This involves a corresponding alteration of the position of the board, which is shown with a _white_ bottom square on the left hand.",
+      "status": "declined",
+      "note": "Read and retained as the explanation of the diagrams. Its literal page marker is 475, outside the assigned 427–446 extent, so this target is out of scope rather than falsely cited at the call on p. 427. Historical English practice is not made an alternative operative rule."
+    },
+    {
+      "id": "huff-short-adopted-capture",
+      "name": "Footnote 108: huff for incomplete adopted capture",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / Footnote 108 / p. 475"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "[108] A player may be huffed for not taking the full number of men he should have taken by the play adopted. Thus if he takes one man only, where by the same play, duly continued, he could have taken two, he is liable to the huff. If, however, he has the choice of two moves, by one of which he would take a larger number of men taken than by the other, he is under no obligation to adopt that move.",
+      "status": "declined",
+      "note": "Read the full footnote, including its two-versus-one example. Liability attaches to failure to finish the play adopted. Declined solely because the actual footnote is beyond the page extent; the call in the slice resolves here."
+    },
+    {
+      "id": "huff-route-choice",
+      "name": "Footnote 108: no duty to choose the larger capture",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / Footnote 108 / p. 475"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "[108] A player may be huffed for not taking the full number of men he should have taken by the play adopted. Thus if he takes one man only, where by the same play, duly continued, he could have taken two, he is liable to the huff. If, however, he has the choice of two moves, by one of which he would take a larger number of men taken than by the other, he is under no obligation to adopt that move.",
+      "status": "declined",
+      "note": "Read and retained as a boundary: when two moves are available, the larger capture is not obligatory. Scope is out solely because the actual footnote lies after p. 475 rather than within the assigned printed-page extent."
+    },
+    {
+      "id": "advice-1",
+      "name": "General advice paragraph 1",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / GENERAL ADVICE. / p. 432"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "It is generally better to keep your men in the middle of the board than to play them to the side squares, as in the latter case one-half of their power is curtailed.",
+      "status": "declined",
+      "note": "Read and declined as coaching: centralisation and comparative power do not prescribe move legality."
+    },
+    {
+      "id": "advice-2",
+      "name": "General advice paragraph 2",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / GENERAL ADVICE. / p. 432"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "When you have once gained an advantage in the number of your pieces, you increase the proportion by exchanges, but in forcing them you must take care not to damage your position. Open your game {433} at all times upon a regular plan; by so doing you will acquire method in both attack and defence. Accustom yourself to play slowly at first, and, if a beginner, prefer playing with better players than yourself. Note their methods of opening a game, and follow them when opportunity presents itself.",
+      "status": "declined",
+      "note": "Read and declined as coaching: exchanges, opening plans, pace of learning and choice of opponents are recommendations."
+    },
+    {
+      "id": "advice-3",
+      "name": "General advice paragraph 3",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / GENERAL ADVICE. / p. 433"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "If playing against an inferior, it is as well to keep the game complicated; if with a superior, to simplify it. Avoid scattering your forces; as they get fewer, concentrate them as much as possible.",
+      "status": "declined",
+      "note": "Read and declined as coaching: complexity and concentration are strategic recommendations."
+    },
+    {
+      "id": "advice-4",
+      "name": "General advice paragraph 4",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / GENERAL ADVICE. / p. 433"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Never touch the squares of the board with your fingers; and accustom yourself to play your move off-hand, when you have once made up your mind.",
+      "status": "declined",
+      "note": "Read and declined as coaching: the prohibition on touching board squares is presented as playing manners alongside a habit of moving off-hand; it supplies no touch-piece or move-legality rule."
+    },
+    {
+      "id": "advice-5",
+      "name": "General advice paragraph 5",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / GENERAL ADVICE. / p. 433"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Do not lose time in studying when you have only one way of taking, but take quickly.",
+      "status": "declined",
+      "note": "Read and declined as coaching: taking quickly reinforces good pace but supplies no replacement for the separately mapped Time law."
+    },
+    {
+      "id": "advice-6",
+      "name": "General advice paragraph 6",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / GENERAL ADVICE. / p. 433"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Pay quite as much attention to the probable plans of your adversary as to your own.",
+      "status": "declined",
+      "note": "Read and declined as coaching: attention to an opponent's plans is advice."
+    },
+    {
+      "id": "advice-7",
+      "name": "General advice paragraph 7",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / GENERAL ADVICE. / p. 433"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Remember that the science of the game consists in so moving your pieces at the commencement as to obtain a position which will compel your adversary to give his men away. One man ahead with a clear game should be a certain _win_.",
+      "status": "declined",
+      "note": "Read and declined as coaching: the one-man-ahead claim is a strategic assessment, not an automatic win condition overriding no-play loss."
+    },
+    {
+      "id": "advice-8",
+      "name": "General advice paragraph 8",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / GENERAL ADVICE. / p. 433"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "In conclusion, the student is strongly advised to study and master the theory and practice of the play embraced in the First, Second, Third, and Fourth Positions (see _post_). These endings, in different forms, are of very frequent occurrence, and should be thoroughly mastered.",
+      "status": "declined",
+      "note": "Read and declined as coaching: study of named endings is recommended; the pointers resolve to their definition entries.",
+      "crossReferences": [
+        {
+          "cites": "(see _post_)",
+          "resolvedBy": "elementary-position-names"
+        },
+        {
+          "cites": "First",
+          "resolvedBy": "first-position-data"
+        },
+        {
+          "cites": "Second",
+          "resolvedBy": "second-position-data"
+        },
+        {
+          "cites": "Third",
+          "resolvedBy": "third-position-data"
+        },
+        {
+          "cites": "Fourth",
+          "resolvedBy": "fourth-position-data"
+        }
+      ]
+    },
+    {
+      "id": "opening-ayrshire-lassie",
+      "name": "Ayrshire Lassie opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 433"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "1. The \"Ayrshire Lassie\" is formed by the first four moves (counting the play on both sides): 11 to 15, 24 to 20, 8 to 11, 28 to 24.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Ayrshire Lassie"
+        }
+      ]
+    },
+    {
+      "id": "opening-bristol",
+      "name": "Bristol opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 434"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "2. The \"Bristol\" is formed by the first three moves: 11 to 16, 24 to 20, 16 to 19.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Bristol"
+        }
+      ]
+    },
+    {
+      "id": "opening-cross",
+      "name": "Cross opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 434"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "3. The \"Cross\" is formed by the first two moves: 11 to 15, 23 to 18.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Cross"
+        }
+      ]
+    },
+    {
+      "id": "opening-defiance",
+      "name": "Defiance opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 434"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "4. The \"Defiance\" is formed by the first four moves: 11 to 15, 23 to 19, 9 to 14, 27 to 23.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Defiance"
+        }
+      ]
+    },
+    {
+      "id": "opening-dyke",
+      "name": "Dyke opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 434"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "5. The \"Dyke\" is formed by the first three moves: 11 to 15, 22 to 17, 15 to 19.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Dyke"
+        }
+      ]
+    },
+    {
+      "id": "opening-fife",
+      "name": "Fife opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 434"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "6. The \"Fife\" is formed by the first five moves: 11 to 15, 23 to 19, 9 to 14, 22 to 17, 5 to 9.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Fife"
+        }
+      ]
+    },
+    {
+      "id": "opening-glasgow",
+      "name": "Glasgow opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 434"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "7. The \"Glasgow\" is formed by the first five moves: 11 to 15, 23 to 19, 8 to 11, 22 to 17, 11 to 16.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Glasgow"
+        }
+      ]
+    },
+    {
+      "id": "opening-laird-and-lady",
+      "name": "Laird and Lady opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 434"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "8. The \"Laird and Lady\" is formed by the first five moves: 11 to 15, 23 to 19, 8 to 11, 22 to 17, 9 to 13.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Laird and Lady"
+        }
+      ]
+    },
+    {
+      "id": "opening-maid-of-the-mill",
+      "name": "The Maid of the Mill opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 434"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "9. \"The Maid of the Mill\" is formed by the first five moves: 11 to 15, 22 to 17, 8 to 11, 17 to 13, 15 to 18.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "The Maid of the Mill"
+        }
+      ]
+    },
+    {
+      "id": "opening-old-fourteenth",
+      "name": "Old Fourteenth opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 435"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "10. The \"Old Fourteenth\" is formed by the first five moves: 11 to 15, 23 to 19, 8 to 11, 22 to 17,4 to 8.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Old Fourteenth"
+        }
+      ]
+    },
+    {
+      "id": "opening-second-double-corner",
+      "name": "Second Double Corner opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 435"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "11. The \"Second Double Corner\" is formed by the first two moves: 11 to 15, 24 to 19.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Second Double Corner"
+        }
+      ]
+    },
+    {
+      "id": "opening-single-corner",
+      "name": "Single Corner opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 435"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "12. The \"Single Corner\" is formed by the first two moves: 11 to 15, 22 to 18.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Single Corner"
+        }
+      ]
+    },
+    {
+      "id": "opening-souter",
+      "name": "Souter opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 435"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "13. The \"Souter\" is formed by the first five moves: 11 to 15, 23 to 19, 9 to 14, 22 to 17, 6 to 9.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Souter"
+        }
+      ]
+    },
+    {
+      "id": "opening-whilter",
+      "name": "Whilter opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 435"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "14. The \"Whilter\" is formed by the first five moves: 11 to 15, 23 to 19, 9 to 14, 22 to 17, 7 to 11.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Whilter"
+        }
+      ]
+    },
+    {
+      "id": "opening-will-o-the-wisp",
+      "name": "Will-o'-the-Wisp opening",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 435"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "15. The \"Will-o'-the-Wisp\" is formed by the first three moves: 11 to 15, 23 to 19, 9 to 13.",
+      "status": "mapped",
+      "note": "Verify every ordered move in this printed opening definition and its stated count. Counts include play on both sides, as the first definition expressly says. Any following naming anecdote or historical explanation was read and declined as history, not a condition on the definition.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "Will-o'-the-Wisp"
+        }
+      ]
+    },
+    {
+      "id": "numbering-from-black",
+      "name": "Number squares from the black side in either diagram orientation",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED. / p. 435"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "numbered-board"
+      ],
+      "evidence": "N.B.--The reader should observe, in studying the position following, that the numbering of the squares always starts from the _black_ side of the board, whether black occupy the upper or the lower rows.",
+      "status": "mapped",
+      "note": "Apply the convention to every later position; moving Black to the upper diagram edge does not move the numbering origin to White.",
+      "crossReferences": [
+        {
+          "cites": "the position following",
+          "resolvedBy": "two-kings-example"
+        }
+      ]
+    },
+    {
+      "id": "two-kings-example",
+      "name": "Two Kings to One: position and solution",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / END GAMES / TWO KINGS TO ONE / p. 436"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "TWO KINGS TO ONE. _Position._ Black. +---------------------------------------+ | | | | | | | | | |---------------------------------------| | BB | | | | | | | | |---------------------------------------| | | | | | | WW | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | WW | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | +---------------------------------------+ White. FIG. 3. [WHITE TO MOVE AND WIN.] To win with two Kings against one in the double corner (see Fig. 3) is often a source of difficulty to the learner, and yet, once known, nothing is more simple. The following shows how to force the win: {437} _Solution._ 22.18 1.5 1.5 5.9 10.6 9.13 11.15 5.1 10.15 9.6 14.10 13.17 18.14 1.5 15.18 6.1 6.1 17.13 15.10 5.9 18.22 W. wins.",
+      "status": "declined",
+      "note": "Read the complete position, White-to-move verdict and all solution columns. Declined as a worked winning line for a specified board; no additional general movement or adjudication rule is extracted. The diagram is legible ASCII, not beyond this adapter.",
+      "crossReferences": [
+        {
+          "cites": "(see Fig. 3)",
+          "unmapped": "Fig. 3 is the illustrative position included in this same declined worked example."
+        }
+      ]
+    },
+    {
+      "id": "three-kings-example",
+      "name": "Three Kings to Two: strategy and position",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / END GAMES / THREE KINGS TO TWO / p. 437"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "THREE KINGS TO TWO. This, again, is a state of things of very frequent occurrence, and the novice, even with the stronger game, may find it somewhat difficult to deal with. The proper course for White is either to pin one of Black's men, and then go for the other, or to force an exchange, so as to be left with two Kings to one, when the game, as we have seen, is a foregone conclusion. To avoid this, Black naturally endeavours to reach the two double corners, so as to have his men as far apart as possible, and to divide the attacking force. Where Black adopts these tactics the proper play, on the part of White, is to get his three Kings in a line on the same diagonal as Black's two. Thus, if Black is at 32 and 5, White must manoeuvre to place his men upon squares 23, 18 and 14. If Black occupies 28 and 1, White must secure 19, 15 and 10. In this position, however Black may play, he is compelled, on White's next move, to accept the offer of an exchange. White has then two Kings to one, and the game is practically at an end. {438} _Position._ Black. +---------------------------------------+ | | | | | | | | | |---------------------------------------| | BB | | | | | | | | |---------------------------------------| | | | | | | WW | | | |---------------------------------------| | | | | | WW | | | | |---------------------------------------| | | | | WW | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | BB | |---------------------------------------| | | | | | | | | | +---------------------------------------+ White. FIG. 4. [WHITE TO MOVE AND WIN.]",
+      "status": "declined",
+      "note": "Read the complete strategy, both numbered configurations (32 and 5 against 23, 18, 14; 28 and 1 against 19, 15, 10), and Fig. 4. Declined as advice for forcing an exchange and a worked position, not a new legal obligation to choose that play.",
+      "crossReferences": [
+        {
+          "cites": "as we have seen",
+          "resolvedBy": "two-kings-example"
+        }
+      ]
+    },
+    {
+      "id": "elementary-position-names",
+      "name": "Four named elementary positions",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE ELEMENTARY POSITIONS / p. 438"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "There are four often recurring situations known as the First, Second, Third, and Fourth Positions.",
+      "status": "mapped",
+      "note": "Record the list of four names. The following sentence recommending study is declined in the notes; the four literal position diagrams have separate defining-data entries."
+    },
+    {
+      "id": "first-position-data",
+      "name": "First Position diagram",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE ELEMENTARY POSITIONS / FIRST POSITION / p. 439"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-grid",
+        "numbering-from-black",
+        "crowning"
+      ],
+      "evidence": "FIRST POSITION. Black. +---------------------------------------+ | | | | | | | | | |---------------------------------------| | | | | | | | WW | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | B | | | | | | |---------------------------------------| | | | | | | B | | | |---------------------------------------| | | | W | | | | | | +---------------------------------------+ White. FIG. 5.",
+      "status": "mapped",
+      "note": "Treat the named position as defining data: verify the entire eight-row grid, side labels, and every B, BB, W and WW cell. The doubled letters are read in the context of the earlier same-colour stacking instruction and the Two Kings to One diagram. The following result/side-to-move caption and solution are worked-example material, separately declined.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "FIRST POSITION"
+        }
+      ]
+    },
+    {
+      "id": "second-position-data",
+      "name": "Second Position diagram",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE ELEMENTARY POSITIONS / SECOND POSITION / p. 441"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-grid",
+        "numbering-from-black",
+        "crowning"
+      ],
+      "evidence": "SECOND POSITION. Black. +---------------------------------------+ | | | | | | B | | | |---------------------------------------| | BB | | B | | | | | | |---------------------------------------| | | | | | | WW | | W | |---------------------------------------| | W | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | +---------------------------------------+ White. FIG. 6.",
+      "status": "mapped",
+      "note": "Treat the named position as defining data: verify the entire eight-row grid, side labels, and every B, BB, W and WW cell. The doubled letters are read in the context of the earlier same-colour stacking instruction and the Two Kings to One diagram. The following result/side-to-move caption and solution are worked-example material, separately declined.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "SECOND POSITION"
+        }
+      ]
+    },
+    {
+      "id": "third-position-data",
+      "name": "Third Position diagram",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE ELEMENTARY POSITIONS / THIRD POSITION / p. 443"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-grid",
+        "numbering-from-black",
+        "crowning"
+      ],
+      "evidence": "THIRD POSITION. Black. +---------------------------------------+ | | | | | | | | | |---------------------------------------| | B | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | BB | | WW | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | BB | | WW | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | +---------------------------------------+ White. FIG. 7.",
+      "status": "mapped",
+      "note": "Treat the named position as defining data: verify the entire eight-row grid, side labels, and every B, BB, W and WW cell. The doubled letters are read in the context of the earlier same-colour stacking instruction and the Two Kings to One diagram. The following result/side-to-move caption and solution are worked-example material, separately declined.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "THIRD POSITION"
+        }
+      ]
+    },
+    {
+      "id": "fourth-position-data",
+      "name": "Fourth Position diagram",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE ELEMENTARY POSITIONS / FOURTH POSITION / p. 445"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-grid",
+        "numbering-from-black",
+        "crowning"
+      ],
+      "evidence": "FOURTH POSITION. Black. +---------------------------------------+ | | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | | | | | | | | | |---------------------------------------| | B | | BB | | BB | | | | |---------------------------------------| | | | | | | | | BB | |---------------------------------------| | | | W | | WW | | WW | | +---------------------------------------+ White. FIG. 8.",
+      "status": "mapped",
+      "note": "Treat the named position as defining data: verify the entire eight-row grid, side labels, and every B, BB, W and WW cell. The doubled letters are read in the context of the earlier same-colour stacking instruction and the Two Kings to One diagram. The following result/side-to-move caption and solution are worked-example material, separately declined.",
+      "defines": [
+        {
+          "vocabulary": "draughts-terms",
+          "term": "FOURTH POSITION"
+        }
+      ]
+    },
+    {
+      "id": "first-position-worked",
+      "name": "First Position: winning line and two variations",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE ELEMENTARY POSITIONS / FIRST POSITION / p. 439"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "[BLACK TO MOVE AND WIN.] {440} _Solution._ 27.32 6.1 14.18 9.14 8.11 22.18 9.6 1.5 32.27 1.6 18.15 14.17 11.7 18.15 30.25 S--15.10 27.23 6.1 15.18 17.22 7.10 15.10 6.10 10.14 22.26 1.5 5.1 22.25 V.1--10.6 10.6 25.21 5.1 26.31 5.1 1.5 25.22 6.9 14.13 10.6 1.6 31.26 1.5 18.15 22.25 9.6 6.1 21.17 6.10 26.22 5.9 5.1 25.22 6.10 1.5 6.9 10.15 23.18 9.13 15.18 22.25 10.6 10.14 17.13 15.18 18.14 13.9 18.15 25.21 B. wins. VARIATION 1. 30.25 22.18 5.9 15.18 23.18 1.5 10.15 9.5 10.6 18.15 V.2--9.5 18.22 18.14 5.1 15.18 17.14 6.1 15.10 5.9 1.6 26.30 1.5 1.5 5.1 25.21 10.6 9.6 6.2 30.25 5.1 18.15 1.5 1.5 14.10 21.17 22.17 25.22 1.5 5.1 14.9 5.1 6.1 6.9 B. wins. VARIATION 2. 9.14 17.13 Continue as 1.5 1.5 trunk at 21.17 14.17 S. 5.1 15.10 B. wins.",
+      "status": "declined",
+      "note": "Read every column of the main line, Variations 1 and 2, and the return to trunk at S. Declined as worked application of rules, not a required sequence of play.",
+      "crossReferences": [
+        {
+          "cites": "V.1--",
+          "unmapped": "Variation 1 is included in this same declined example."
+        },
+        {
+          "cites": "V.2--",
+          "unmapped": "Variation 2 is included in this same declined example."
+        },
+        {
+          "cites": "Continue as 1.5 1.5 trunk at 21.17 14.17 S.",
+          "unmapped": "The column-interleaved text returns to the S--15.10 point of this same worked main line; it is not an independent rule."
+        }
+      ]
+    },
+    {
+      "id": "second-position-worked",
+      "name": "Second Position: winning line",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE ELEMENTARY POSITIONS / SECOND POSITION / p. 441"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "[BLACK TO MOVE AND WIN.] {442} _Solution._ 5.9 23.18 14.10 11.15 28.24 19.24 9.14 18.14 10.15 15.11 24.19 24.28 14.18 6.10 15.19 11.16 19.23 28.32 18.15 10.15 19.24 16.20 23.27 32.28 15.11 15.19 11.16 20.24 27.32 28.19 3.7 19.24 16.23 24.19 32.28 12.8 7.10 24.27 23.18 19.23 28.24 8.4 10.15 27.32 18.14 23.27 24.28 4.8 15.19 32.27 6.1 27.32 28.32 8.11 19.24 27.24 14.9 32.28 32.28 13.6 24.27 24.19 1.10 28.32 28.32 11.16 27.31 19.15 10.15 32.28 32.28 16.20 31.27 15.10 15.19 28.32 28.24 B. wins. 27.23 10.6 32.28 24.19",
+      "status": "declined",
+      "note": "Read the side-to-move/result caption and every column of the p. 442 solution. Declined as a worked line for the named board."
+    },
+    {
+      "id": "third-position-worked",
+      "name": "Third Position: winning line and four variations",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE ELEMENTARY POSITIONS / THIRD POSITION / p. 443"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "[BLACK TO MOVE AND WIN.] _Solution._ {444} 13.9 14.18 11.15 22.18 5.9 25.22 9.6 10.6 23.27 18.22 9.13 22.26 6.1 6.10 27.24 V.1--22.18 26.31 26.22 21.25 10.14 24.20 V.2--18.15 31.27 22.26 1.6 18.22 20.16 14.17 27.23 26.22 6.2 V.3--22.25 16.12 17.14 2.7 22.26 25.22 25.22 12.8 15.10 7.11 26.22 22.26 V.4--22.25 8.3 VARIATION 1. 14.18 10.15 26.31 5.9 30.26 18.22 18.23 15.19 31.27 1.6 26.30 21.17 23.26 19.23 27.31 6.10 22.26 9.14 26.30 23.18 B. wins. VARIATION 2. 14.17 5.14 25.21 5.9 30.26 17.22 A--17.21 14.18 21.17 9.14 B. wins. 22.6 18.9 -- 1.19 1.5 A B. wins. 21.30 18.15 VARIATION 3. 14.10 10.14 14.9 23.19 19.15 15.10 B. wins. {445} VARIATION 4. 22.18 22.26 22.26 23.27 27.24 20.16 18.22 26.22 26.22 11.15 24.20 16.12 B. wins. Very critical, and requires extreme care in forcing the win.",
+      "status": "declined",
+      "note": "Read the whole main line, Variations 1–4, the A branch inside Variation 2 and the final critical-play advice on p. 445. Declined as worked application and coaching. Column order was not silently converted into a different move sequence.",
+      "crossReferences": [
+        {
+          "cites": "V.1--",
+          "unmapped": "Variation 1 is printed within this same declined example."
+        },
+        {
+          "cites": "V.2--",
+          "unmapped": "Variation 2 is printed within this same declined example."
+        },
+        {
+          "cites": "V.3--",
+          "unmapped": "Variation 3 is printed within this same declined example."
+        },
+        {
+          "cites": "V.4--",
+          "unmapped": "Variation 4 is printed within this same declined example."
+        },
+        {
+          "cites": "A--",
+          "unmapped": "The A-labelled continuation is printed in Variation 2 within this example."
+        }
+      ]
+    },
+    {
+      "id": "fourth-position-worked",
+      "name": "Fourth Position: Black wins moving first; White draws moving first",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / THE ELEMENTARY POSITIONS / FOURTH POSITION / p. 445"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "[BLACK TO MOVE AND [WHITE TO MOVE AND WIN.] DRAW.] {446} _Solution_. Black to move. White to move. 28.24 32.27 31.27 22.18 32.28 24.28 23.19 31.27 24.20 27.32 27.31 28.24 28.32 18.22 19.24 27.31 22.18 31.27 32.27 18.23 31.27 22.26 24.20 31.26 23.19 30.23 27.32 Drawn. 27.31 28.24 19.24 B. wins.",
+      "status": "declined",
+      "note": "Read both captions and both complete solution tables on p. 446, retaining the distinction between the two starting players. Declined as example verdicts and lines for this one position, rather than a universal turn rule."
+    },
+    {
+      "id": "capture-worked-example",
+      "name": "Opening illustration of capturing and huffing",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 432"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "To explain the mode of capturing by a practical illustration, let us begin by placing the men as for a game. You will perceive that Black, who always plays first, can only move one of the men placed on 9, 10, 11, or 12; supposing him, then, to play the man on 11 to 15, and White to answer this by playing 22 to 18, Black can take the white man on 18 by leaping from 15 to 22, and removing the captured piece from the board. Should Black not take the man on 18, but make another move--say 12 to 16, for instance--he is liable to be \"huffed\"; that is, White may remove the man (that on 15) with which Black should have taken, off the board for not taking. When one party \"huffs\" the other in preference to compelling the take, he does not replace the piece his opponent moved, but simply removes the man huffed from the board, and then plays his own move.",
+      "status": "declined",
+      "note": "Read the full 11–15, 22–18, 15–22 illustration and the alternative 12–16/huff explanation. Decline the particular sample opening as an obligatory play. Its unique procedural statements about removing a captured piece and leaving the moved piece in place on huffing have separate in-scope entries.",
+      "crossReferences": [
+        {
+          "cites": "as for a game",
+          "resolvedBy": "initial-numbered-placement"
+        },
+        {
+          "cites": "\"huffed\"",
+          "resolvedBy": "huff-removal"
+        },
+        {
+          "cites": "\"huffs\"",
+          "resolvedBy": "huff-removal"
+        },
+        {
+          "cites": "compelling the take",
+          "resolvedBy": "compelled-take"
+        }
+      ]
+    },
+    {
+      "id": "further-reading",
+      "name": "Recommendations for further draughts study",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "DRAUGHTS / p. 446"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "For further information as to the science of the game, see the article \"Draughts\" in _The Book of Card and Table Games_, of which the above account is an abridgment. The reader desirous of still more minute information will find it in _The Game of Draughts Simplified_, by Andrew Andersen. The fifth edition (1887) of this standard work (James Forrester, 2s. 6d.) is edited by Mr. Robert McCulloch, the writer of the above-mentioned article. Mr. McCulloch has also produced a book of his own, _The Guide to the Game of Draughts_ (Bryson & Co., Glasgow, 2_s_. 6d.). These are thoroughly up-to-date publications. We may mention in addition the _American Draughtplayer_, by H. Spayth, the accepted authority in America, and two valuable works by Mr. Joseph Gould, _The Problem Book_, and _Match Games_.",
+      "status": "declined",
+      "note": "Read the entire bibliography, including the source article, Andersen, McCulloch, Spayth and Gould. Declined as further reading and publication history. These sources are not admitted authorities for any missing rule in this map.",
+      "crossReferences": [
+        {
+          "cites": "see the article \"Draughts\" in _The Book of Card and Table Games_",
+          "unmapped": "External further-reading recommendation, not an incorporated rule or term definition."
+        },
+        {
+          "cites": "_The Game of Draughts Simplified_",
+          "unmapped": "External recommended work; no rule is incorporated."
+        },
+        {
+          "cites": "_The Guide to the Game of Draughts_",
+          "unmapped": "External recommended work; no rule is incorporated."
+        },
+        {
+          "cites": "_American Draughtplayer_",
+          "unmapped": "External recommended work; no rule is incorporated."
+        },
+        {
+          "cites": "_The Problem Book_",
+          "unmapped": "External recommended work; no rule is incorporated."
+        },
+        {
+          "cites": "_Match Games_",
+          "unmapped": "External recommended work; no rule is incorporated."
+        }
+      ]
+    }
+  ]
+}
