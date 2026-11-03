@@ -74,12 +74,14 @@ class TestEveryRowOfTheTable(unittest.TestCase):
         # TestTheEngineJobIsOwedByWhatProducesAnEngine. This asserted False until #347.
         self.assertTrue(scope.engine)
 
-    def test_the_hoyle_text_narrows_to_both_of_its_maps(self):
-        # hoyle-cribbage cites the Gutenberg text committed under hoyle-backgammon (#704).
+    def test_the_hoyle_text_narrows_to_every_one_of_its_maps(self):
+        # hoyle-cribbage and hoyle-draughts cite the Gutenberg text committed under
+        # hoyle-backgammon (#704, #705).
         scope = vr.classify(["examples/hoyle-backgammon/hoyle.txt"])
         self.assertEqual(
             ("examples/hoyle-backgammon/corpus-map.json",
-             "examples/hoyle-cribbage/corpus-map.json"),
+             "examples/hoyle-cribbage/corpus-map.json",
+             "examples/hoyle-draughts/corpus-map.json"),
             scope.maps,
         )
 

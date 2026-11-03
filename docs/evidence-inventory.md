@@ -1,6 +1,6 @@
 # The evidence inventory
 
-`examples/` is this repository's evidence: nine corpora, twelve maps, the transcripts of blind
+`examples/` is this repository's evidence: nine corpora, thirteen maps, the transcripts of blind
 second mappings, trial reports, independent verdicts, and the results of the injection, collapse
 and validator-attack measurements: <!-- derived:evidence-totals -->273 tracked files, 18.5 MB, out of 25.6 MB tracked in all<!-- /derived:evidence-totals -->.
 Those figures are written by `check-evidence.py --measure` and held to the lock by the gate, the way
