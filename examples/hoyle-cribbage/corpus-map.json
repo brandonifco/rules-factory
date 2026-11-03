@@ -225,7 +225,7 @@
       ],
       "evidence": "Meanwhile the non-dealer scores three holes, known as \"three for last,\" and regarded as a set-off for the advantage of first deal.",
       "status": "mapped",
-      "note": "Decided by 0089: only the non-dealer of the game's first deal scores three for last, at the deal. Five-card only: six-card-no-three-for-last omits it, and the seven-card game is 'played in the same manner as the six-card game' (seven-card-deal). Three points can win a game (game-won)."
+      "note": "Decided by 0089: only the non-dealer of the game's first deal scores three for last, at the deal. Five-card only: six-card-no-three-for-last omits it, and the seven-card game is 'played in the same manner as the six-card game' (seven-card-deal). Scored at the game's first deal from nothing, three can never win it."
     },
     {
       "id": "undealt-pack",
@@ -1329,7 +1329,7 @@
         "game-points"
       ],
       "status": "mapped",
-      "note": "Derived, not stated (0012). game-points names 'the number of points to be made', and lurch has a winner and a loser; no sentence says the game ends the moment the number is made. It follows from the corpus fixing the order in which every score is made -- three for last and his heels at the deal, the play card by card, then show-order's non-dealer, dealer and crib -- that the first player whose score reaches the game's points has made them first, and nothing scored after can undo it. Demonstrate a win during the play, a non-dealer winning on his show before the dealer's higher hand is counted, and a win by three for last."
+      "note": "Derived, not stated (0012). game-points names 'the number of points to be made', and lurch has a winner and a loser; no sentence says the game ends the moment the number is made. It follows from the corpus fixing the order in which every score is made -- three for last and his heels at the deal, the play card by card, then show-order's non-dealer, dealer and crib -- that the first player whose score reaches the game's points has made them first, and nothing scored after can undo it. Demonstrate a win on the last card of the play before anything is shown, and a non-dealer winning on his show before the dealer's higher hand is counted."
     }
   ]
 }
