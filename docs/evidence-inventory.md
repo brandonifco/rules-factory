@@ -1,8 +1,8 @@
 # The evidence inventory
 
-`examples/` is this repository's evidence: five corpora, nine maps, the transcripts of blind
+`examples/` is this repository's evidence: nine corpora, twelve maps, the transcripts of blind
 second mappings, trial reports, independent verdicts, and the results of the injection, collapse
-and validator-attack measurements: <!-- derived:evidence-totals -->265 tracked files, 18.4 MB, out of 25.3 MB tracked in all<!-- /derived:evidence-totals -->.
+and validator-attack measurements: <!-- derived:evidence-totals -->273 tracked files, 18.5 MB, out of 25.6 MB tracked in all<!-- /derived:evidence-totals -->.
 Those figures are written by `check-evidence.py --measure` and held to the lock by the gate, the way
 the commit named under *By trial* is
 ([#439](https://github.com/brandonifco/rules-factory/issues/439)): a count typed here that the
@@ -68,7 +68,7 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `f7833a2`, over a gate run that failed no step (`measuredOver` in the lock says so,
+Measured at `e61891b`, over a gate run that failed no step (`measuredOver` in the lock says so,
 and `--measure` refuses a run with a failing step unless it is told to record that it was
 partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)). It is the branch commit
 `--measure` recorded. A squash merge destroys a branch commit, and #404's check is then right to

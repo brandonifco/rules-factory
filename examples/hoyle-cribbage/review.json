@@ -1,0 +1,13 @@
+{
+  "reviews": {
+    "corpus-map.json": {
+      "sha256": "f27f450812064d0cee8d69dc3e708dc50a35e7db8ebad1aff53553f881f6af87",
+      "method": "exemption",
+      "exemption": {
+        "kind": "legacy",
+        "issue": "#704",
+        "reason": "Not reviewed, and deliberately so: this is the first mapping of Hoyle's Cribbage, pp. 34-52, written for #704, and no second reading has been run. `legacy` is the wrong word, and is used for the reason examples/srd-52-damage-and-healing/review.json and the other first mappings record: it is the only exemption kind that names a tracking issue, and `non-semantic` needs a reviewed map to depart from. A second reading should look hardest at five things. Whether runs-in-show is honestly clear for the six- and seven-card hands, whose longer runs no sentence names. Whether hand-flush's four- and five-card figures follow from 'one for each card'. Whether game-won should be derived, or ambiguous because no sentence says the game ends the moment its points are made. Whether three-for-last's once-a-game reading (0089) rests on more than one worked example. And whether the two misprints recorded in five-card-hand-table and five-card-crib-table are misprints, or a counting convention the map has missed."
+      }
+    }
+  }
+}
