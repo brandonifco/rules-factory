@@ -128,6 +128,17 @@ FIXTURES = (
             "examples/hoyle-backgammon/hoyle.txt",
         ),),
     ),
+    # A second slice of the same Gutenberg text, the Draughts chapter, pp. 427-446. The corpus is
+    # committed once, under the backgammon trial, so a change to it is a change to this map too.
+    Fixture(
+        map="examples/hoyle-draughts/corpus-map.json",
+        corpora=("examples/hoyle-draughts", "examples/hoyle-backgammon"),
+        locators=((
+            "tools/check-locators.py",
+            "examples/hoyle-draughts/corpus-map.json",
+            "examples/hoyle-backgammon/hoyle.txt",
+        ),),
+    ),
     Fixture(
         map="examples/faa-part-107/corpus-map.json",
         corpora=("examples/faa-part-107",),
