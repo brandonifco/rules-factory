@@ -1,0 +1,22 @@
+Corpus: hoyle-1909, Hoyle's Games Modernized (Professor Hoffmann), as Project Gutenberg eBook
+#39445 (https://www.gutenberg.org/ebooks/39445.txt.utf-8).
+
+Terms: the underlying work is in the public domain in the United States. Project Gutenberg made
+its eBook from a print edition not protected by U.S. copyright law, and says in the eBook that
+no one owns a United States copyright in such a work. rules-factory claims no rights in the
+quoted text, and the quotations are not placed under CC0 or any other licence. This statement is
+about United States law only: as the eBook's own header says, a user outside the United States
+should check the law where they are.
+
+Project Gutenberg's licence and trademark terms govern its eBook edition and the use of the
+"Project Gutenberg" trademark. This package does not redistribute the eBook: it holds short
+verbatim excerpts of the work's text, and names eBook #39445 only to identify the source (the
+manifest's contentHash is of that eBook file, including Project Gutenberg's header and footer,
+which the map does not quote).
+
+No SPDX licence identifier states this, which is why the package's licence is this file rather
+than an expression.
+
+As the manifest's `licence` field records it:
+
+public-domain-underlying-work; Project Gutenberg trademark terms apply to the edition

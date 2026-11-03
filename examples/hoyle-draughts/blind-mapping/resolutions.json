@@ -1,0 +1,2023 @@
+{
+  "about": "One adjudication per flag of results.json, the comparator's output for the blind second mapping of examples/hoyle-draughts/ (docs/method.md, Before the map is used; 0014, 0060). Each verdict is answered from the corpus by an adjudicator that mapped neither side; a `B` row carries the correction the reference map takes, a `U` row makes its reference entry (or the entry the reason names) ambiguous with fate unresolved.",
+  "verdicts": {
+    "R": "the reference is right",
+    "B": "the blind map is right; the reference is fixed",
+    "U": "the corpus does not settle it; an `ambiguity` is added to the reference",
+    "N": "not a disagreement about the corpus: a split, a merge, a choice of span, or a schema question"
+  },
+  "unsettledVerdict": "U",
+  "adjudications": [
+    {
+      "id": "None|entry|advice-1|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "N",
+      "reason": "Both maps decline this paragraph of GENERAL ADVICE: the reference through general-advice and its mapping inventory, which rejects each advice block as counsel that obliges nothing, the blind through one out-of-scope entry per paragraph. The difference is granularity, not a reading of the corpus.",
+      "locator": "DRAUGHTS / GENERAL ADVICE / p. 432",
+      "quote": "It is generally better to keep your men in the middle of the board"
+    },
+    {
+      "id": "None|entry|advice-3|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "N",
+      "reason": "Both maps decline this paragraph of GENERAL ADVICE: the reference through general-advice and its mapping inventory, which rejects each advice block as counsel that obliges nothing, the blind through one out-of-scope entry per paragraph. The difference is granularity, not a reading of the corpus.",
+      "locator": "DRAUGHTS / GENERAL ADVICE / p. 433",
+      "quote": "it is as well to keep the game complicated"
+    },
+    {
+      "id": "None|entry|advice-4|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "N",
+      "reason": "'Never touch the squares of the board with your fingers' sits in GENERAL ADVICE beside 'accustom yourself to play your move off-hand'; both maps decline it as counsel (the reference in its inventory), and neither reads it as the touch-piece law, which is p. 428's.",
+      "locator": "DRAUGHTS / GENERAL ADVICE / p. 433",
+      "quote": "Never touch the squares of the board with your fingers"
+    },
+    {
+      "id": "None|entry|advice-5|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "N",
+      "reason": "Both maps decline this paragraph of GENERAL ADVICE: the reference through general-advice and its mapping inventory, which rejects each advice block as counsel that obliges nothing, the blind through one out-of-scope entry per paragraph. The difference is granularity, not a reading of the corpus. The time law it echoes is time-limit-one-way-of-taking, in both maps.",
+      "locator": "DRAUGHTS / GENERAL ADVICE / p. 433",
+      "quote": "Do not lose time in studying when you have only one way of taking"
+    },
+    {
+      "id": "None|entry|advice-6|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "N",
+      "reason": "Both maps decline this paragraph of GENERAL ADVICE: the reference through general-advice and its mapping inventory, which rejects each advice block as counsel that obliges nothing, the blind through one out-of-scope entry per paragraph. The difference is granularity, not a reading of the corpus.",
+      "locator": "DRAUGHTS / GENERAL ADVICE / p. 433",
+      "quote": "Pay quite as much attention to the probable plans of your adversary"
+    },
+    {
+      "id": "None|entry|advice-7|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "N",
+      "reason": "Both maps decline this paragraph of GENERAL ADVICE: the reference through general-advice and its mapping inventory, which rejects each advice block as counsel that obliges nothing, the blind through one out-of-scope entry per paragraph. The difference is granularity, not a reading of the corpus. 'should be a certain win' is an assessment, not a way of ending a game, in both maps.",
+      "locator": "DRAUGHTS / GENERAL ADVICE / p. 433",
+      "quote": "One man ahead with a clear game should be a certain"
+    },
+    {
+      "id": "None|entry|advice-8|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "N",
+      "reason": "Both maps decline this paragraph of GENERAL ADVICE: the reference through general-advice and its mapping inventory, which rejects each advice block as counsel that obliges nothing, the blind through one out-of-scope entry per paragraph. The difference is granularity, not a reading of the corpus.",
+      "locator": "DRAUGHTS / GENERAL ADVICE / p. 433",
+      "quote": "the student is strongly advised to study and master"
+    },
+    {
+      "id": "None|entry|first-position-data|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "The diagram is the position of a study the article introduces as one of four 'often recurring situations' for the student to know, and no rule of play refers to it; the reference declines it with the study and its inventory, and is right not to map it as in-scope data.",
+      "locator": "DRAUGHTS / THE ELEMENTARY POSITIONS / p. 438",
+      "quote": "It is highly desirable that the student should make himself well acquainted with them"
+    },
+    {
+      "id": "None|entry|fourth-position-data|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "The diagram is the position of a study the article introduces as one of four 'often recurring situations' for the student to know, and no rule of play refers to it; the reference declines it with the study and its inventory, and is right not to map it as in-scope data.",
+      "locator": "DRAUGHTS / THE ELEMENTARY POSITIONS / p. 438",
+      "quote": "It is highly desirable that the student should make himself well acquainted with them"
+    },
+    {
+      "id": "None|entry|further-reading|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "N",
+      "reason": "Both maps decline the closing paragraph: the blind with an out-of-scope entry, the reference in its inventory as a pointer to books that were not admitted. Granularity only.",
+      "locator": "DRAUGHTS / p. 446",
+      "quote": "For further information as to the science of the game, see the article"
+    },
+    {
+      "id": "None|entry|opening-cross|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 434",
+      "quote": "The \"Cross\" is formed by the first two moves"
+    },
+    {
+      "id": "None|entry|opening-defiance|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 434",
+      "quote": "The \"Defiance\" is formed by the first four moves"
+    },
+    {
+      "id": "None|entry|opening-dyke|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 434",
+      "quote": "The \"Dyke\" is formed by the first three moves"
+    },
+    {
+      "id": "None|entry|opening-fife|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 434",
+      "quote": "The \"Fife\" is formed by the first five moves"
+    },
+    {
+      "id": "None|entry|opening-glasgow|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 434",
+      "quote": "The \"Glasgow\" is formed by the first five moves"
+    },
+    {
+      "id": "None|entry|opening-laird-and-lady|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 434",
+      "quote": "The \"Laird and Lady\" is formed by the first five moves"
+    },
+    {
+      "id": "None|entry|opening-maid-of-the-mill|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 434",
+      "quote": "\"The Maid of the Mill\" is formed by the first five moves"
+    },
+    {
+      "id": "None|entry|opening-old-fourteenth|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 435",
+      "quote": "The \"Old Fourteenth\" is formed by the first five moves"
+    },
+    {
+      "id": "None|entry|opening-single-corner|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 435",
+      "quote": "The \"Single Corner\" is formed by the first two moves"
+    },
+    {
+      "id": "None|entry|opening-souter|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 435",
+      "quote": "The \"Souter\" is formed by the first five moves"
+    },
+    {
+      "id": "None|entry|opening-whilter|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 435",
+      "quote": "The \"Whilter\" is formed by the first five moves"
+    },
+    {
+      "id": "None|entry|opening-will-o-the-wisp|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 435",
+      "quote": "The \"Will-o'-the-Wisp\" is formed by the first three moves"
+    },
+    {
+      "id": "None|entry|second-position-data|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "The diagram is the position of a study the article introduces as one of four 'often recurring situations' for the student to know, and no rule of play refers to it; the reference declines it with the study and its inventory, and is right not to map it as in-scope data.",
+      "locator": "DRAUGHTS / THE ELEMENTARY POSITIONS / p. 438",
+      "quote": "known as the First, Second, Third, and Fourth Positions"
+    },
+    {
+      "id": "None|entry|third-position-data|no reference entry quotes this text",
+      "field": "entry",
+      "entries": [],
+      "verdict": "R",
+      "reason": "The diagram is the position of a study the article introduces as one of four 'often recurring situations' for the student to know, and no rule of play refers to it; the reference declines it with the study and its inventory, and is right not to map it as in-scope data.",
+      "locator": "DRAUGHTS / THE ELEMENTARY POSITIONS / p. 438",
+      "quote": "known as the First, Second, Third, and Fourth Positions"
+    },
+    {
+      "id": "angle-crossed-commits-direction|dependsOn|direction-commitment|reference has edge to king-movement; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "angle-crossed-commits-direction"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the comparator pairs the reference's king-movement with the blind's king-directions and the blind's king-movement with crowned-by-opponent, so an edge to the King rule appears missing on one side and unmatched on the other. Both maps make this entry depend on the rule for how a King moves."
+    },
+    {
+      "id": "angle-crossed-commits-direction|dependsOn|direction-commitment|blind has edge to king-movement; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "angle-crossed-commits-direction"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the comparator pairs the reference's king-movement with the blind's king-directions and the blind's king-movement with crowned-by-opponent, so an edge to the King rule appears missing on one side and unmatched on the other. Both maps make this entry depend on the rule for how a King moves."
+    },
+    {
+      "id": "angle-crossed-commits-direction|dependsOn|direction-commitment|blind has edge to single-capture; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "angle-crossed-commits-direction"
+      ],
+      "verdict": "B",
+      "reason": "The angle law governs 'the play' of 'a playable piece', and p. 429 counts 'A capturing play, as well as an ordinary one' as a play, while pieces 'take in the direction they move'; a play committed to a direction may be a take. Add dependsOn capture-by-leap to angle-crossed-commits-direction.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "A capturing play, as well as an ordinary one"
+    },
+    {
+      "id": "arranging-without-intimation|dependsOn|unannounced-arrangement-forfeit|reference has edge to capture-by-leap; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "arranging-without-intimation"
+      ],
+      "verdict": "N",
+      "reason": "The blind moves the exception 'he may avoid the penalty by playing that piece, if possible' into its own entry, arrangement-play-exception, which depends on single-capture; the same dependency is reached through that split.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "he may avoid the penalty by playing that piece, if possible"
+    },
+    {
+      "id": "arranging-without-intimation|dependsOn|unannounced-arrangement-forfeit|reference has edge to king-movement; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "arranging-without-intimation"
+      ],
+      "verdict": "N",
+      "reason": "The blind's arrangement-play-exception, split from this law, depends on its king-movement; the same dependency reached through the split entry, under the comparator's mispaired King ids."
+    },
+    {
+      "id": "arranging-without-intimation|dependsOn|unannounced-arrangement-forfeit|reference has edge to man-moves-forward; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "arranging-without-intimation"
+      ],
+      "verdict": "N",
+      "reason": "The blind's arrangement-play-exception, split from this law, depends on man-movement; the same dependency reached through the split entry."
+    },
+    {
+      "id": "arranging-without-intimation|dependsOn|unannounced-arrangement-forfeit|reference has edge to moves-alternate; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "arranging-without-intimation"
+      ],
+      "verdict": "R",
+      "reason": "The exception applies only 'if it is his turn to play', which needs the turn order moves-alternate states; neither the blind's law nor its split exception reaches any turn rule.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "if it is his turn to play"
+    },
+    {
+      "id": "arranging-without-intimation|enabledBy|unannounced-arrangement-forfeit|reference has edge to black-moves-first; no blind edge reaches it",
+      "field": "enabledBy",
+      "entries": [
+        "arranging-without-intimation"
+      ],
+      "verdict": "R",
+      "reason": "'After the first move has been made' makes the law reachable only once the first move, which black-moves-first governs, has been made: a runtime gate. The blind records that boundary only in its note.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "After the first move has been made"
+    },
+    {
+      "id": "becomes-king|dependsOn|king-movement|reference has edge to man-moves-forward; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "becomes-king"
+      ],
+      "verdict": "N",
+      "reason": "The comparator pairs becomes-king with the blind's king-movement because both quote the p. 429 passage; the blind's counterpart, promotion, tests arrival on the far line. Whether that test is built after man-moves-forward is an ordering choice: 'When a man first reaches' can be tested on a position."
+    },
+    {
+      "id": "becomes-king|dependsOn|king-movement|blind has edge to promotion; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "becomes-king"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the blind's king-movement depends on promotion exactly as the reference's king-movement depends on becomes-king."
+    },
+    {
+      "id": "becomes-king|dependsOn|king-movement|blind has edge to board-grid; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "becomes-king"
+      ],
+      "verdict": "N",
+      "reason": "The blind names the board geometry (board-grid) directly; the reference reaches square-numbering through man-moves-forward. The same dependency by another path."
+    },
+    {
+      "id": "becomes-king|dependsOn|king-movement|blind has edge to king-directions; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "becomes-king"
+      ],
+      "verdict": "N",
+      "reason": "The blind split the King's directions into a value entry, king-directions, on which its King rule depends; the reference keeps them in king-movement. A split."
+    },
+    {
+      "id": "becomes-king|enabledBy|king-movement|blind has edge to promotion; reference has no edge to what it links to",
+      "field": "enabledBy",
+      "entries": [
+        "becomes-king"
+      ],
+      "verdict": "N",
+      "reason": "The blind's king-movement is enabledBy promotion exactly as the reference's king-movement is enabledBy becomes-king; only the pairing differs."
+    },
+    {
+      "id": "black-moves-first|kind|black-first-move|differs",
+      "field": "kind",
+      "entries": [
+        "black-moves-first"
+      ],
+      "verdict": "N",
+      "reason": "'The first move must invariably be made by the person having the black men' states one fact about turn order; filing it as a value or an operation says the same thing and changes no answer. A schema choice.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "The first move must _invariably_ be made"
+    },
+    {
+      "id": "board-placement|kind|board-orientation|differs",
+      "field": "kind",
+      "entries": [
+        "board-placement"
+      ],
+      "verdict": "N",
+      "reason": "'The board shall be so placed that the bottom corner square on the left hand shall be black' is one fact of setup either way; value or operation is a schema choice.",
+      "locator": "DRAUGHTS / p. 427",
+      "quote": "The board shall be so placed"
+    },
+    {
+      "id": "board-set-for-play|dependsOn|setup-diagram|reference has edge to board-squares; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "board-set-for-play"
+      ],
+      "verdict": "N",
+      "reason": "The blind's board-colours, reached through board-orientation, is the 'alternate colours' half of the reference's board-squares; the same dependency under a split."
+    },
+    {
+      "id": "board-set-for-play|dependsOn|setup-diagram|blind has edge to board-orientation; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "board-set-for-play"
+      ],
+      "verdict": "N",
+      "reason": "The reference reaches board-placement through men-on-black-squares, which board-set-for-play names; the same dependency by another path."
+    },
+    {
+      "id": "board-set-for-play|evidence|setup-diagram|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "board-set-for-play"
+      ],
+      "verdict": "N",
+      "reason": "The reference quotes the caption sentence 'The above diagram (Fig. 1) shows the board set for play' with the figure; the blind gives that sentence its own entry, diagram-purposes. A span choice."
+    },
+    {
+      "id": "capture-by-leap|clarity|single-capture|differs",
+      "field": "clarity",
+      "entries": [
+        "capture-by-leap"
+      ],
+      "verdict": "R",
+      "reason": "The take is a leap over a man 'immediately contiguous, provided there be a vacant square behind it', and a capture places the piece 'on the square beyond the last man': one square beyond, as the p. 432 leap from 15 to 22 over 18 shows. The landing is settled, so the reference's clear stands.",
+      "locator": "DRAUGHTS / p. 432",
+      "quote": "the capturing piece is then placed on the square beyond the last man"
+    },
+    {
+      "id": "capture-by-leap|ambiguity|single-capture|present in one map only",
+      "field": "ambiguity",
+      "entries": [
+        "capture-by-leap"
+      ],
+      "verdict": "R",
+      "reason": "The landing is fixed by 'a vacant square behind it' and 'placed on the square beyond the last man', the next square, for every piece; the blind's ambiguity about a farther landing is answered in the slice.",
+      "locator": "DRAUGHTS / p. 432",
+      "quote": "placed on the square beyond the last man"
+    },
+    {
+      "id": "capture-by-leap|dependsOn|single-capture|reference has edge to king-movement; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "capture-by-leap"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the comparator pairs the reference's king-movement with the blind's king-directions and the blind's king-movement with crowned-by-opponent, so an edge to the King rule appears missing on one side and unmatched on the other. Both maps make this entry depend on the rule for how a King moves."
+    },
+    {
+      "id": "capture-by-leap|dependsOn|single-capture|blind has edge to king-movement; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "capture-by-leap"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the comparator pairs the reference's king-movement with the blind's king-directions and the blind's king-movement with crowned-by-opponent, so an edge to the King rule appears missing on one side and unmatched on the other. Both maps make this entry depend on the rule for how a King moves."
+    },
+    {
+      "id": "capture-by-leap|dependsOn|single-capture|blind has edge to board-grid; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "capture-by-leap"
+      ],
+      "verdict": "N",
+      "reason": "The blind names board-grid directly; the reference reaches square-numbering through man-moves-forward. The same dependency by another path."
+    },
+    {
+      "id": "captured-piece-removed|dependsOn|capture-removal|reference has edge to capture-by-leap; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "captured-piece-removed"
+      ],
+      "verdict": "R",
+      "reason": "Removal is the last step of a take: Black 'can take the white man on 18 by leaping from 15 to 22, and removing the captured piece'. The entry needs capture-by-leap; the blind's capture-removal names no capture rule.",
+      "locator": "DRAUGHTS / p. 432",
+      "quote": "removing the captured piece from the board"
+    },
+    {
+      "id": "captured-piece-removed|evidence|capture-removal|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "captured-piece-removed"
+      ],
+      "verdict": "N",
+      "reason": "A choice of span: both entries map the same passage for the same rule, and one quotes more of the surrounding text than the other."
+    },
+    {
+      "id": "colour-choice|enabledBy|lot-winner-colour-choice|blind has edge to initial-colour-lots; reference has no edge to what it links to",
+      "field": "enabledBy",
+      "entries": [
+        "colour-choice"
+      ],
+      "verdict": "B",
+      "reason": "There is a winner to choose only once the lots have been cast, so the choice is reachable at runtime only after lots-for-colour. Add enabledBy lots-for-colour to colour-choice.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "the winner to have the choice of taking"
+    },
+    {
+      "id": "compel-the-take|dependsOn|compelled-take|reference has edge to huff-choice; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "compel-the-take"
+      ],
+      "verdict": "N",
+      "reason": "Compelling the take is one of the three options huff-choice names; the reference orders it after the election with dependsOn, the blind gates it by the election. An ordering choice; the gate itself is the enabledBy row."
+    },
+    {
+      "id": "compel-the-take|dependsOn|compelled-take|blind has edge to single-capture; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "compel-the-take"
+      ],
+      "verdict": "N",
+      "reason": "The reference reaches capture-by-leap through huff-choice and huff-defined; the same dependency by another path."
+    },
+    {
+      "id": "compel-the-take|dependsOn|compelled-take|blind has edge to multiple-capture; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "compel-the-take"
+      ],
+      "verdict": "N",
+      "reason": "The reference reaches multiple-capture through huff-choice and huff-defined; the same dependency by another path."
+    },
+    {
+      "id": "compel-the-take|dependsOn|compelled-take|blind has edge to huff-short-adopted-capture; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "compel-the-take"
+      ],
+      "verdict": "N",
+      "reason": "The reference reaches huff-footnote, which holds both of footnote 108's qualifications, through huff-choice and huff-defined; the blind splits the footnote in two. The same dependency by another path."
+    },
+    {
+      "id": "compel-the-take|dependsOn|compelled-take|blind has edge to huff-route-choice; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "compel-the-take"
+      ],
+      "verdict": "N",
+      "reason": "The reference's huff-footnote holds the footnote's second qualification too, and compel-the-take reaches it through huff-choice and huff-defined. A split of the footnote, not a different dependency."
+    },
+    {
+      "id": "compel-the-take|enabledBy|compelled-take|blind has edge to huff-election; reference has no edge to what it links to",
+      "field": "enabledBy",
+      "entries": [
+        "compel-the-take"
+      ],
+      "verdict": "B",
+      "reason": "'The player has the power either to huff, compel the take, or to let the piece remain on the board, as he thinks proper': compelling happens only when the player elects it. Add enabledBy huff-choice to compel-the-take.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "as he thinks proper"
+    },
+    {
+      "id": "crowned-by-opponent|scope|king-movement|differs",
+      "field": "scope",
+      "entries": [
+        "crowned-by-opponent"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the comparator pairs crowned-by-opponent with the blind's king-movement, which quotes the whole p. 429 passage to map how a King moves, an in-scope rule in both maps. The scope of the crowning itself is the row pairing crowned-by-opponent with the blind's crowning."
+    },
+    {
+      "id": "crowned-by-opponent|clarity|king-movement|differs",
+      "field": "clarity",
+      "entries": [
+        "crowned-by-opponent"
+      ],
+      "verdict": "U",
+      "reason": "A King 'can afterwards be moved backwards or forwards as the limits of the board permit' (p. 429), and p. 431's 'unless they have attained' lifts the man's 'only forward ... one square at a time' without saying whether the one-square limit goes with the forward one; 'immediately contiguous' governs takes only, and the single-step King moves of the solutions on pp. 437-446 show what was played, not what is barred. The corpus does not settle whether a King's ordinary move may cross more than one square: the reference entry king-movement (not crowned-by-opponent, which the comparator mispaired) is made ambiguous with that question.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "as the limits of the board permit"
+    },
+    {
+      "id": "crowned-by-opponent|ambiguity|king-movement|present in one map only",
+      "field": "ambiguity",
+      "entries": [
+        "crowned-by-opponent"
+      ],
+      "verdict": "U",
+      "reason": "A King 'can afterwards be moved backwards or forwards as the limits of the board permit' (p. 429), and p. 431's 'unless they have attained' lifts the man's 'only forward ... one square at a time' without saying whether the one-square limit goes with the forward one; 'immediately contiguous' governs takes only, and the single-step King moves of the solutions on pp. 437-446 show what was played, not what is barred. The corpus does not settle whether a King's ordinary move may cross more than one square: the reference entry king-movement (not crowned-by-opponent, which the comparator mispaired) is made ambiguous with that question.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "as the limits of the board permit"
+    },
+    {
+      "id": "crowned-by-opponent|dependsOn|king-movement|blind has edge to promotion; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "crowned-by-opponent"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the blind's king-movement depends on promotion as the reference's king-movement depends on becomes-king."
+    },
+    {
+      "id": "crowned-by-opponent|dependsOn|king-movement|blind has edge to board-grid; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "crowned-by-opponent"
+      ],
+      "verdict": "N",
+      "reason": "The blind names board-grid directly; the reference reaches square-numbering through man-moves-forward. The same dependency by another path, under a mispairing."
+    },
+    {
+      "id": "crowned-by-opponent|dependsOn|king-movement|blind has edge to king-directions; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "crowned-by-opponent"
+      ],
+      "verdict": "N",
+      "reason": "The blind's King rule depends on its split value king-directions; under the mispairing this reads as an edge the reference lacks. A split."
+    },
+    {
+      "id": "crowned-by-opponent|enabledBy|king-movement|blind has edge to promotion; reference has no edge to what it links to",
+      "field": "enabledBy",
+      "entries": [
+        "crowned-by-opponent"
+      ],
+      "verdict": "N",
+      "reason": "The blind's king-movement is enabledBy promotion, as the reference's king-movement is enabledBy becomes-king; only the pairing differs."
+    },
+    {
+      "id": "draw-by-agreement|scope|stronger-side-assessment|differs",
+      "field": "scope",
+      "entries": [
+        "draw-by-agreement"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: draw-by-agreement is the reference's absence entry, quoting the forty-move passage as the place a draw-by-agreement rule would be, and the blind's stronger-side-assessment maps the 'appears stronger' condition from the same words. They are about different rules; the 'appears stronger' question is carried in the reference by forty-move-limit's ambiguity."
+    },
+    {
+      "id": "draw-by-agreement|clarity|stronger-side-assessment|differs",
+      "field": "clarity",
+      "entries": [
+        "draw-by-agreement"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: draw-by-agreement is the reference's absence entry, quoting the forty-move passage as the place a draw-by-agreement rule would be, and the blind's stronger-side-assessment maps the 'appears stronger' condition from the same words. They are about different rules; the 'appears stronger' question is carried in the reference by forty-move-limit's ambiguity."
+    },
+    {
+      "id": "draw-by-agreement|ambiguity|stronger-side-assessment|present in one map only",
+      "field": "ambiguity",
+      "entries": [
+        "draw-by-agreement"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: draw-by-agreement is the reference's absence entry, quoting the forty-move passage as the place a draw-by-agreement rule would be, and the blind's stronger-side-assessment maps the 'appears stronger' condition from the same words. They are about different rules; the 'appears stronger' question is carried in the reference by forty-move-limit's ambiguity."
+    },
+    {
+      "id": "draw-by-agreement|absentFrom|stronger-side-assessment|present in one map only",
+      "field": "absentFrom",
+      "entries": [
+        "draw-by-agreement"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: draw-by-agreement is the reference's absence entry, quoting the forty-move passage as the place a draw-by-agreement rule would be, and the blind's stronger-side-assessment maps the 'appears stronger' condition from the same words. They are about different rules; the 'appears stronger' question is carried in the reference by forty-move-limit's ambiguity."
+    },
+    {
+      "id": "draw-by-agreement|evidence|stronger-side-assessment|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "draw-by-agreement"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: draw-by-agreement is the reference's absence entry, quoting the forty-move passage as the place a draw-by-agreement rule would be, and the blind's stronger-side-assessment maps the 'appears stronger' condition from the same words. They are about different rules; the 'appears stronger' question is carried in the reference by forty-move-limit's ambiguity."
+    },
+    {
+      "id": "draw-by-repetition|scope|stronger-side-assessment|differs",
+      "field": "scope",
+      "entries": [
+        "draw-by-repetition"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: draw-by-repetition is the reference's absence entry, quoting the forty-move passage as the place a repetition rule would be, and the blind's stronger-side-assessment maps the 'appears stronger' condition from the same words. They are about different rules; the 'appears stronger' question is carried in the reference by forty-move-limit's ambiguity."
+    },
+    {
+      "id": "draw-by-repetition|clarity|stronger-side-assessment|differs",
+      "field": "clarity",
+      "entries": [
+        "draw-by-repetition"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: draw-by-repetition is the reference's absence entry, quoting the forty-move passage as the place a repetition rule would be, and the blind's stronger-side-assessment maps the 'appears stronger' condition from the same words. They are about different rules; the 'appears stronger' question is carried in the reference by forty-move-limit's ambiguity."
+    },
+    {
+      "id": "draw-by-repetition|ambiguity|stronger-side-assessment|present in one map only",
+      "field": "ambiguity",
+      "entries": [
+        "draw-by-repetition"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: draw-by-repetition is the reference's absence entry, quoting the forty-move passage as the place a repetition rule would be, and the blind's stronger-side-assessment maps the 'appears stronger' condition from the same words. They are about different rules; the 'appears stronger' question is carried in the reference by forty-move-limit's ambiguity."
+    },
+    {
+      "id": "draw-by-repetition|absentFrom|stronger-side-assessment|present in one map only",
+      "field": "absentFrom",
+      "entries": [
+        "draw-by-repetition"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: draw-by-repetition is the reference's absence entry, quoting the forty-move passage as the place a repetition rule would be, and the blind's stronger-side-assessment maps the 'appears stronger' condition from the same words. They are about different rules; the 'appears stronger' question is carried in the reference by forty-move-limit's ambiguity."
+    },
+    {
+      "id": "draw-by-repetition|evidence|stronger-side-assessment|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "draw-by-repetition"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: draw-by-repetition is the reference's absence entry, quoting the forty-move passage as the place a repetition rule would be, and the blind's stronger-side-assessment maps the 'appears stronger' condition from the same words. They are about different rules; the 'appears stronger' question is carried in the reference by forty-move-limit's ambiguity."
+    },
+    {
+      "id": "draw-defined|kind|draw-definition|differs",
+      "field": "kind",
+      "entries": [
+        "draw-defined"
+      ],
+      "verdict": "N",
+      "reason": "'A Draw is when neither of the players can force a win' defines the result; whether it is filed as a value or an operation is a schema choice that changes no answer.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "A Draw is when neither of the players can force a win"
+    },
+    {
+      "id": "draw-defined|dependsOn|draw-definition|blind has edge to no-play-loss; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "draw-defined"
+      ],
+      "verdict": "B",
+      "reason": "A Draw is when 'neither of the players can force a win', and the only win the corpus states is p. 427's: 'the person whose side is brought to this state loses the game'. Resolving the definition needs that rule; add dependsOn loss-when-none-can-be-played to draw-defined.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "neither of the players can force a win"
+    },
+    {
+      "id": "elementary-positions|kind|elementary-position-names|differs",
+      "field": "kind",
+      "entries": [
+        "elementary-positions"
+      ],
+      "verdict": "N",
+      "reason": "The passage is out of scope (the scope row); whether a declined entry is a value or an operation is a schema question that changes no rule."
+    },
+    {
+      "id": "elementary-positions|scope|elementary-position-names|differs",
+      "field": "scope",
+      "entries": [
+        "elementary-positions"
+      ],
+      "verdict": "R",
+      "reason": "'There are four often recurring situations known as the First, Second, Third, and Fourth Positions' names study material, and the next sentence recommends that the student become 'well acquainted with them'; no rule of play uses the names, so the reference's decline as advice is right.",
+      "locator": "DRAUGHTS / THE ELEMENTARY POSITIONS / p. 438",
+      "quote": "known as the First, Second, Third, and Fourth Positions"
+    },
+    {
+      "id": "elementary-positions|evidence|elementary-position-names|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "elementary-positions"
+      ],
+      "verdict": "N",
+      "reason": "The reference quotes both sentences of the paragraph, the blind only the first; a choice of span."
+    },
+    {
+      "id": "false-move-forfeits|clarity|improper-move-forfeit|differs",
+      "field": "clarity",
+      "entries": [
+        "false-move-forfeits"
+      ],
+      "verdict": "R",
+      "reason": "The corpus itself separates a missed take from a false move: Black who does 'not take the man on 18, but make another move' is 'liable to be \"huffed\"' (p. 432), and footnote 108 makes a short take liable to the huff too. A false or improper move is a play the movement and capture rules do not permit, and the reference's clear reading stands.",
+      "locator": "DRAUGHTS / p. 432",
+      "quote": "but make another move--say 12 to 16, for instance--he is liable to be"
+    },
+    {
+      "id": "false-move-forfeits|ambiguity|improper-move-forfeit|present in one map only",
+      "field": "ambiguity",
+      "entries": [
+        "false-move-forfeits"
+      ],
+      "verdict": "R",
+      "reason": "The corpus itself separates a missed take from a false move: Black who does 'not take the man on 18, but make another move' is 'liable to be \"huffed\"' (p. 432), and footnote 108 makes a short take liable to the huff too. A false or improper move is a play the movement and capture rules do not permit, and the reference's clear reading stands.",
+      "locator": "DRAUGHTS / p. 432",
+      "quote": "but make another move--say 12 to 16, for instance--he is liable to be"
+    },
+    {
+      "id": "false-move-forfeits|dependsOn|improper-move-forfeit|reference has edge to king-movement; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "false-move-forfeits"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the comparator pairs the reference's king-movement with the blind's king-directions and the blind's king-movement with crowned-by-opponent, so an edge to the King rule appears missing on one side and unmatched on the other. Both maps make this entry depend on the rule for how a King moves."
+    },
+    {
+      "id": "false-move-forfeits|dependsOn|improper-move-forfeit|blind has edge to king-movement; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "false-move-forfeits"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the comparator pairs the reference's king-movement with the blind's king-directions and the blind's king-movement with crowned-by-opponent, so an edge to the King rule appears missing on one side and unmatched on the other. Both maps make this entry depend on the rule for how a King moves."
+    },
+    {
+      "id": "false-move-forfeits|dependsOn|improper-move-forfeit|blind has edge to huff-election; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "false-move-forfeits"
+      ],
+      "verdict": "R",
+      "reason": "A move that does not take is a permitted move, liable to the huff (p. 432), not a false one, so the forfeiture is resolvable from the movement and capture rules without the huff election.",
+      "locator": "DRAUGHTS / p. 432",
+      "quote": "he is liable to be"
+    },
+    {
+      "id": "first-position|evidence|first-position-worked|spans overlap but neither contains the other",
+      "field": "evidence",
+      "entries": [
+        "first-position"
+      ],
+      "verdict": "N",
+      "reason": "Both maps decline the First Position's solution; the reference quotes its caption and solution label, the blind the caption and every move. A choice of span."
+    },
+    {
+      "id": "forty-move-limit|dependsOn|forty-move-draw|reference has edge to draw-defined; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "forty-move-limit"
+      ],
+      "verdict": "R",
+      "reason": "The rule ends 'he must relinquish the game as a draw', the result defined in the sentence before; the reference's dependsOn draw-defined is real, and the blind's forty-move-draw names no draw entry.",
+      "locator": "DRAUGHTS / p. 430",
+      "quote": "he must relinquish the game as a draw"
+    },
+    {
+      "id": "forty-move-limit|dependsOn|forty-move-draw|reference has edge to huff-defined; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "forty-move-limit"
+      ],
+      "verdict": "R",
+      "reason": "The count is 'forty of his own moves', and 'The \"Huff\" does not constitute a move' (p. 429), so counting needs huff-defined, which holds that sentence in the reference; the blind's forty-move-draw does not reach its huff-not-move.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "The \"Huff\" does not constitute a move"
+    },
+    {
+      "id": "forty-move-limit|dependsOn|forty-move-draw|reference has edge to moves-alternate; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "forty-move-limit"
+      ],
+      "verdict": "R",
+      "reason": "Counting 'forty of his own moves' needs the turn structure moves-alternate states; the blind's forty-move-draw reaches no turn rule.",
+      "locator": "DRAUGHTS / p. 430",
+      "quote": "within forty of his own moves"
+    },
+    {
+      "id": "forty-move-limit|dependsOn|forty-move-draw|blind has edge to draw-notice-limit; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "forty-move-limit"
+      ],
+      "verdict": "N",
+      "reason": "The blind split the count of forty own moves into a value entry, draw-notice-limit; the reference keeps the count inside forty-move-limit. A split."
+    },
+    {
+      "id": "forty-move-limit|dependsOn|forty-move-draw|blind has edge to decided-advantage; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "forty-move-limit"
+      ],
+      "verdict": "N",
+      "reason": "The blind split 'a decided advantage' into its own entry; the reference keeps it inside forty-move-limit, whose ambiguity asks the same question. A split."
+    },
+    {
+      "id": "forty-move-limit|dependsOn|forty-move-draw|blind has edge to no-play-loss; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "forty-move-limit"
+      ],
+      "verdict": "B",
+      "reason": "The stronger party 'may be required to complete the win', and whether the win was completed is p. 427's loss rule, the only win the corpus states. Add dependsOn loss-when-none-can-be-played to forty-move-limit.",
+      "locator": "DRAUGHTS / p. 430",
+      "quote": "complete the win"
+    },
+    {
+      "id": "forty-move-limit|enabledBy|forty-move-draw|blind has edge to stronger-side-assessment; reference has no edge to what it links to",
+      "field": "enabledBy",
+      "entries": [
+        "forty-move-limit"
+      ],
+      "verdict": "N",
+      "reason": "The blind maps the 'appears stronger' condition as its own entry and gates the draw on it; the reference keeps that condition, and its question, inside forty-move-limit. A split."
+    },
+    {
+      "id": "forty-move-limit|evidence|forty-move-draw|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "forty-move-limit"
+      ],
+      "verdict": "N",
+      "reason": "The reference quotes the draw definition with the forty-move sentence, the blind the forty-move sentence alone; a choice of span."
+    },
+    {
+      "id": "fourth-position|evidence|fourth-position-worked|spans overlap but neither contains the other",
+      "field": "evidence",
+      "entries": [
+        "fourth-position"
+      ],
+      "verdict": "N",
+      "reason": "Both maps decline the Fourth Position's solution; the reference quotes its captions and labels, the blind every move. A choice of span."
+    },
+    {
+      "id": "general-advice|evidence|advice-2|blind span quotes text the reference span omits",
+      "field": "evidence",
+      "entries": [
+        "general-advice"
+      ],
+      "verdict": "N",
+      "reason": "The reference's general-advice quotes two sentences of the paragraph and declines the rest of GENERAL ADVICE through its inventory; the blind quotes the paragraph whole. A choice of span."
+    },
+    {
+      "id": "huff-choice|dependsOn|huff-election|reference has edge to huff-defined; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "huff-choice"
+      ],
+      "verdict": "R",
+      "reason": "The election arises only where there is an adverse piece 'that might or should have taken', which huff-defined states; huff-choice needs it to know when the choice is demanded.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "that might or should have taken"
+    },
+    {
+      "id": "huff-defined|ambiguity.fate|huff-removal|differs",
+      "field": "ambiguity.fate",
+      "entries": [
+        "huff-defined"
+      ],
+      "verdict": "R",
+      "reason": "The blind leaves open how many pieces one huff removes, but the corpus answers in the singular: the alternative to huffing is to let 'the piece remain on the board' (p. 429), and the huffer 'removes the man huffed' (p. 432). The reference's own question is answered by footnote 108, which the passage calls, and recording that answer as a decision is a representation choice.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "the piece remain on the board"
+    },
+    {
+      "id": "huff-defined|enabledBy|huff-removal|blind has edge to huff-election; reference has no edge to what it links to",
+      "field": "enabledBy",
+      "entries": [
+        "huff-defined"
+      ],
+      "verdict": "B",
+      "reason": "Huffing happens only when the player elects it: 'The player has the power either to huff, compel the take, or to let the piece remain on the board, as he thinks proper'. Add enabledBy huff-choice to huff-defined.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "as he thinks proper"
+    },
+    {
+      "id": "huff-defined|evidence|huff-removal|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "huff-defined"
+      ],
+      "verdict": "N",
+      "reason": "The blind gives 'The \"Huff\" does not constitute a move' its own entry, huff-not-move; the reference keeps both sentences in huff-defined. A split."
+    },
+    {
+      "id": "huff-then-play|dependsOn|huff-does-not-undo-other-move|reference has edge to huff-choice; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "huff-then-play"
+      ],
+      "verdict": "N",
+      "reason": "The reference orders huff-then-play after the election with dependsOn huff-choice; the blind reaches the election as a gate. The same relation, recorded differently; the gate is the enabledBy row."
+    },
+    {
+      "id": "huff-then-play|dependsOn|huff-does-not-undo-other-move|blind has edge to huff-removal; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "huff-then-play"
+      ],
+      "verdict": "N",
+      "reason": "The reference reaches huff-defined through huff-choice; the blind names its split huff-removal directly. The same dependency by another path."
+    },
+    {
+      "id": "huff-then-play|dependsOn|huff-does-not-undo-other-move|blind has edge to huff-not-move; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "huff-then-play"
+      ],
+      "verdict": "N",
+      "reason": "The blind's huff-not-move is the second sentence of the reference's huff-defined, reached through huff-choice. A split."
+    },
+    {
+      "id": "huff-then-play|enabledBy|huff-does-not-undo-other-move|blind has edge to huff-election; reference has no edge to what it links to",
+      "field": "enabledBy",
+      "entries": [
+        "huff-then-play"
+      ],
+      "verdict": "B",
+      "reason": "'When one party \"huffs\" the other in preference to compelling the take' applies only once the huff has been elected over the other options. Add enabledBy huff-choice to huff-then-play.",
+      "locator": "DRAUGHTS / p. 432",
+      "quote": "in preference to compelling the take"
+    },
+    {
+      "id": "king-movement|kind|king-directions|differs",
+      "field": "kind",
+      "entries": [
+        "king-movement"
+      ],
+      "verdict": "N",
+      "reason": "The blind records the King's two directions as a value, king-directions, beside an operation for the movement; the reference maps the movement as one operation. A split, not a different rule."
+    },
+    {
+      "id": "king-movement|dependsOn|king-directions|reference has edge to man-moves-forward; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "king-movement"
+      ],
+      "verdict": "R",
+      "reason": "'This done, they become Kings, and can move either forward or backward' states the King's movement as a change to the man's movement in the sentence before, so the entry needs man-moves-forward; the blind's king-directions records directions only.",
+      "locator": "DRAUGHTS / p. 431",
+      "quote": "This done, they become Kings"
+    },
+    {
+      "id": "king-movement|enabledBy|king-directions|reference has edge to becomes-king; no blind edge reaches it",
+      "field": "enabledBy",
+      "entries": [
+        "king-movement"
+      ],
+      "verdict": "N",
+      "reason": "The blind's own king-movement is enabledBy promotion, which is the reference's gate; king-directions is a split value carrying no gate."
+    },
+    {
+      "id": "loss-when-none-can-be-played|clarity|no-play-loss|differs",
+      "field": "clarity",
+      "entries": [
+        "loss-when-none-can-be-played"
+      ],
+      "verdict": "R",
+      "reason": "'the person whose side is brought to this state loses the game' does not say whether the state is judged when that side is to play or the moment it arises, and nothing in the slice decides the case where a side's own move leaves all its pieces fixed. The reference's ambiguity is right; the blind's clear passes over it.",
+      "locator": "DRAUGHTS / p. 427",
+      "quote": "the person whose side is brought to this state loses"
+    },
+    {
+      "id": "loss-when-none-can-be-played|ambiguity|no-play-loss|present in one map only",
+      "field": "ambiguity",
+      "entries": [
+        "loss-when-none-can-be-played"
+      ],
+      "verdict": "R",
+      "reason": "'the person whose side is brought to this state loses the game' does not say whether the state is judged when that side is to play or the moment it arises, and nothing in the slice decides the case where a side's own move leaves all its pieces fixed. The reference's ambiguity is right; the blind's clear passes over it.",
+      "locator": "DRAUGHTS / p. 427",
+      "quote": "the person whose side is brought to this state loses"
+    },
+    {
+      "id": "loss-when-none-can-be-played|dependsOn|no-play-loss|reference has edge to king-movement; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "loss-when-none-can-be-played"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the comparator pairs the reference's king-movement with the blind's king-directions and the blind's king-movement with crowned-by-opponent, so an edge to the King rule appears missing on one side and unmatched on the other. Both maps make this entry depend on the rule for how a King moves."
+    },
+    {
+      "id": "loss-when-none-can-be-played|dependsOn|no-play-loss|blind has edge to king-movement; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "loss-when-none-can-be-played"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the comparator pairs the reference's king-movement with the blind's king-directions and the blind's king-movement with crowned-by-opponent, so an edge to the King rule appears missing on one side and unmatched on the other. Both maps make this entry depend on the rule for how a King moves."
+    },
+    {
+      "id": "loss-when-none-can-be-played|dependsOn|no-play-loss|blind has edge to multiple-capture; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "loss-when-none-can-be-played"
+      ],
+      "verdict": "R",
+      "reason": "A piece that could take several men can take the first, so whether 'none can be played' turns on single moves and capture-by-leap, which the reference names; multiple-capture adds nothing the loss rule tests.",
+      "locator": "DRAUGHTS / p. 427",
+      "quote": "none can be played"
+    },
+    {
+      "id": "lots-for-colour|clarity|initial-colour-lots|differs",
+      "field": "clarity",
+      "entries": [
+        "lots-for-colour"
+      ],
+      "verdict": "R",
+      "reason": "'Lots shall be cast for the colour at the commencement of a match, the winner to have the choice' requires one chance draw between the two persons that yields a winner; the apparatus changes no outcome the rules turn on. The reference's one draw at the commencement of a match is determinate.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "Lots shall be cast for the colour at the commencement of a match"
+    },
+    {
+      "id": "lots-for-colour|ambiguity|initial-colour-lots|present in one map only",
+      "field": "ambiguity",
+      "entries": [
+        "lots-for-colour"
+      ],
+      "verdict": "R",
+      "reason": "'Lots shall be cast for the colour at the commencement of a match, the winner to have the choice' requires one chance draw between the two persons that yields a winner; the apparatus changes no outcome the rules turn on. The reference's one draw at the commencement of a match is determinate.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "Lots shall be cast for the colour at the commencement of a match"
+    },
+    {
+      "id": "lots-for-colour|dependsOn|initial-colour-lots|reference has edge to side-names; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "lots-for-colour"
+      ],
+      "verdict": "R",
+      "reason": "The lots are cast 'for the colour', black or white, which side-names states; the cast needs those colours to mean anything.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "Lots shall be cast for the colour"
+    },
+    {
+      "id": "man-moves-forward|clarity|man-movement|differs",
+      "field": "clarity",
+      "entries": [
+        "man-moves-forward"
+      ],
+      "verdict": "R",
+      "reason": "Vacancy of the ordinary destination is settled on p. 427: the object of play is to 'confine the pieces of the other in situations where they cannot be played', 'to capture and fix', a state no man could be brought to if it could move onto an occupied square. The reference's 'onto a vacant square' is right.",
+      "locator": "DRAUGHTS / p. 427",
+      "quote": "confine the pieces of the other in situations where they cannot be played"
+    },
+    {
+      "id": "man-moves-forward|ambiguity|man-movement|present in one map only",
+      "field": "ambiguity",
+      "entries": [
+        "man-moves-forward"
+      ],
+      "verdict": "R",
+      "reason": "Vacancy of the ordinary destination is settled on p. 427: the object of play is to 'confine the pieces of the other in situations where they cannot be played', 'to capture and fix', a state no man could be brought to if it could move onto an occupied square. The reference's 'onto a vacant square' is right.",
+      "locator": "DRAUGHTS / p. 427",
+      "quote": "confine the pieces of the other in situations where they cannot be played"
+    },
+    {
+      "id": "man-moves-forward|dependsOn|man-movement|reference has edge to moves-alternate; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "man-moves-forward"
+      ],
+      "verdict": "N",
+      "reason": "The reference orders man movement after the turn structure; the blind orders the turn structure after man movement (alternate-turns dependsOn man-movement). An ordering choice."
+    },
+    {
+      "id": "man-moves-forward|suspendedBy|man-movement|blind has edge to promotion; reference has no edge to what it links to",
+      "field": "suspendedBy",
+      "entries": [
+        "man-moves-forward"
+      ],
+      "verdict": "B",
+      "reason": "'The men can only move forward ... unless they have attained one of the four squares on the extreme further side': the man's restriction stops applying once the man becomes a King, which is a suspending gate. Add suspendedBy becomes-king to man-moves-forward.",
+      "locator": "DRAUGHTS / p. 431",
+      "quote": "unless they have attained one of the four squares on the extreme"
+    },
+    {
+      "id": "men-on-black-squares|kind|black-square-placement|differs",
+      "field": "kind",
+      "entries": [
+        "men-on-black-squares"
+      ],
+      "verdict": "N",
+      "reason": "'The men shall be placed on the black squares' is one fact of setup; value or operation is a schema choice.",
+      "locator": "DRAUGHTS / p. 427",
+      "quote": "The men shall be placed on the black squares"
+    },
+    {
+      "id": "men-on-black-squares|dependsOn|black-square-placement|reference has edge to board-squares; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "men-on-black-squares"
+      ],
+      "verdict": "N",
+      "reason": "The blind reaches board-colours, the 'alternate colours' half of the reference's board-squares, through board-orientation; the same dependency under a split."
+    },
+    {
+      "id": "moves-alternate|dependsOn|alternate-turns|reference has edge to starting-position; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "moves-alternate"
+      ],
+      "verdict": "N",
+      "reason": "'The men being placed as shown in Fig. 1, the game is begun' orders play after setup; the reference records it as dependsOn starting-position, the blind as a gate. The same relation, recorded differently.",
+      "locator": "DRAUGHTS / p. 431",
+      "quote": "The men being placed as shown in Fig. 1"
+    },
+    {
+      "id": "moves-alternate|dependsOn|alternate-turns|blind has edge to man-movement; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "moves-alternate"
+      ],
+      "verdict": "N",
+      "reason": "The reference orders man movement after moves-alternate, the blind the reverse; an ordering choice."
+    },
+    {
+      "id": "moves-alternate|dependsOn|alternate-turns|blind has edge to king-movement; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "moves-alternate"
+      ],
+      "verdict": "N",
+      "reason": "Alignment artefact: the comparator pairs the reference's king-movement with the blind's king-directions and the blind's king-movement with crowned-by-opponent, so an edge to the King rule appears missing on one side and unmatched on the other. Both maps make this entry depend on the rule for how a King moves."
+    },
+    {
+      "id": "moves-alternate|enabledBy|alternate-turns|blind has edge to initial-numbered-placement; reference has no edge to what it links to",
+      "field": "enabledBy",
+      "entries": [
+        "moves-alternate"
+      ],
+      "verdict": "N",
+      "reason": "Setup holds from the first move to the last, so a gate on it distinguishes no runtime state; the reference records the same relation as dependsOn starting-position."
+    },
+    {
+      "id": "multiple-capture|clarity|multiple-capture|differs",
+      "field": "clarity",
+      "entries": [
+        "multiple-capture"
+      ],
+      "verdict": "U",
+      "reason": "'they may be all taken at one capture' does not say whether the capturing piece may pass through or return to a square it already stood on in the same capture, or whether a man already leaped leaves the board before the capture goes on, so that it can neither be leaped again nor block a later landing. Whether a capture may turn between takes is settled on p. 444, where White's 22.6 in Variation 2 of the Third Position takes the men on 17 and 9 by changing diagonal; the reference entry multiple-capture is made ambiguous with the remaining question.",
+      "locator": "DRAUGHTS / p. 432",
+      "quote": "they may be all taken at one capture"
+    },
+    {
+      "id": "multiple-capture|ambiguity|multiple-capture|present in one map only",
+      "field": "ambiguity",
+      "entries": [
+        "multiple-capture"
+      ],
+      "verdict": "U",
+      "reason": "'they may be all taken at one capture' does not say whether the capturing piece may pass through or return to a square it already stood on in the same capture, or whether a man already leaped leaves the board before the capture goes on, so that it can neither be leaped again nor block a later landing. Whether a capture may turn between takes is settled on p. 444, where White's 22.6 in Variation 2 of the Third Position takes the men on 17 and 9 by changing diagonal; the reference entry multiple-capture is made ambiguous with the remaining question.",
+      "locator": "DRAUGHTS / p. 432",
+      "quote": "they may be all taken at one capture"
+    },
+    {
+      "id": "multiple-capture|dependsOn|multiple-capture|blind has edge to capture-removal; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "multiple-capture"
+      ],
+      "verdict": "N",
+      "reason": "The reference orders captured-piece-removed after the capture rules, the blind the reverse; an ordering choice."
+    },
+    {
+      "id": "multiple-capture|dependsOn|multiple-capture|blind has edge to huff-short-adopted-capture; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "multiple-capture"
+      ],
+      "verdict": "R",
+      "reason": "Footnote 108 governs liability to the huff for a short take, not what a multiple capture is; 'may be all taken' is permissive, and the reference routes the footnote through huff-defined, where the liability lives.",
+      "locator": "NOTES / p. 475",
+      "quote": "A player may be huffed for not taking the full number of men"
+    },
+    {
+      "id": "multiple-capture|dependsOn|multiple-capture|blind has edge to huff-route-choice; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "multiple-capture"
+      ],
+      "verdict": "R",
+      "reason": "Footnote 108 governs liability to the huff for a short take, not what a multiple capture is; 'may be all taken' is permissive, and the reference routes the footnote through huff-defined, where the liability lives.",
+      "locator": "NOTES / p. 475",
+      "quote": "he is under no obligation to adopt that move"
+    },
+    {
+      "id": "not-taking-is-liable-to-huff|scope|capture-worked-example|differs",
+      "field": "scope",
+      "entries": [
+        "not-taking-is-liable-to-huff"
+      ],
+      "verdict": "N",
+      "reason": "The rule the reference maps here, that a player who could take and does not is liable to the huff, is in both maps: the blind carries it in huff-removal ('might or should have taken') and huff-election, and declines the sentence that illustrates it. A choice of span, not of rule.",
+      "locator": "DRAUGHTS / p. 432",
+      "quote": "he is liable to be"
+    },
+    {
+      "id": "not-taking-is-liable-to-huff|dependsOn|capture-worked-example|reference has edge to capture-by-leap; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "not-taking-is-liable-to-huff"
+      ],
+      "verdict": "N",
+      "reason": "The blind entry is the declined illustration; its in-scope counterparts, huff-removal and huff-election, carry the capture dependency."
+    },
+    {
+      "id": "not-taking-is-liable-to-huff|dependsOn|capture-worked-example|reference has edge to huff-defined; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "not-taking-is-liable-to-huff"
+      ],
+      "verdict": "N",
+      "reason": "The blind entry is the declined illustration; the in-scope huff rule it illustrates is huff-removal itself."
+    },
+    {
+      "id": "not-taking-is-liable-to-huff|evidence|capture-worked-example|blind span quotes text the reference span omits",
+      "field": "evidence",
+      "entries": [
+        "not-taking-is-liable-to-huff"
+      ],
+      "verdict": "N",
+      "reason": "The blind quotes the whole illustration, the reference the one sentence it maps; a choice of span."
+    },
+    {
+      "id": "opening-names|scope|opening-ayrshire-lassie|differs",
+      "field": "scope",
+      "entries": [
+        "opening-names"
+      ],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 433",
+      "quote": "THE NAMES OF THE VARIOUS OPENINGS AND HOW FORMED"
+    },
+    {
+      "id": "opening-names|dependsOn|opening-ayrshire-lassie|blind has edge to numbered-board; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "opening-names"
+      ],
+      "verdict": "N",
+      "reason": "The edge sits on an entry the reference declines; for a declined nomenclature entry the edge orders nothing."
+    },
+    {
+      "id": "opening-names|evidence|opening-ayrshire-lassie|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "opening-names"
+      ],
+      "verdict": "N",
+      "reason": "The reference quotes two openings as a sample of the list it declines, the blind one opening per entry; a choice of span."
+    },
+    {
+      "id": "own-piece-removed-when-taking|dependsOn|own-piece-removed|reference has edge to capture-by-leap; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "own-piece-removed-when-taking"
+      ],
+      "verdict": "R",
+      "reason": "'When taking, if a player remove one of his own pieces' applies only during a take, so the entry needs capture-by-leap; the blind's own-piece-removed names no capture rule.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "When taking, if a player remove one of his own pieces"
+    },
+    {
+      "id": "own-piece-removed-when-taking|dependsOn|own-piece-removed|blind has edge to own-piece-removal-election; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "own-piece-removed-when-taking"
+      ],
+      "verdict": "N",
+      "reason": "The reference orders the opponent's election after the removal rule, the blind the reverse; an ordering choice over one sentence."
+    },
+    {
+      "id": "own-piece-replacement-choice|dependsOn|own-piece-removal-election|reference has edge to own-piece-removed-when-taking; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "own-piece-replacement-choice"
+      ],
+      "verdict": "N",
+      "reason": "The reference orders the opponent's election after the removal rule, the blind the reverse; an ordering choice over one sentence."
+    },
+    {
+      "id": "play-completed-on-release|dependsOn|play-completion|reference has edge to multiple-capture; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "play-completed-on-release"
+      ],
+      "verdict": "R",
+      "reason": "'A capturing play ... is completed ... even though two or more pieces should have been taken' needs the multiple capture to say what a play of two or more takes is; the blind's play-completion depends on nothing.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "even though two or more pieces should have been taken"
+    },
+    {
+      "id": "player-count|dependsOn|sides-and-colours|blind has edge to pieces-per-side; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "player-count"
+      ],
+      "verdict": "N",
+      "reason": "The blind's pieces-per-side is the 'twelve on each side' half of the reference's men-count, on which side-names depends; the same dependency under a split."
+    },
+    {
+      "id": "player-count|evidence|sides-and-colours|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "player-count"
+      ],
+      "verdict": "N",
+      "reason": "The reference quotes the whole sentence for both player-count and side-names; the blind splits it at the semicolon. A choice of span."
+    },
+    {
+      "id": "second-position|evidence|second-position-worked|spans overlap but neither contains the other",
+      "field": "evidence",
+      "entries": [
+        "second-position"
+      ],
+      "verdict": "N",
+      "reason": "Both maps decline the Second Position's solution; the reference quotes its caption and label, the blind every move. A choice of span."
+    },
+    {
+      "id": "side-names|dependsOn|sides-and-colours|reference has edge to player-count; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "side-names"
+      ],
+      "verdict": "R",
+      "reason": "The sides are 'the one having the twelve black or red pieces' and 'the other', the two persons of the same sentence; the naming needs player-count, and the blind's split drops that link.",
+      "locator": "DRAUGHTS / p. 427",
+      "quote": "It is played by two persons"
+    },
+    {
+      "id": "side-names|evidence|sides-and-colours|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "side-names"
+      ],
+      "verdict": "N",
+      "reason": "The reference quotes the whole sentence, the blind the part after the semicolon; a choice of span."
+    },
+    {
+      "id": "square-numbering|dependsOn|numbered-board|reference has edge to board-squares; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "square-numbering"
+      ],
+      "verdict": "N",
+      "reason": "The blind's numbered-board depends on board-grid, the geometry; the reference's on board-squares. The same board under different splits."
+    },
+    {
+      "id": "square-numbering|dependsOn|numbered-board|reference has edge to men-on-black-squares; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "square-numbering"
+      ],
+      "verdict": "N",
+      "reason": "Fig. 2 numbers the squares the men stand on; whether the numbering is ordered after men-on-black-squares or after the bare grid is an ordering choice."
+    },
+    {
+      "id": "square-numbering|evidence|numbered-board|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "square-numbering"
+      ],
+      "verdict": "N",
+      "reason": "The reference quotes the sentence 'Fig. 2 shows the draught-board numbered' with the figure; the blind gives it to diagram-purposes. A choice of span."
+    },
+    {
+      "id": "starting-position|kind|initial-numbered-placement|differs",
+      "field": "kind",
+      "entries": [
+        "starting-position"
+      ],
+      "verdict": "N",
+      "reason": "'The black men shall be placed upon the supposed first twelve squares' is one fact of setup; value or operation is a schema choice.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "The black men shall be placed upon the supposed first twelve squares"
+    },
+    {
+      "id": "third-position|evidence|third-position-worked|spans overlap but neither contains the other",
+      "field": "evidence",
+      "entries": [
+        "third-position"
+      ],
+      "verdict": "N",
+      "reason": "Both maps decline the Third Position's solution; the reference quotes its caption and first moves, the blind every move. A choice of span."
+    },
+    {
+      "id": "three-kings-to-two|evidence|three-kings-example|blind span quotes text the reference span omits",
+      "field": "evidence",
+      "entries": [
+        "three-kings-to-two"
+      ],
+      "verdict": "N",
+      "reason": "Both maps decline Three Kings to Two; the blind quotes more of it. A choice of span."
+    },
+    {
+      "id": "time-limit|kind|time-grace-period|differs",
+      "field": "kind",
+      "entries": [
+        "time-limit"
+      ],
+      "verdict": "N",
+      "reason": "The blind splits the 'another minute' out of the time law as a value; the reference maps the law as one operation. A split."
+    },
+    {
+      "id": "time-limit|dependsOn|time-grace-period|reference has edge to moves-alternate; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "time-limit"
+      ],
+      "verdict": "N",
+      "reason": "The blind entry is the split duration value; its time-law operations are where a turn dependency would sit. An artefact of the split."
+    },
+    {
+      "id": "time-limit-one-way-of-taking|clarity|forced-take-time-forfeit|differs",
+      "field": "clarity",
+      "entries": [
+        "time-limit-one-way-of-taking"
+      ],
+      "verdict": "R",
+      "reason": "'When there is only one way of taking one or more pieces, \"Time\" shall be called at the end of one minute': the call is mandatory and fixed at one minute, so the further minute ends at the second minute of the move whoever calls, and the minute is time taken over 'the move'. The blind's doubts about the start and an omitted call are answered by 'shall be called', and the reference's clear stands.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "\"Time\" shall be called at the end of one minute"
+    },
+    {
+      "id": "time-limit-one-way-of-taking|ambiguity|forced-take-time-forfeit|present in one map only",
+      "field": "ambiguity",
+      "entries": [
+        "time-limit-one-way-of-taking"
+      ],
+      "verdict": "R",
+      "reason": "'When there is only one way of taking one or more pieces, \"Time\" shall be called at the end of one minute': the call is mandatory and fixed at one minute, so the further minute ends at the second minute of the move whoever calls, and the minute is time taken over 'the move'. The blind's doubts about the start and an omitted call are answered by 'shall be called', and the reference's clear stands.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "\"Time\" shall be called at the end of one minute"
+    },
+    {
+      "id": "time-limit-one-way-of-taking|dependsOn|forced-take-time-forfeit|blind has edge to play-completion; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "time-limit-one-way-of-taking"
+      ],
+      "verdict": "B",
+      "reason": "Both time laws turn on whether 'the move be not completed', and p. 429 fixes completion: 'completed the moment the hand is withdrawn from the piece played'. Add dependsOn play-completed-on-release to time-limit-one-way-of-taking, and to time-limit, whose sentence uses the same words.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "if the move be not completed on the expiry of another minute"
+    },
+    {
+      "id": "touched-piece-must-be-played|dependsOn|touch-move|reference has edge to arranging-without-intimation; no blind edge reaches it",
+      "field": "dependsOn",
+      "entries": [
+        "touched-piece-must-be-played"
+      ],
+      "verdict": "N",
+      "reason": "The blind gives the unplayable-piece sentence its own entry, which depends on the arrangement law; the reference keeps both sentences in touched-piece-must-be-played. A split."
+    },
+    {
+      "id": "touched-piece-must-be-played|dependsOn|touch-move|blind has edge to initial-numbered-placement; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "touched-piece-must-be-played"
+      ],
+      "verdict": "N",
+      "reason": "The reference reaches the setup through arranging-without-intimation and moves-alternate; the same dependency by another path."
+    },
+    {
+      "id": "touched-piece-must-be-played|dependsOn|touch-move|blind has edge to man-movement; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "touched-piece-must-be-played"
+      ],
+      "verdict": "N",
+      "reason": "The reference reaches man-moves-forward through arranging-without-intimation; the same dependency by another path."
+    },
+    {
+      "id": "touched-piece-must-be-played|dependsOn|touch-move|blind has edge to king-movement; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "touched-piece-must-be-played"
+      ],
+      "verdict": "N",
+      "reason": "The reference reaches king-movement through arranging-without-intimation; the same dependency by another path, under the comparator's mispaired King ids."
+    },
+    {
+      "id": "touched-piece-must-be-played|dependsOn|touch-move|blind has edge to single-capture; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "touched-piece-must-be-played"
+      ],
+      "verdict": "N",
+      "reason": "The reference reaches capture-by-leap through arranging-without-intimation; the same dependency by another path."
+    },
+    {
+      "id": "touched-piece-must-be-played|dependsOn|touch-move|blind has edge to multiple-capture; reference has no edge to what it links to",
+      "field": "dependsOn",
+      "entries": [
+        "touched-piece-must-be-played"
+      ],
+      "verdict": "N",
+      "reason": "Whether the touched piece can be played turns on single moves and takes, which the reference reaches through arranging-without-intimation; a multiple capture begins with one take."
+    },
+    {
+      "id": "touched-piece-must-be-played|evidence|touch-move|reference span quotes text the blind span omits",
+      "field": "evidence",
+      "entries": [
+        "touched-piece-must-be-played"
+      ],
+      "verdict": "N",
+      "reason": "The reference quotes both sentences of the law, the blind the first; a choice of span."
+    },
+    {
+      "id": "two-kings-to-one|evidence|two-kings-example|blind span quotes text the reference span omits",
+      "field": "evidence",
+      "entries": [
+        "two-kings-to-one"
+      ],
+      "verdict": "N",
+      "reason": "Both maps decline Two Kings to One; the blind quotes the figure and solution too. A choice of span."
+    },
+    {
+      "id": "white-squares-custom|kind|diagram-square-convention|differs",
+      "field": "kind",
+      "entries": [
+        "white-squares-custom"
+      ],
+      "verdict": "N",
+      "reason": "Both maps decline footnote 107; the kind of a declined entry is a schema question that changes no rule."
+    },
+    {
+      "id": "white-squares-custom|evidence|diagram-square-convention|blind span quotes text the reference span omits",
+      "field": "evidence",
+      "entries": [
+        "white-squares-custom"
+      ],
+      "verdict": "N",
+      "reason": "Both maps decline footnote 107; the blind quotes its last sentence on the treatises' white squares too. A choice of span."
+    },
+    {
+      "id": "crowned-by-opponent|scope|crowning|differs (blind entry links here but is not its partner)",
+      "field": "scope",
+      "entries": [
+        "crowned-by-opponent"
+      ],
+      "verdict": "B",
+      "reason": "'It must be crowned (by placing a man of the same colour on the top of it) by the opponent' is a 'must' laid on a named party, the same kind of handling law the reference keeps in scope (touch, arrangement, the hand withdrawn), and the reference's own becomes-king question turns on 'afterwards, once crowned by the opponent'. Change crowned-by-opponent to scope in, status mapped.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "It must be crowned (by placing a man of the same colour on the top of it) by the opponent"
+    },
+    {
+      "id": "forty-move-limit|clarity|draw-notice-limit|differs (blind entry links here but is not its partner)",
+      "field": "clarity",
+      "entries": [
+        "forty-move-limit"
+      ],
+      "verdict": "N",
+      "reason": "The blind's draw-notice-limit is only the count of forty own moves, a value split from the rule; the rule itself, the blind's forty-move-draw, is ambiguous as forty-move-limit is."
+    },
+    {
+      "id": "forty-move-limit|ambiguity|draw-notice-limit|present in one map only (blind entry links here but is not its partner)",
+      "field": "ambiguity",
+      "entries": [
+        "forty-move-limit"
+      ],
+      "verdict": "N",
+      "reason": "The blind's draw-notice-limit is only the count of forty own moves, a value split from the rule; the rule itself, the blind's forty-move-draw, is ambiguous as forty-move-limit is."
+    },
+    {
+      "id": "huff-defined|clarity|huff-not-move|differs (blind entry links here but is not its partner)",
+      "field": "clarity",
+      "entries": [
+        "huff-defined"
+      ],
+      "verdict": "N",
+      "reason": "The blind's huff-not-move maps only 'The \"Huff\" does not constitute a move', which is clear in both maps; the reference's ambiguity is about the rest of huff-defined, and the blind's counterpart huff-removal is ambiguous too."
+    },
+    {
+      "id": "huff-defined|ambiguity|huff-not-move|present in one map only (blind entry links here but is not its partner)",
+      "field": "ambiguity",
+      "entries": [
+        "huff-defined"
+      ],
+      "verdict": "N",
+      "reason": "The blind's huff-not-move maps only 'The \"Huff\" does not constitute a move', which is clear in both maps; the reference's ambiguity is about the rest of huff-defined, and the blind's counterpart huff-removal is ambiguous too."
+    },
+    {
+      "id": "opening-names|scope|opening-bristol|differs (blind entry links here but is not its partner)",
+      "field": "scope",
+      "entries": [
+        "opening-names"
+      ],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 434",
+      "quote": "The \"Bristol\" is formed by the first three moves"
+    },
+    {
+      "id": "opening-names|scope|opening-second-double-corner|differs (blind entry links here but is not its partner)",
+      "field": "scope",
+      "entries": [
+        "opening-names"
+      ],
+      "verdict": "R",
+      "reason": "This is one of the fifteen names listed under the heading on p. 433, each with the opening moves that form it and often where the name came from; no rule of play on pp. 427-432 turns on a name, and the reference declines all fifteen with opening-names and its inventory. Nomenclature no rule uses is not a rule, so the blind's in-scope value is not taken.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 435",
+      "quote": "The \"Second Double Corner\" is formed by the first two moves"
+    },
+    {
+      "id": "time-limit|clarity|ordinary-time-forfeit|differs (blind entry links here but is not its partner)",
+      "field": "clarity",
+      "entries": [
+        "time-limit"
+      ],
+      "verdict": "U",
+      "reason": "'At the end of five minutes \"Time\" may be called; and if the move be not completed on the expiry of another minute' measures the five minutes over the move, but because the call is permissive it does not say whether the further minute runs from the call or from the end of the five minutes, which differ whenever Time is called late. The reference entry time-limit is made ambiguous with that question; the one-minute law does not share it, its call being mandatory at the minute.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "At the end of five minutes \"Time\" may be called"
+    },
+    {
+      "id": "time-limit|ambiguity|ordinary-time-forfeit|present in one map only (blind entry links here but is not its partner)",
+      "field": "ambiguity",
+      "entries": [
+        "time-limit"
+      ],
+      "verdict": "U",
+      "reason": "'At the end of five minutes \"Time\" may be called; and if the move be not completed on the expiry of another minute' measures the five minutes over the move, but because the call is permissive it does not say whether the further minute runs from the call or from the end of the five minutes, which differ whenever Time is called late. The reference entry time-limit is made ambiguous with that question; the one-minute law does not share it, its call being mandatory at the minute.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "At the end of five minutes \"Time\" may be called"
+    },
+    {
+      "id": "becomes-king|clarity|promotion|differs (blind entry links here but is not its partner)",
+      "field": "clarity",
+      "entries": [
+        "becomes-king"
+      ],
+      "verdict": "N",
+      "reason": "The blind's promotion is the arrival rule, clear in both maps; the capture-continuation question the reference puts on becomes-king the blind carries on promotion-capture-continuation. A split."
+    },
+    {
+      "id": "becomes-king|ambiguity|promotion|present in one map only (blind entry links here but is not its partner)",
+      "field": "ambiguity",
+      "entries": [
+        "becomes-king"
+      ],
+      "verdict": "N",
+      "reason": "The blind's promotion is the arrival rule, clear in both maps; the capture-continuation question the reference puts on becomes-king the blind carries on promotion-capture-continuation. A split."
+    },
+    {
+      "id": "touched-piece-must-be-played|clarity|unplayable-touch-penalty|differs (blind entry links here but is not its partner)",
+      "field": "clarity",
+      "entries": [
+        "touched-piece-must-be-played"
+      ],
+      "verdict": "U",
+      "reason": "'When the piece is not playable, he is penalised according to the preceding law' does not say whether it imports only that law's forfeit or also its condition 'without giving intimation to his opponent', so whether touching an unplayable piece after intimation forfeits is open; the sentence would add nothing if it meant only the forfeit the sentence before already imposes. The reference entry touched-piece-must-be-played is made ambiguous with that question.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "he is penalised according to the preceding law"
+    },
+    {
+      "id": "touched-piece-must-be-played|ambiguity|unplayable-touch-penalty|present in one map only (blind entry links here but is not its partner)",
+      "field": "ambiguity",
+      "entries": [
+        "touched-piece-must-be-played"
+      ],
+      "verdict": "U",
+      "reason": "'When the piece is not playable, he is penalised according to the preceding law' does not say whether it imports only that law's forfeit or also its condition 'without giving intimation to his opponent', so whether touching an unplayable piece after intimation forfeits is open; the sentence would add nothing if it meant only the forfeit the sentence before already imposes. The reference entry touched-piece-must-be-played is made ambiguous with that question.",
+      "locator": "DRAUGHTS / p. 428",
+      "quote": "he is penalised according to the preceding law"
+    },
+    {
+      "id": "board-squares,men-count,player-count,side-names,loss-when-none-can-be-played,board-placement,men-on-black-squares,starting-position,colours-alternate,lots-for-colour,colour-choice,black-moves-first,time-limit,time-limit-one-way-of-taking,arranging-without-intimation,touched-piece-must-be-played,angle-crossed-commits-direction,play-completed-on-release,own-piece-removed-when-taking,own-piece-replacement-choice,false-move-forfeits,huff-defined,huff-choice,compel-the-take,becomes-king,crowned-by-opponent,draw-defined,forty-move-limit,draw-by-agreement,draw-by-repetition,board-set-for-play,square-numbering,numbering-from-black-side,moves-alternate,man-moves-forward,king-movement,capture-by-leap,multiple-capture,captured-piece-removed,not-taking-is-liable-to-huff,huff-then-play,general-advice,opening-names,two-kings-to-one,three-kings-to-two,elementary-positions,first-position,second-position,third-position,fourth-position,white-squares-custom,huff-footnote|crossReferences|third-position-worked|'a': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "board-squares,men-count,player-count,side-names,loss-when-none-can-be-played,board-placement,men-on-black-squares,starting-position,colours-alternate,lots-for-colour,colour-choice,black-moves-first,time-limit,time-limit-one-way-of-taking,arranging-without-intimation,touched-piece-must-be-played,angle-crossed-commits-direction,play-completed-on-release,own-piece-removed-when-taking,own-piece-replacement-choice,false-move-forfeits,huff-defined,huff-choice,compel-the-take,becomes-king,crowned-by-opponent,draw-defined,forty-move-limit,draw-by-agreement,draw-by-repetition,board-set-for-play,square-numbering,numbering-from-black-side,moves-alternate,man-moves-forward,king-movement,capture-by-leap,multiple-capture,captured-piece-removed,not-taking-is-liable-to-huff,huff-then-play,general-advice,opening-names,two-kings-to-one,three-kings-to-two,elementary-positions,first-position,second-position,third-position,fourth-position,white-squares-custom,huff-footnote"
+      ],
+      "verdict": "N",
+      "reason": "A solution-branch label inside a worked end-game solution that both maps decline; it points within the declined example, at no rule."
+    },
+    {
+      "id": "touched-piece-must-be-played|crossReferences|unplayable-touch-penalty|'according to the preceding law': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "touched-piece-must-be-played"
+      ],
+      "verdict": "N",
+      "reason": "Both maps declare the same pointer to the same law: the reference's 'the preceding law' resolves to arranging-without-intimation, the blind's 'according to the preceding law' to its counterpart unannounced-arrangement-forfeit. The comparator keys the two spans differently."
+    },
+    {
+      "id": "None|crossReferences|further-reading|'american draughtplayer': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "'American Draughtplayer' is a title in the closing further-reading paragraph, which no reference entry quotes; the reference's inventory records that paragraph (p. 446 block 4) as pointing to other books, so it has no evidence in which to declare the words. A span choice."
+    },
+    {
+      "id": "None|crossReferences|capture-worked-example|'as for a game': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "'placing the men as for a game' is in the illustration's opening sentence, which no reference entry quotes (captured-piece-removed begins at 'supposing him'); a span choice, and the words would resolve to starting-position if quoted.",
+      "locator": "DRAUGHTS / p. 432",
+      "quote": "let us begin by placing the men as for a game"
+    },
+    {
+      "id": "three-kings-to-two|crossReferences|three-kings-example|'as we have seen': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "three-kings-to-two"
+      ],
+      "verdict": "B",
+      "reason": "The reference's three-kings-to-two quotes 'when the game, as we have seen, is a foregone conclusion', which points back at the Two Kings to One study on pp. 436-437. Add crossReferences {cites: \"as we have seen\", resolvedBy: \"two-kings-to-one\"} to three-kings-to-two.",
+      "locator": "DRAUGHTS / END GAMES / p. 437",
+      "quote": "as we have seen, is a foregone conclusion"
+    },
+    {
+      "id": "player-count,side-names,board-placement,men-on-black-squares,starting-position,colours-alternate,lots-for-colour,colour-choice,black-moves-first,board-set-for-play,square-numbering,numbering-from-black-side,captured-piece-removed,not-taking-is-liable-to-huff,three-kings-to-two,first-position,second-position,third-position,fourth-position,white-squares-custom|crossReferences|board-orientation|'black': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "player-count,side-names,board-placement,men-on-black-squares,starting-position,colours-alternate,lots-for-colour,colour-choice,black-moves-first,board-set-for-play,square-numbering,numbering-from-black-side,captured-piece-removed,not-taking-is-liable-to-huff,three-kings-to-two,first-position,second-position,third-position,fourth-position,white-squares-custom"
+      ],
+      "verdict": "R",
+      "reason": "'shall be black' names the colour of a square and points at no passage; footnote 107 is called by the next sentence, where both maps declare it.",
+      "locator": "DRAUGHTS / p. 427",
+      "quote": "the bottom corner square on the left hand shall be black"
+    },
+    {
+      "id": "huff-then-play|crossReferences|huff-does-not-undo-other-move|'compelling the take': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "huff-then-play"
+      ],
+      "verdict": "N",
+      "reason": "'compelling the take' uses the term the slice itself defines on p. 429, and the reference records that dependency through dependsOn on huff-defined or huff-choice. A term used inside the slice that defines it is not a pointer phrase; the blind declares it because its map carries a defined vocabulary."
+    },
+    {
+      "id": "None|crossReferences|first-position-worked|'continue as 1 5 1 5 trunk at 21 17 14 17 s': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "A solution-branch label inside a worked end-game solution that both maps decline; it points within the declined example, at no rule."
+    },
+    {
+      "id": "man-moves-forward|crossReferences|man-movement|'crown head': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "man-moves-forward"
+      ],
+      "verdict": "R",
+      "reason": "'(technically termed the \"crown-head\")' defines the term in the sentence that uses it; it points nowhere else, and the blind's target quotes the same sentence.",
+      "locator": "DRAUGHTS / p. 431",
+      "quote": "technically termed the \"crown-head\""
+    },
+    {
+      "id": "forty-move-limit,draw-by-agreement,draw-by-repetition|crossReferences|forty-move-draw|'decided advantage': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "forty-move-limit,draw-by-agreement,draw-by-repetition"
+      ],
+      "verdict": "N",
+      "reason": "'decided advantage' is a phrase of the forty-move sentence itself; the blind declares it only because it split that sentence into two entries."
+    },
+    {
+      "id": "board-set-for-play,moves-alternate|crossReferences|setup-diagram|'fig 1': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "board-set-for-play,moves-alternate"
+      ],
+      "verdict": "R",
+      "reason": "'The above diagram (Fig. 1)' and the caption 'FIG. 1.' lie inside board-set-for-play's own evidence, which quotes the figure; the one pointer to Fig. 1 from another passage, 'as shown in Fig. 1', the reference declares on moves-alternate.",
+      "locator": "DRAUGHTS / p. 430",
+      "quote": "The above diagram (Fig. 1) shows the board set for play"
+    },
+    {
+      "id": "square-numbering|crossReferences|board-grid|'fig 2': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "square-numbering"
+      ],
+      "verdict": "R",
+      "reason": "'Fig. 2 shows the draught-board numbered' and the caption 'FIG. 2.' point at the figure square-numbering's own evidence quotes; a figure's own caption is not a pointer to another passage.",
+      "locator": "DRAUGHTS / p. 430",
+      "quote": "Fig. 2 shows the draught-board numbered for the purpose of recording moves"
+    },
+    {
+      "id": "player-count,side-names,starting-position,black-moves-first,arranging-without-intimation,becomes-king,crowned-by-opponent,opening-names,elementary-positions|crossReferences|advice-8|'first': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "player-count,side-names,starting-position,black-moves-first,arranging-without-intimation,becomes-king,crowned-by-opponent,opening-names,elementary-positions"
+      ],
+      "verdict": "N",
+      "reason": "'First' is one of the four position names inside the GENERAL ADVICE paragraph's '(see _post_)' pointer, a paragraph no reference entry quotes; the other reference entries the comparator lists match only the bare word. An alignment artefact and a span choice."
+    },
+    {
+      "id": "elementary-positions|crossReferences|advice-8|'fourth': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "elementary-positions"
+      ],
+      "verdict": "N",
+      "reason": "'Fourth' is one of the four position names inside the GENERAL ADVICE paragraph's '(see _post_)' pointer, a paragraph no reference entry quotes; the other reference entries the comparator lists match only the bare word. An alignment artefact and a span choice."
+    },
+    {
+      "id": "not-taking-is-liable-to-huff,huff-then-play,huff-footnote|crossReferences|capture-worked-example|'huffed': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "not-taking-is-liable-to-huff,huff-then-play,huff-footnote"
+      ],
+      "verdict": "N",
+      "reason": "'huffed' uses the term the slice itself defines on p. 429, and the reference records that dependency through dependsOn on huff-defined or huff-choice. A term used inside the slice that defines it is not a pointer phrase; the blind declares it because its map carries a defined vocabulary."
+    },
+    {
+      "id": "huff-then-play|crossReferences|huff-does-not-undo-other-move|'huffs': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "huff-then-play"
+      ],
+      "verdict": "N",
+      "reason": "'huffs' uses the term the slice itself defines on p. 429, and the reference records that dependency through dependsOn on huff-defined or huff-choice. A term used inside the slice that defines it is not a pointer phrase; the blind declares it because its map carries a defined vocabulary."
+    },
+    {
+      "id": "lots-for-colour,colour-choice,time-limit-one-way-of-taking,own-piece-removed-when-taking,own-piece-replacement-choice,false-move-forfeits,becomes-king,crowned-by-opponent,king-movement,not-taking-is-liable-to-huff,two-kings-to-one,three-kings-to-two,huff-footnote|crossReferences|king-movement|'king': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "lots-for-colour,colour-choice,time-limit-one-way-of-taking,own-piece-removed-when-taking,own-piece-replacement-choice,false-move-forfeits,becomes-king,crowned-by-opponent,king-movement,not-taking-is-liable-to-huff,two-kings-to-one,three-kings-to-two,huff-footnote"
+      ],
+      "verdict": "R",
+      "reason": "'it becomes a \"King.\"' is the definition itself, inside the same evidence the blind's king-movement quotes; it points at no other passage.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "it becomes a \"King.\""
+    },
+    {
+      "id": "None|crossReferences|further-reading|'match games': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "'Match Games' is a title in the closing further-reading paragraph, which no reference entry quotes; the reference's inventory records that paragraph (p. 446 block 4) as pointing to other books, so it has no evidence in which to declare the words. A span choice."
+    },
+    {
+      "id": "player-count,side-names,elementary-positions|crossReferences|advice-8|'second': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "player-count,side-names,elementary-positions"
+      ],
+      "verdict": "N",
+      "reason": "'Second' is one of the four position names inside the GENERAL ADVICE paragraph's '(see _post_)' pointer, a paragraph no reference entry quotes; the other reference entries the comparator lists match only the bare word. An alignment artefact and a span choice."
+    },
+    {
+      "id": "None|crossReferences|advice-8|'see post': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "'(see _post_)' is a real forward pointer, but it stands in the GENERAL ADVICE paragraph that no reference entry quotes; the reference's inventory records that paragraph and names first-position to fourth-position as the positions. A span choice.",
+      "locator": "DRAUGHTS / GENERAL ADVICE / p. 433",
+      "quote": "(see _post_)"
+    },
+    {
+      "id": "None|crossReferences|further-reading|'see the article draughts in the book of card and table games': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "'see the article \"Draughts\"' is a title in the closing further-reading paragraph, which no reference entry quotes; the reference's inventory records that paragraph (p. 446 block 4) as pointing to other books, so it has no evidence in which to declare the words. A span choice."
+    },
+    {
+      "id": "None|crossReferences|further-reading|'the game of draughts simplified': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "'The Game of Draughts Simplified' is a title in the closing further-reading paragraph, which no reference entry quotes; the reference's inventory records that paragraph (p. 446 block 4) as pointing to other books, so it has no evidence in which to declare the words. A span choice."
+    },
+    {
+      "id": "None|crossReferences|further-reading|'the guide to the game of draughts': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "'The Guide to the Game of Draughts' is a title in the closing further-reading paragraph, which no reference entry quotes; the reference's inventory records that paragraph (p. 446 block 4) as pointing to other books, so it has no evidence in which to declare the words. A span choice."
+    },
+    {
+      "id": "numbering-from-black-side|crossReferences|numbering-from-black|'the position following': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "numbering-from-black-side"
+      ],
+      "verdict": "B",
+      "reason": "The reference's numbering-from-black-side quotes 'in studying the position following', which points forward at the end-game positions beginning on p. 436. Add crossReferences {cites: \"the position following\", resolvedBy: \"two-kings-to-one\"} to numbering-from-black-side.",
+      "locator": "DRAUGHTS / THE NAMES OF THE VARIOUS OPENINGS / p. 435",
+      "quote": "in studying the position following"
+    },
+    {
+      "id": "touched-piece-must-be-played|crossReferences|unplayable-touch-penalty|'the preceding law': declared only in the reference map",
+      "field": "crossReferences",
+      "entries": [
+        "touched-piece-must-be-played"
+      ],
+      "verdict": "N",
+      "reason": "Both maps declare the same pointer to the same law: the reference's 'the preceding law' resolves to arranging-without-intimation, the blind's 'according to the preceding law' to its counterpart unannounced-arrangement-forfeit. The comparator keys the two spans differently."
+    },
+    {
+      "id": "None|crossReferences|further-reading|'the problem book': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "'The Problem Book' is a title in the closing further-reading paragraph, which no reference entry quotes; the reference's inventory records that paragraph (p. 446 block 4) as pointing to other books, so it has no evidence in which to declare the words. A span choice."
+    },
+    {
+      "id": "elementary-positions|crossReferences|advice-8|'third': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "elementary-positions"
+      ],
+      "verdict": "N",
+      "reason": "'Third' is one of the four position names inside the GENERAL ADVICE paragraph's '(see _post_)' pointer, a paragraph no reference entry quotes; the other reference entries the comparator lists match only the bare word. An alignment artefact and a span choice."
+    },
+    {
+      "id": "king-movement|crossReferences|king-directions|'this done': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "king-movement"
+      ],
+      "verdict": "N",
+      "reason": "'This done' is anaphora for the clause just before it, the man's attaining the crown-head, which the reference holds in man-moves-forward and names in king-movement's dependsOn; two adjacent sentences split into two entries, with no other passage pointed at."
+    },
+    {
+      "id": "play-completed-on-release|crossReferences|play-completion|'two or more pieces should have been taken': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [
+        "play-completed-on-release"
+      ],
+      "verdict": "R",
+      "reason": "'even though two or more pieces should have been taken' is a condition of the completion rule, not a pointer; footnote 108 is called by p. 429's election sentence, not by this one.",
+      "locator": "DRAUGHTS / p. 429",
+      "quote": "even though two or more pieces should have been taken"
+    },
+    {
+      "id": "None|crossReferences|first-position-worked|'v 1': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "A solution-branch label inside a worked end-game solution that both maps decline; it points within the declined example, at no rule."
+    },
+    {
+      "id": "None|crossReferences|first-position-worked|'v 2': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "A solution-branch label inside a worked end-game solution that both maps decline; it points within the declined example, at no rule."
+    },
+    {
+      "id": "None|crossReferences|third-position-worked|'v 3': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "A solution-branch label inside a worked end-game solution that both maps decline; it points within the declined example, at no rule."
+    },
+    {
+      "id": "None|crossReferences|third-position-worked|'v 4': declared only in the blind map",
+      "field": "crossReferences",
+      "entries": [],
+      "verdict": "N",
+      "reason": "A solution-branch label inside a worked end-game solution that both maps decline; it points within the declined example, at no rule."
+    }
+  ]
+}

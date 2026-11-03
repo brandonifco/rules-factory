@@ -1,0 +1,309 @@
+{
+  "stagingVersion": 1,
+  "about": "What is removed from the method documents before a second mapper of examples/hoyle-draughts/ reads them (docs/method.md, *Before the map is used*; decision 0014). Run: python3 tools/mapper stage examples/hoyle-draughts/blind-mapping/staging.json",
+  "map": "../corpus-map.json",
+  "documents": [
+    "../../../docs/method.md",
+    "../../../docs/corpus-map.md"
+  ],
+  "flattenLinks": true,
+  "edits": [
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "rule —\n`strategy-advice`'s \"mak",
+      "replace": "rule —\n`rule-aa`'s \"mak"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "thing:\n`strategy-advice` quotes",
+      "replace": "thing:\n`rule-aa` quotes"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "strategy-advice",
+      "replace": "rule-aa"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "ces**: `game-value`'s thre",
+      "replace": "ces**: `rule-ab`'s thre"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "game-value",
+      "replace": "rule-ab"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "and\n   `must-play-whole-throw` does n",
+      "replace": "and\n   `rule-ac` does n"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "must-play-whole-throw",
+      "replace": "rule-ac"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "re it: `full-table-suspension` suspen",
+      "replace": "re it: `rule-ad` suspen"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "r` and `full-table-suspension` fit to",
+      "replace": "r` and `rule-ad` fit to"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "full-table-suspension",
+      "replace": "rule-ad"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "next-game-opening",
+      "replace": "rule-ae"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "g\"* is `opening-roll`'s thro",
+      "replace": "g\"* is `rule-af`'s thro"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "opening-roll",
+      "replace": "rule-af"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "throw-two-dice",
+      "replace": "rule-ag"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "point-designations",
+      "replace": "rule-ah"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": " all — `doubling-cube`, which",
+      "replace": " all — `rule-ai`, which"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "doubling-cube",
+      "replace": "rule-ai"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "s not.\n`enter-from-bar` names ",
+      "replace": "s not.\n`rule-aj` names "
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "ence — `enter-from-bar`'s doub",
+      "replace": "ence — `rule-aj`'s doub"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "ther — `enter-from-bar` and `r",
+      "replace": "ther — `rule-aj` and `r"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "ded by `enter-from-bar`, which",
+      "replace": "ded by `rule-aj`, which"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "enter-from-bar",
+      "replace": "rule-aj"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": " where `legal-destination`, three",
+      "replace": " where `rule-ak`, three"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "ntence `legal-destination` quotes",
+      "replace": "ntence `rule-ak` quotes"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "legal-destination",
+      "replace": "rule-ak"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "bearing-off-doublets",
+      "replace": "rule-al"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": " gate; `move-by-pip` is sus",
+      "replace": " gate; `rule-am` is sus"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "nor is `move-by-pip` among ",
+      "replace": "nor is `rule-am` among "
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "move-by-pip",
+      "replace": "rule-am"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "bearing-off-eligible",
+      "replace": "rule-an"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": " is in\n`bearing-off-highest`'s `ena",
+      "replace": " is in\n`rule-ao`'s `ena"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "bearing-off-highest",
+      "replace": "rule-ao"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "hit-pays-single-stake",
+      "replace": "rule-ap"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "agreed-backgammon-multiple",
+      "replace": "rule-aq"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "rom\": [\"stake-multiplier\", \"rule",
+      "replace": "rom\": [\"rule-ar\", \"rule"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "inside `stake-multiplier`,\n`clea",
+      "replace": "inside `rule-ar`,\n`clea"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "stake-multiplier",
+      "replace": "rule-ar"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "die-faces",
+      "replace": "rule-as"
+    },
+    {
+      "document": "method.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "direction-of-travel",
+      "replace": "rule-at"
+    },
+    {
+      "document": "method.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "point-designations",
+      "replace": "rule-ah"
+    },
+    {
+      "document": "method.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "full-table-suspension",
+      "replace": "rule-ad"
+    },
+    {
+      "document": "method.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "game-value",
+      "replace": "rule-ab"
+    },
+    {
+      "document": "method.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "e-ab`, `must-play-whole-throw` — whic",
+      "replace": "e-ab`, `rule-ac` — whic"
+    },
+    {
+      "document": "method.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "must-play-whole-throw",
+      "replace": "rule-ac"
+    },
+    {
+      "document": "method.md",
+      "why": "names an entry of the corpus's backgammon map, a sibling slice",
+      "find": "bearing-off-highest",
+      "replace": "rule-ao"
+    }
+  ],
+  "acknowledged": [
+    {
+      "document": "corpus-map.md",
+      "term": "doublets",
+      "reason": "A backgammon term in an example about dice, from another chapter of the corpus; the draughts chapter has no dice and the word does not occur in it."
+    },
+    {
+      "document": "corpus-map.md",
+      "term": "hoyle",
+      "reason": "The corpus's title, used by the document to name the backgammon trial and its comparator; it says nothing about the draughts chapter, and the second mapper is told which corpus it is mapping in any case."
+    },
+    {
+      "document": "corpus-map.md",
+      "term": "what a hit pays",
+      "reason": "The name of a backgammon entry in an example of a derived entry, from another chapter; it names nothing in the draughts chapter."
+    },
+    {
+      "document": "method.md",
+      "term": "doublets",
+      "reason": "A backgammon term in an example about dice, from another chapter of the corpus; the draughts chapter has no dice and the word does not occur in it."
+    },
+    {
+      "document": "method.md",
+      "term": "hoyle",
+      "reason": "The corpus's title, used by the document to name the backgammon trial and its comparator; it says nothing about the draughts chapter, and the second mapper is told which corpus it is mapping in any case."
+    }
+  ]
+}

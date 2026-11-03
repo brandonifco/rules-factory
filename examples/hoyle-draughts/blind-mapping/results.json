@@ -1,0 +1,3220 @@
+{
+  "reference": {
+    "commit": "0f613b8d169f9fc27d8f45c2c508558894d859f8",
+    "path": "examples/hoyle-draughts/corpus-map.json",
+    "entries": 52
+  },
+  "blind": {
+    "path": "blind-map.json",
+    "entries": 96
+  },
+  "parameters": {
+    "MIN_BLOCK": 4,
+    "LINK_SHARE": 0.5,
+    "PAGE_SLACK": 1,
+    "EVIDENCE_NESTED": 0.9,
+    "NAME_WEIGHT": 1.0
+  },
+  "alignment": {
+    "links": {
+      "board-squares": {
+        "board-square-count": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.667
+        },
+        "board-colours": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.5
+        },
+        "piece-total": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.125
+        },
+        "pieces-per-side": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.0
+        },
+        "men-definition": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.0
+        }
+      },
+      "men-count": {
+        "board-square-count": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.1
+        },
+        "board-colours": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.111
+        },
+        "piece-total": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.25
+        },
+        "pieces-per-side": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.429
+        },
+        "men-definition": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.111
+        }
+      },
+      "player-count": {
+        "two-players": {
+          "shared": 6,
+          "cov_ref": 0.162,
+          "cov_blind": 1.0,
+          "name": 0.5
+        },
+        "sides-and-colours": {
+          "shared": 31,
+          "cov_ref": 0.838,
+          "cov_blind": 1.0,
+          "name": 0.0
+        }
+      },
+      "side-names": {
+        "two-players": {
+          "shared": 6,
+          "cov_ref": 0.162,
+          "cov_blind": 1.0,
+          "name": 0.0
+        },
+        "sides-and-colours": {
+          "shared": 31,
+          "cov_ref": 0.838,
+          "cov_blind": 1.0,
+          "name": 0.5
+        }
+      },
+      "loss-when-none-can-be-played": {
+        "no-play-loss": {
+          "shared": 41,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.571
+        }
+      },
+      "board-placement": {
+        "board-orientation": {
+          "shared": 18,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.429
+        }
+      },
+      "men-on-black-squares": {
+        "black-square-placement": {
+          "shared": 9,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.75
+        }
+      },
+      "starting-position": {
+        "initial-numbered-placement": {
+          "shared": 22,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.833
+        }
+      },
+      "colours-alternate": {
+        "match-colour-alternation": {
+          "shared": 10,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.0
+        }
+      },
+      "lots-for-colour": {
+        "initial-colour-lots": {
+          "shared": 24,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.5
+        },
+        "lot-winner-colour-choice": {
+          "shared": 24,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.0
+        }
+      },
+      "colour-choice": {
+        "initial-colour-lots": {
+          "shared": 24,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.125
+        },
+        "lot-winner-colour-choice": {
+          "shared": 24,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.8
+        }
+      },
+      "black-moves-first": {
+        "black-first-move": {
+          "shared": 14,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.6
+        }
+      },
+      "time-limit": {
+        "ordinary-time-limit": {
+          "shared": 10,
+          "cov_ref": 0.312,
+          "cov_blind": 1.0,
+          "name": 0.273
+        },
+        "time-grace-period": {
+          "shared": 32,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.333
+        },
+        "ordinary-time-forfeit": {
+          "shared": 32,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.3
+        },
+        "forced-take-time-forfeit": {
+          "shared": 26,
+          "cov_ref": 0.812,
+          "cov_blind": 0.591,
+          "name": 0.167
+        }
+      },
+      "time-limit-one-way-of-taking": {
+        "forced-take-time-limit": {
+          "shared": 22,
+          "cov_ref": 0.5,
+          "cov_blind": 1.0,
+          "name": 0.444
+        },
+        "time-grace-period": {
+          "shared": 26,
+          "cov_ref": 0.591,
+          "cov_blind": 0.812,
+          "name": 0.375
+        },
+        "ordinary-time-forfeit": {
+          "shared": 26,
+          "cov_ref": 0.591,
+          "cov_blind": 0.812,
+          "name": 0.2
+        },
+        "forced-take-time-forfeit": {
+          "shared": 44,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.3
+        }
+      },
+      "arranging-without-intimation": {
+        "unannounced-arrangement-forfeit": {
+          "shared": 43,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.0
+        },
+        "arrangement-play-exception": {
+          "shared": 19,
+          "cov_ref": 0.442,
+          "cov_blind": 1.0,
+          "name": 0.222
+        }
+      },
+      "touched-piece-must-be-played": {
+        "touch-move": {
+          "shared": 27,
+          "cov_ref": 0.659,
+          "cov_blind": 1.0,
+          "name": 0.429
+        },
+        "unplayable-touch-penalty": {
+          "shared": 14,
+          "cov_ref": 0.341,
+          "cov_blind": 1.0,
+          "name": 0.25
+        }
+      },
+      "angle-crossed-commits-direction": {
+        "direction-commitment": {
+          "shared": 28,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.083
+        }
+      },
+      "play-completed-on-release": {
+        "play-completion": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.429
+        }
+      },
+      "own-piece-removed-when-taking": {
+        "own-piece-removed": {
+          "shared": 27,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.556
+        },
+        "own-piece-removal-election": {
+          "shared": 27,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.0
+        }
+      },
+      "own-piece-replacement-choice": {
+        "own-piece-removed": {
+          "shared": 27,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.167
+        },
+        "own-piece-removal-election": {
+          "shared": 27,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.25
+        }
+      },
+      "false-move-forfeits": {
+        "improper-move-forfeit": {
+          "shared": 20,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.667
+        }
+      },
+      "huff-defined": {
+        "huff-removal": {
+          "shared": 27,
+          "cov_ref": 0.794,
+          "cov_blind": 1.0,
+          "name": 0.308
+        },
+        "huff-not-move": {
+          "shared": 7,
+          "cov_ref": 0.206,
+          "cov_blind": 1.0,
+          "name": 0.083
+        }
+      },
+      "huff-choice": {
+        "huff-election": {
+          "shared": 24,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.5
+        },
+        "compelled-take": {
+          "shared": 24,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.286
+        },
+        "huff-waiver": {
+          "shared": 24,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.111
+        }
+      },
+      "compel-the-take": {
+        "huff-election": {
+          "shared": 24,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.333
+        },
+        "compelled-take": {
+          "shared": 24,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.667
+        },
+        "huff-waiver": {
+          "shared": 24,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.0
+        }
+      },
+      "becomes-king": {
+        "promotion": {
+          "shared": 21,
+          "cov_ref": 0.375,
+          "cov_blind": 1.0,
+          "name": 0.333
+        },
+        "crowning": {
+          "shared": 20,
+          "cov_ref": 0.357,
+          "cov_blind": 1.0,
+          "name": 0.1
+        },
+        "king-movement": {
+          "shared": 56,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.111
+        },
+        "promotion-capture-continuation": {
+          "shared": 21,
+          "cov_ref": 0.375,
+          "cov_blind": 1.0,
+          "name": 0.25
+        }
+      },
+      "crowned-by-opponent": {
+        "promotion": {
+          "shared": 21,
+          "cov_ref": 0.375,
+          "cov_blind": 1.0,
+          "name": 0.111
+        },
+        "crowning": {
+          "shared": 20,
+          "cov_ref": 0.357,
+          "cov_blind": 1.0,
+          "name": 0.286
+        },
+        "king-movement": {
+          "shared": 56,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.143
+        },
+        "promotion-capture-continuation": {
+          "shared": 21,
+          "cov_ref": 0.375,
+          "cov_blind": 1.0,
+          "name": 0.143
+        }
+      },
+      "draw-defined": {
+        "draw-definition": {
+          "shared": 12,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 1.0
+        }
+      },
+      "forty-move-limit": {
+        "draw-definition": {
+          "shared": 12,
+          "cov_ref": 0.179,
+          "cov_blind": 1.0,
+          "name": 0.071
+        },
+        "draw-notice-limit": {
+          "shared": 15,
+          "cov_ref": 0.224,
+          "cov_blind": 1.0,
+          "name": 0.273
+        },
+        "stronger-side-assessment": {
+          "shared": 55,
+          "cov_ref": 0.821,
+          "cov_blind": 1.0,
+          "name": 0.091
+        },
+        "decided-advantage": {
+          "shared": 23,
+          "cov_ref": 0.343,
+          "cov_blind": 1.0,
+          "name": 0.4
+        },
+        "forty-move-draw": {
+          "shared": 55,
+          "cov_ref": 0.821,
+          "cov_blind": 1.0,
+          "name": 0.385
+        }
+      },
+      "draw-by-agreement": {
+        "draw-definition": {
+          "shared": 12,
+          "cov_ref": 0.179,
+          "cov_blind": 1.0,
+          "name": 0.286
+        },
+        "draw-notice-limit": {
+          "shared": 15,
+          "cov_ref": 0.224,
+          "cov_blind": 1.0,
+          "name": 0.143
+        },
+        "stronger-side-assessment": {
+          "shared": 55,
+          "cov_ref": 0.821,
+          "cov_blind": 1.0,
+          "name": 0.0
+        },
+        "decided-advantage": {
+          "shared": 23,
+          "cov_ref": 0.343,
+          "cov_blind": 1.0,
+          "name": 0.0
+        },
+        "forty-move-draw": {
+          "shared": 55,
+          "cov_ref": 0.821,
+          "cov_blind": 1.0,
+          "name": 0.0
+        }
+      },
+      "draw-by-repetition": {
+        "draw-definition": {
+          "shared": 12,
+          "cov_ref": 0.179,
+          "cov_blind": 1.0,
+          "name": 0.125
+        },
+        "draw-notice-limit": {
+          "shared": 15,
+          "cov_ref": 0.224,
+          "cov_blind": 1.0,
+          "name": 0.0
+        },
+        "stronger-side-assessment": {
+          "shared": 55,
+          "cov_ref": 0.821,
+          "cov_blind": 1.0,
+          "name": 0.0
+        },
+        "decided-advantage": {
+          "shared": 23,
+          "cov_ref": 0.343,
+          "cov_blind": 1.0,
+          "name": 0.0
+        },
+        "forty-move-draw": {
+          "shared": 55,
+          "cov_ref": 0.821,
+          "cov_blind": 1.0,
+          "name": 0.0
+        }
+      },
+      "board-set-for-play": {
+        "setup-diagram": {
+          "shared": 28,
+          "cov_ref": 0.718,
+          "cov_blind": 1.0,
+          "name": 1.0
+        }
+      },
+      "square-numbering": {
+        "board-grid": {
+          "shared": 36,
+          "cov_ref": 0.735,
+          "cov_blind": 1.0,
+          "name": 0.0
+        },
+        "numbered-board": {
+          "shared": 36,
+          "cov_ref": 0.735,
+          "cov_blind": 1.0,
+          "name": 0.667
+        },
+        "diagram-purposes": {
+          "shared": 13,
+          "cov_ref": 0.265,
+          "cov_blind": 0.52,
+          "name": 0.0
+        }
+      },
+      "numbering-from-black-side": {
+        "numbering-from-black": {
+          "shared": 35,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.571
+        }
+      },
+      "moves-alternate": {
+        "alternate-turns": {
+          "shared": 30,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.375
+        }
+      },
+      "man-moves-forward": {
+        "ordinary-step-distance": {
+          "shared": 38,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.125
+        },
+        "crown-head": {
+          "shared": 18,
+          "cov_ref": 0.474,
+          "cov_blind": 1.0,
+          "name": 0.1
+        },
+        "man-movement": {
+          "shared": 38,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.333
+        }
+      },
+      "king-movement": {
+        "king-directions": {
+          "shared": 12,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 1.0
+        }
+      },
+      "capture-by-leap": {
+        "single-capture": {
+          "shared": 27,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.4
+        }
+      },
+      "multiple-capture": {
+        "multiple-capture": {
+          "shared": 35,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.667
+        }
+      },
+      "captured-piece-removed": {
+        "capture-removal": {
+          "shared": 22,
+          "cov_ref": 0.512,
+          "cov_blind": 1.0,
+          "name": 0.333
+        },
+        "capture-worked-example": {
+          "shared": 43,
+          "cov_ref": 1.0,
+          "cov_blind": 0.254,
+          "name": 0.143
+        }
+      },
+      "not-taking-is-liable-to-huff": {
+        "capture-worked-example": {
+          "shared": 46,
+          "cov_ref": 1.0,
+          "cov_blind": 0.272,
+          "name": 0.111
+        }
+      },
+      "huff-then-play": {
+        "huff-does-not-undo-other-move": {
+          "shared": 36,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.083
+        },
+        "capture-worked-example": {
+          "shared": 36,
+          "cov_ref": 1.0,
+          "cov_blind": 0.213,
+          "name": 0.0
+        }
+      },
+      "general-advice": {
+        "advice-2": {
+          "shared": 54,
+          "cov_ref": 1.0,
+          "cov_blind": 0.628,
+          "name": 0.667
+        }
+      },
+      "opening-names": {
+        "opening-ayrshire-lassie": {
+          "shared": 29,
+          "cov_ref": 0.604,
+          "cov_blind": 1.0,
+          "name": 0.0
+        },
+        "opening-bristol": {
+          "shared": 19,
+          "cov_ref": 0.396,
+          "cov_blind": 1.0,
+          "name": 0.0
+        },
+        "opening-second-double-corner": {
+          "shared": 10,
+          "cov_ref": 0.208,
+          "cov_blind": 0.556,
+          "name": 0.0
+        }
+      },
+      "two-kings-to-one": {
+        "two-kings-example": {
+          "shared": 31,
+          "cov_ref": 1.0,
+          "cov_blind": 0.307,
+          "name": 0.4
+        }
+      },
+      "three-kings-to-two": {
+        "three-kings-example": {
+          "shared": 46,
+          "cov_ref": 1.0,
+          "cov_blind": 0.207,
+          "name": 0.5
+        }
+      },
+      "elementary-positions": {
+        "elementary-position-names": {
+          "shared": 15,
+          "cov_ref": 0.517,
+          "cov_blind": 1.0,
+          "name": 0.75
+        }
+      },
+      "first-position": {
+        "three-kings-example": {
+          "shared": 4,
+          "cov_ref": 0.5,
+          "cov_blind": 0.018,
+          "name": 0.167
+        },
+        "first-position-worked": {
+          "shared": 6,
+          "cov_ref": 0.75,
+          "cov_blind": 0.023,
+          "name": 0.333
+        },
+        "second-position-worked": {
+          "shared": 6,
+          "cov_ref": 0.75,
+          "cov_blind": 0.035,
+          "name": 0.2
+        }
+      },
+      "second-position": {
+        "first-position-worked": {
+          "shared": 6,
+          "cov_ref": 0.75,
+          "cov_blind": 0.023,
+          "name": 0.143
+        },
+        "second-position-worked": {
+          "shared": 6,
+          "cov_ref": 0.75,
+          "cov_blind": 0.035,
+          "name": 0.5
+        },
+        "third-position-worked": {
+          "shared": 6,
+          "cov_ref": 0.75,
+          "cov_blind": 0.025,
+          "name": 0.143
+        }
+      },
+      "third-position": {
+        "third-position-worked": {
+          "shared": 12,
+          "cov_ref": 0.857,
+          "cov_blind": 0.05,
+          "name": 0.333
+        }
+      },
+      "fourth-position": {
+        "fourth-position-worked": {
+          "shared": 17,
+          "cov_ref": 0.895,
+          "cov_blind": 0.212,
+          "name": 0.25
+        }
+      },
+      "white-squares-custom": {
+        "diagram-square-convention": {
+          "shared": 44,
+          "cov_ref": 1.0,
+          "cov_blind": 0.518,
+          "name": 0.333
+        }
+      },
+      "huff-footnote": {
+        "huff-short-adopted-capture": {
+          "shared": 81,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.125
+        },
+        "huff-route-choice": {
+          "shared": 81,
+          "cov_ref": 1.0,
+          "cov_blind": 1.0,
+          "name": 0.0
+        }
+      }
+    },
+    "partner": {
+      "board-squares": "board-square-count",
+      "men-count": "pieces-per-side",
+      "player-count": "sides-and-colours",
+      "side-names": "sides-and-colours",
+      "loss-when-none-can-be-played": "no-play-loss",
+      "board-placement": "board-orientation",
+      "men-on-black-squares": "black-square-placement",
+      "starting-position": "initial-numbered-placement",
+      "colours-alternate": "match-colour-alternation",
+      "lots-for-colour": "initial-colour-lots",
+      "colour-choice": "lot-winner-colour-choice",
+      "black-moves-first": "black-first-move",
+      "time-limit": "time-grace-period",
+      "time-limit-one-way-of-taking": "forced-take-time-forfeit",
+      "arranging-without-intimation": "unannounced-arrangement-forfeit",
+      "touched-piece-must-be-played": "touch-move",
+      "angle-crossed-commits-direction": "direction-commitment",
+      "play-completed-on-release": "play-completion",
+      "own-piece-removed-when-taking": "own-piece-removed",
+      "own-piece-replacement-choice": "own-piece-removal-election",
+      "false-move-forfeits": "improper-move-forfeit",
+      "huff-defined": "huff-removal",
+      "huff-choice": "huff-election",
+      "compel-the-take": "compelled-take",
+      "becomes-king": "king-movement",
+      "crowned-by-opponent": "king-movement",
+      "draw-defined": "draw-definition",
+      "forty-move-limit": "forty-move-draw",
+      "draw-by-agreement": "stronger-side-assessment",
+      "draw-by-repetition": "stronger-side-assessment",
+      "board-set-for-play": "setup-diagram",
+      "square-numbering": "numbered-board",
+      "numbering-from-black-side": "numbering-from-black",
+      "moves-alternate": "alternate-turns",
+      "man-moves-forward": "man-movement",
+      "king-movement": "king-directions",
+      "capture-by-leap": "single-capture",
+      "multiple-capture": "multiple-capture",
+      "captured-piece-removed": "capture-removal",
+      "not-taking-is-liable-to-huff": "capture-worked-example",
+      "huff-then-play": "huff-does-not-undo-other-move",
+      "general-advice": "advice-2",
+      "opening-names": "opening-ayrshire-lassie",
+      "two-kings-to-one": "two-kings-example",
+      "three-kings-to-two": "three-kings-example",
+      "elementary-positions": "elementary-position-names",
+      "first-position": "first-position-worked",
+      "second-position": "second-position-worked",
+      "third-position": "third-position-worked",
+      "fourth-position": "fourth-position-worked",
+      "white-squares-custom": "diagram-square-convention",
+      "huff-footnote": "huff-short-adopted-capture"
+    },
+    "unaligned_ref": [],
+    "unaligned_blind": [
+      "advice-1",
+      "advice-3",
+      "advice-4",
+      "advice-5",
+      "advice-6",
+      "advice-7",
+      "advice-8",
+      "first-position-data",
+      "fourth-position-data",
+      "further-reading",
+      "opening-cross",
+      "opening-defiance",
+      "opening-dyke",
+      "opening-fife",
+      "opening-glasgow",
+      "opening-laird-and-lady",
+      "opening-maid-of-the-mill",
+      "opening-old-fourteenth",
+      "opening-single-corner",
+      "opening-souter",
+      "opening-whilter",
+      "opening-will-o-the-wisp",
+      "second-position-data",
+      "third-position-data"
+    ],
+    "linked_not_partner": [
+      "arrangement-play-exception",
+      "board-colours",
+      "board-grid",
+      "crown-head",
+      "crowning",
+      "decided-advantage",
+      "diagram-purposes",
+      "draw-notice-limit",
+      "forced-take-time-limit",
+      "huff-not-move",
+      "huff-route-choice",
+      "huff-waiver",
+      "men-definition",
+      "opening-bristol",
+      "opening-second-double-corner",
+      "ordinary-step-distance",
+      "ordinary-time-forfeit",
+      "ordinary-time-limit",
+      "piece-total",
+      "promotion",
+      "promotion-capture-continuation",
+      "two-players",
+      "unplayable-touch-penalty"
+    ]
+  },
+  "edges_not_comparable": [],
+  "flag_count": 211,
+  "flags_by_field": {
+    "entry": 24,
+    "dependsOn": 71,
+    "enabledBy": 10,
+    "kind": 9,
+    "evidence": 21,
+    "clarity": 15,
+    "ambiguity": 15,
+    "scope": 9,
+    "absentFrom": 2,
+    "ambiguity.fate": 1,
+    "suspendedBy": 1,
+    "crossReferences": 33
+  },
+  "flags_by_verdict": {
+    "unresolved": 211
+  },
+  "flags": [
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "advice-1",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|advice-1|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "advice-3",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|advice-3|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "advice-4",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|advice-4|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "advice-5",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|advice-5|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "advice-6",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|advice-6|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "advice-7",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|advice-7|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "advice-8",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|advice-8|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "first-position-data",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|first-position-data|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "fourth-position-data",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|fourth-position-data|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "further-reading",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|further-reading|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-cross",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-cross|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-defiance",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-defiance|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-dyke",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-dyke|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-fife",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-fife|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-glasgow",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-glasgow|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-laird-and-lady",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-laird-and-lady|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-maid-of-the-mill",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-maid-of-the-mill|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-old-fourteenth",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-old-fourteenth|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-single-corner",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-single-corner|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-souter",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-souter|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-whilter",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-whilter|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "opening-will-o-the-wisp",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|opening-will-o-the-wisp|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "second-position-data",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|second-position-data|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "entry",
+      "detail": "no reference entry quotes this text",
+      "blind": "third-position-data",
+      "ref_value": null,
+      "blind_value": null,
+      "key": "None|entry|third-position-data|no reference entry quotes this text",
+      "resolution": null
+    },
+    {
+      "entry": "angle-crossed-commits-direction",
+      "field": "dependsOn",
+      "detail": "reference has edge to king-movement; no blind edge reaches it",
+      "blind": "direction-commitment",
+      "ref_value": "king-movement",
+      "blind_value": null,
+      "key": "angle-crossed-commits-direction|dependsOn|direction-commitment|reference has edge to king-movement; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "angle-crossed-commits-direction",
+      "field": "dependsOn",
+      "detail": "blind has edge to king-movement; reference has no edge to what it links to",
+      "blind": "direction-commitment",
+      "ref_value": [
+        "becomes-king",
+        "crowned-by-opponent"
+      ],
+      "blind_value": "king-movement",
+      "key": "angle-crossed-commits-direction|dependsOn|direction-commitment|blind has edge to king-movement; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "angle-crossed-commits-direction",
+      "field": "dependsOn",
+      "detail": "blind has edge to single-capture; reference has no edge to what it links to",
+      "blind": "direction-commitment",
+      "ref_value": [
+        "capture-by-leap"
+      ],
+      "blind_value": "single-capture",
+      "key": "angle-crossed-commits-direction|dependsOn|direction-commitment|blind has edge to single-capture; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "arranging-without-intimation",
+      "field": "dependsOn",
+      "detail": "reference has edge to capture-by-leap; no blind edge reaches it",
+      "blind": "unannounced-arrangement-forfeit",
+      "ref_value": "capture-by-leap",
+      "blind_value": null,
+      "key": "arranging-without-intimation|dependsOn|unannounced-arrangement-forfeit|reference has edge to capture-by-leap; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "arranging-without-intimation",
+      "field": "dependsOn",
+      "detail": "reference has edge to king-movement; no blind edge reaches it",
+      "blind": "unannounced-arrangement-forfeit",
+      "ref_value": "king-movement",
+      "blind_value": null,
+      "key": "arranging-without-intimation|dependsOn|unannounced-arrangement-forfeit|reference has edge to king-movement; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "arranging-without-intimation",
+      "field": "dependsOn",
+      "detail": "reference has edge to man-moves-forward; no blind edge reaches it",
+      "blind": "unannounced-arrangement-forfeit",
+      "ref_value": "man-moves-forward",
+      "blind_value": null,
+      "key": "arranging-without-intimation|dependsOn|unannounced-arrangement-forfeit|reference has edge to man-moves-forward; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "arranging-without-intimation",
+      "field": "dependsOn",
+      "detail": "reference has edge to moves-alternate; no blind edge reaches it",
+      "blind": "unannounced-arrangement-forfeit",
+      "ref_value": "moves-alternate",
+      "blind_value": null,
+      "key": "arranging-without-intimation|dependsOn|unannounced-arrangement-forfeit|reference has edge to moves-alternate; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "arranging-without-intimation",
+      "field": "enabledBy",
+      "detail": "reference has edge to black-moves-first; no blind edge reaches it",
+      "blind": "unannounced-arrangement-forfeit",
+      "ref_value": "black-moves-first",
+      "blind_value": null,
+      "key": "arranging-without-intimation|enabledBy|unannounced-arrangement-forfeit|reference has edge to black-moves-first; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "becomes-king",
+      "field": "dependsOn",
+      "detail": "reference has edge to man-moves-forward; no blind edge reaches it",
+      "blind": "king-movement",
+      "ref_value": "man-moves-forward",
+      "blind_value": null,
+      "key": "becomes-king|dependsOn|king-movement|reference has edge to man-moves-forward; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "becomes-king",
+      "field": "dependsOn",
+      "detail": "blind has edge to promotion; reference has no edge to what it links to",
+      "blind": "king-movement",
+      "ref_value": [
+        "crowned-by-opponent"
+      ],
+      "blind_value": "promotion",
+      "key": "becomes-king|dependsOn|king-movement|blind has edge to promotion; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "becomes-king",
+      "field": "dependsOn",
+      "detail": "blind has edge to board-grid; reference has no edge to what it links to",
+      "blind": "king-movement",
+      "ref_value": [
+        "square-numbering"
+      ],
+      "blind_value": "board-grid",
+      "key": "becomes-king|dependsOn|king-movement|blind has edge to board-grid; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "becomes-king",
+      "field": "dependsOn",
+      "detail": "blind has edge to king-directions; reference has no edge to what it links to",
+      "blind": "king-movement",
+      "ref_value": [
+        "king-movement"
+      ],
+      "blind_value": "king-directions",
+      "key": "becomes-king|dependsOn|king-movement|blind has edge to king-directions; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "becomes-king",
+      "field": "enabledBy",
+      "detail": "blind has edge to promotion; reference has no edge to what it links to",
+      "blind": "king-movement",
+      "ref_value": [
+        "crowned-by-opponent"
+      ],
+      "blind_value": "promotion",
+      "key": "becomes-king|enabledBy|king-movement|blind has edge to promotion; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "black-moves-first",
+      "field": "kind",
+      "detail": "differs",
+      "blind": "black-first-move",
+      "ref_value": "value",
+      "blind_value": "operation",
+      "key": "black-moves-first|kind|black-first-move|differs",
+      "resolution": null
+    },
+    {
+      "entry": "board-placement",
+      "field": "kind",
+      "detail": "differs",
+      "blind": "board-orientation",
+      "ref_value": "value",
+      "blind_value": "operation",
+      "key": "board-placement|kind|board-orientation|differs",
+      "resolution": null
+    },
+    {
+      "entry": "board-set-for-play",
+      "field": "dependsOn",
+      "detail": "reference has edge to board-squares; no blind edge reaches it",
+      "blind": "setup-diagram",
+      "ref_value": "board-squares",
+      "blind_value": null,
+      "key": "board-set-for-play|dependsOn|setup-diagram|reference has edge to board-squares; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "board-set-for-play",
+      "field": "dependsOn",
+      "detail": "blind has edge to board-orientation; reference has no edge to what it links to",
+      "blind": "setup-diagram",
+      "ref_value": [
+        "board-placement"
+      ],
+      "blind_value": "board-orientation",
+      "key": "board-set-for-play|dependsOn|setup-diagram|blind has edge to board-orientation; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "board-set-for-play",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "setup-diagram",
+      "ref_value": 0.718,
+      "blind_value": 1.0,
+      "key": "board-set-for-play|evidence|setup-diagram|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "capture-by-leap",
+      "field": "clarity",
+      "detail": "differs",
+      "blind": "single-capture",
+      "ref_value": "clear",
+      "blind_value": "ambiguous",
+      "key": "capture-by-leap|clarity|single-capture|differs",
+      "resolution": null
+    },
+    {
+      "entry": "capture-by-leap",
+      "field": "ambiguity",
+      "detail": "present in one map only",
+      "blind": "single-capture",
+      "ref_value": false,
+      "blind_value": true,
+      "key": "capture-by-leap|ambiguity|single-capture|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "capture-by-leap",
+      "field": "dependsOn",
+      "detail": "reference has edge to king-movement; no blind edge reaches it",
+      "blind": "single-capture",
+      "ref_value": "king-movement",
+      "blind_value": null,
+      "key": "capture-by-leap|dependsOn|single-capture|reference has edge to king-movement; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "capture-by-leap",
+      "field": "dependsOn",
+      "detail": "blind has edge to king-movement; reference has no edge to what it links to",
+      "blind": "single-capture",
+      "ref_value": [
+        "becomes-king",
+        "crowned-by-opponent"
+      ],
+      "blind_value": "king-movement",
+      "key": "capture-by-leap|dependsOn|single-capture|blind has edge to king-movement; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "capture-by-leap",
+      "field": "dependsOn",
+      "detail": "blind has edge to board-grid; reference has no edge to what it links to",
+      "blind": "single-capture",
+      "ref_value": [
+        "square-numbering"
+      ],
+      "blind_value": "board-grid",
+      "key": "capture-by-leap|dependsOn|single-capture|blind has edge to board-grid; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "captured-piece-removed",
+      "field": "dependsOn",
+      "detail": "reference has edge to capture-by-leap; no blind edge reaches it",
+      "blind": "capture-removal",
+      "ref_value": "capture-by-leap",
+      "blind_value": null,
+      "key": "captured-piece-removed|dependsOn|capture-removal|reference has edge to capture-by-leap; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "captured-piece-removed",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "capture-removal",
+      "ref_value": 0.512,
+      "blind_value": 1.0,
+      "key": "captured-piece-removed|evidence|capture-removal|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "colour-choice",
+      "field": "enabledBy",
+      "detail": "blind has edge to initial-colour-lots; reference has no edge to what it links to",
+      "blind": "lot-winner-colour-choice",
+      "ref_value": [
+        "lots-for-colour"
+      ],
+      "blind_value": "initial-colour-lots",
+      "key": "colour-choice|enabledBy|lot-winner-colour-choice|blind has edge to initial-colour-lots; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "compel-the-take",
+      "field": "dependsOn",
+      "detail": "reference has edge to huff-choice; no blind edge reaches it",
+      "blind": "compelled-take",
+      "ref_value": "huff-choice",
+      "blind_value": null,
+      "key": "compel-the-take|dependsOn|compelled-take|reference has edge to huff-choice; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "compel-the-take",
+      "field": "dependsOn",
+      "detail": "blind has edge to single-capture; reference has no edge to what it links to",
+      "blind": "compelled-take",
+      "ref_value": [
+        "capture-by-leap"
+      ],
+      "blind_value": "single-capture",
+      "key": "compel-the-take|dependsOn|compelled-take|blind has edge to single-capture; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "compel-the-take",
+      "field": "dependsOn",
+      "detail": "blind has edge to multiple-capture; reference has no edge to what it links to",
+      "blind": "compelled-take",
+      "ref_value": [
+        "multiple-capture"
+      ],
+      "blind_value": "multiple-capture",
+      "key": "compel-the-take|dependsOn|compelled-take|blind has edge to multiple-capture; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "compel-the-take",
+      "field": "dependsOn",
+      "detail": "blind has edge to huff-short-adopted-capture; reference has no edge to what it links to",
+      "blind": "compelled-take",
+      "ref_value": [
+        "huff-footnote"
+      ],
+      "blind_value": "huff-short-adopted-capture",
+      "key": "compel-the-take|dependsOn|compelled-take|blind has edge to huff-short-adopted-capture; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "compel-the-take",
+      "field": "dependsOn",
+      "detail": "blind has edge to huff-route-choice; reference has no edge to what it links to",
+      "blind": "compelled-take",
+      "ref_value": [
+        "huff-footnote"
+      ],
+      "blind_value": "huff-route-choice",
+      "key": "compel-the-take|dependsOn|compelled-take|blind has edge to huff-route-choice; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "compel-the-take",
+      "field": "enabledBy",
+      "detail": "blind has edge to huff-election; reference has no edge to what it links to",
+      "blind": "compelled-take",
+      "ref_value": [
+        "huff-choice"
+      ],
+      "blind_value": "huff-election",
+      "key": "compel-the-take|enabledBy|compelled-take|blind has edge to huff-election; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "crowned-by-opponent",
+      "field": "scope",
+      "detail": "differs",
+      "blind": "king-movement",
+      "ref_value": "out",
+      "blind_value": "in",
+      "key": "crowned-by-opponent|scope|king-movement|differs",
+      "resolution": null
+    },
+    {
+      "entry": "crowned-by-opponent",
+      "field": "clarity",
+      "detail": "differs",
+      "blind": "king-movement",
+      "ref_value": "clear",
+      "blind_value": "ambiguous",
+      "key": "crowned-by-opponent|clarity|king-movement|differs",
+      "resolution": null
+    },
+    {
+      "entry": "crowned-by-opponent",
+      "field": "ambiguity",
+      "detail": "present in one map only",
+      "blind": "king-movement",
+      "ref_value": false,
+      "blind_value": true,
+      "key": "crowned-by-opponent|ambiguity|king-movement|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "crowned-by-opponent",
+      "field": "dependsOn",
+      "detail": "blind has edge to promotion; reference has no edge to what it links to",
+      "blind": "king-movement",
+      "ref_value": [
+        "becomes-king"
+      ],
+      "blind_value": "promotion",
+      "key": "crowned-by-opponent|dependsOn|king-movement|blind has edge to promotion; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "crowned-by-opponent",
+      "field": "dependsOn",
+      "detail": "blind has edge to board-grid; reference has no edge to what it links to",
+      "blind": "king-movement",
+      "ref_value": [
+        "square-numbering"
+      ],
+      "blind_value": "board-grid",
+      "key": "crowned-by-opponent|dependsOn|king-movement|blind has edge to board-grid; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "crowned-by-opponent",
+      "field": "dependsOn",
+      "detail": "blind has edge to king-directions; reference has no edge to what it links to",
+      "blind": "king-movement",
+      "ref_value": [
+        "king-movement"
+      ],
+      "blind_value": "king-directions",
+      "key": "crowned-by-opponent|dependsOn|king-movement|blind has edge to king-directions; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "crowned-by-opponent",
+      "field": "enabledBy",
+      "detail": "blind has edge to promotion; reference has no edge to what it links to",
+      "blind": "king-movement",
+      "ref_value": [
+        "becomes-king"
+      ],
+      "blind_value": "promotion",
+      "key": "crowned-by-opponent|enabledBy|king-movement|blind has edge to promotion; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "draw-by-agreement",
+      "field": "scope",
+      "detail": "differs",
+      "blind": "stronger-side-assessment",
+      "ref_value": "out",
+      "blind_value": "in",
+      "key": "draw-by-agreement|scope|stronger-side-assessment|differs",
+      "resolution": null
+    },
+    {
+      "entry": "draw-by-agreement",
+      "field": "clarity",
+      "detail": "differs",
+      "blind": "stronger-side-assessment",
+      "ref_value": "clear",
+      "blind_value": "ambiguous",
+      "key": "draw-by-agreement|clarity|stronger-side-assessment|differs",
+      "resolution": null
+    },
+    {
+      "entry": "draw-by-agreement",
+      "field": "ambiguity",
+      "detail": "present in one map only",
+      "blind": "stronger-side-assessment",
+      "ref_value": false,
+      "blind_value": true,
+      "key": "draw-by-agreement|ambiguity|stronger-side-assessment|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "draw-by-agreement",
+      "field": "absentFrom",
+      "detail": "present in one map only",
+      "blind": "stronger-side-assessment",
+      "ref_value": {
+        "searched": [
+          "agree",
+          "agreed",
+          "agreement",
+          "consent"
+        ]
+      },
+      "blind_value": null,
+      "key": "draw-by-agreement|absentFrom|stronger-side-assessment|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "draw-by-agreement",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "stronger-side-assessment",
+      "ref_value": 0.821,
+      "blind_value": 1.0,
+      "key": "draw-by-agreement|evidence|stronger-side-assessment|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "draw-by-repetition",
+      "field": "scope",
+      "detail": "differs",
+      "blind": "stronger-side-assessment",
+      "ref_value": "out",
+      "blind_value": "in",
+      "key": "draw-by-repetition|scope|stronger-side-assessment|differs",
+      "resolution": null
+    },
+    {
+      "entry": "draw-by-repetition",
+      "field": "clarity",
+      "detail": "differs",
+      "blind": "stronger-side-assessment",
+      "ref_value": "clear",
+      "blind_value": "ambiguous",
+      "key": "draw-by-repetition|clarity|stronger-side-assessment|differs",
+      "resolution": null
+    },
+    {
+      "entry": "draw-by-repetition",
+      "field": "ambiguity",
+      "detail": "present in one map only",
+      "blind": "stronger-side-assessment",
+      "ref_value": false,
+      "blind_value": true,
+      "key": "draw-by-repetition|ambiguity|stronger-side-assessment|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "draw-by-repetition",
+      "field": "absentFrom",
+      "detail": "present in one map only",
+      "blind": "stronger-side-assessment",
+      "ref_value": {
+        "searched": [
+          "repetition",
+          "repeated",
+          "repeat",
+          "same position"
+        ]
+      },
+      "blind_value": null,
+      "key": "draw-by-repetition|absentFrom|stronger-side-assessment|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "draw-by-repetition",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "stronger-side-assessment",
+      "ref_value": 0.821,
+      "blind_value": 1.0,
+      "key": "draw-by-repetition|evidence|stronger-side-assessment|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "draw-defined",
+      "field": "kind",
+      "detail": "differs",
+      "blind": "draw-definition",
+      "ref_value": "value",
+      "blind_value": "operation",
+      "key": "draw-defined|kind|draw-definition|differs",
+      "resolution": null
+    },
+    {
+      "entry": "draw-defined",
+      "field": "dependsOn",
+      "detail": "blind has edge to no-play-loss; reference has no edge to what it links to",
+      "blind": "draw-definition",
+      "ref_value": [
+        "loss-when-none-can-be-played"
+      ],
+      "blind_value": "no-play-loss",
+      "key": "draw-defined|dependsOn|draw-definition|blind has edge to no-play-loss; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "elementary-positions",
+      "field": "kind",
+      "detail": "differs",
+      "blind": "elementary-position-names",
+      "ref_value": "operation",
+      "blind_value": "value",
+      "key": "elementary-positions|kind|elementary-position-names|differs",
+      "resolution": null
+    },
+    {
+      "entry": "elementary-positions",
+      "field": "scope",
+      "detail": "differs",
+      "blind": "elementary-position-names",
+      "ref_value": "out",
+      "blind_value": "in",
+      "key": "elementary-positions|scope|elementary-position-names|differs",
+      "resolution": null
+    },
+    {
+      "entry": "elementary-positions",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "elementary-position-names",
+      "ref_value": 0.517,
+      "blind_value": 1.0,
+      "key": "elementary-positions|evidence|elementary-position-names|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "false-move-forfeits",
+      "field": "clarity",
+      "detail": "differs",
+      "blind": "improper-move-forfeit",
+      "ref_value": "clear",
+      "blind_value": "ambiguous",
+      "key": "false-move-forfeits|clarity|improper-move-forfeit|differs",
+      "resolution": null
+    },
+    {
+      "entry": "false-move-forfeits",
+      "field": "ambiguity",
+      "detail": "present in one map only",
+      "blind": "improper-move-forfeit",
+      "ref_value": false,
+      "blind_value": true,
+      "key": "false-move-forfeits|ambiguity|improper-move-forfeit|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "false-move-forfeits",
+      "field": "dependsOn",
+      "detail": "reference has edge to king-movement; no blind edge reaches it",
+      "blind": "improper-move-forfeit",
+      "ref_value": "king-movement",
+      "blind_value": null,
+      "key": "false-move-forfeits|dependsOn|improper-move-forfeit|reference has edge to king-movement; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "false-move-forfeits",
+      "field": "dependsOn",
+      "detail": "blind has edge to king-movement; reference has no edge to what it links to",
+      "blind": "improper-move-forfeit",
+      "ref_value": [
+        "becomes-king",
+        "crowned-by-opponent"
+      ],
+      "blind_value": "king-movement",
+      "key": "false-move-forfeits|dependsOn|improper-move-forfeit|blind has edge to king-movement; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "false-move-forfeits",
+      "field": "dependsOn",
+      "detail": "blind has edge to huff-election; reference has no edge to what it links to",
+      "blind": "improper-move-forfeit",
+      "ref_value": [
+        "compel-the-take",
+        "huff-choice"
+      ],
+      "blind_value": "huff-election",
+      "key": "false-move-forfeits|dependsOn|improper-move-forfeit|blind has edge to huff-election; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "first-position",
+      "field": "evidence",
+      "detail": "spans overlap but neither contains the other",
+      "blind": "first-position-worked",
+      "ref_value": 0.75,
+      "blind_value": 0.023,
+      "key": "first-position|evidence|first-position-worked|spans overlap but neither contains the other",
+      "resolution": null
+    },
+    {
+      "entry": "forty-move-limit",
+      "field": "dependsOn",
+      "detail": "reference has edge to draw-defined; no blind edge reaches it",
+      "blind": "forty-move-draw",
+      "ref_value": "draw-defined",
+      "blind_value": null,
+      "key": "forty-move-limit|dependsOn|forty-move-draw|reference has edge to draw-defined; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "forty-move-limit",
+      "field": "dependsOn",
+      "detail": "reference has edge to huff-defined; no blind edge reaches it",
+      "blind": "forty-move-draw",
+      "ref_value": "huff-defined",
+      "blind_value": null,
+      "key": "forty-move-limit|dependsOn|forty-move-draw|reference has edge to huff-defined; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "forty-move-limit",
+      "field": "dependsOn",
+      "detail": "reference has edge to moves-alternate; no blind edge reaches it",
+      "blind": "forty-move-draw",
+      "ref_value": "moves-alternate",
+      "blind_value": null,
+      "key": "forty-move-limit|dependsOn|forty-move-draw|reference has edge to moves-alternate; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "forty-move-limit",
+      "field": "dependsOn",
+      "detail": "blind has edge to draw-notice-limit; reference has no edge to what it links to",
+      "blind": "forty-move-draw",
+      "ref_value": [
+        "draw-by-agreement",
+        "draw-by-repetition"
+      ],
+      "blind_value": "draw-notice-limit",
+      "key": "forty-move-limit|dependsOn|forty-move-draw|blind has edge to draw-notice-limit; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "forty-move-limit",
+      "field": "dependsOn",
+      "detail": "blind has edge to decided-advantage; reference has no edge to what it links to",
+      "blind": "forty-move-draw",
+      "ref_value": [
+        "draw-by-agreement",
+        "draw-by-repetition"
+      ],
+      "blind_value": "decided-advantage",
+      "key": "forty-move-limit|dependsOn|forty-move-draw|blind has edge to decided-advantage; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "forty-move-limit",
+      "field": "dependsOn",
+      "detail": "blind has edge to no-play-loss; reference has no edge to what it links to",
+      "blind": "forty-move-draw",
+      "ref_value": [
+        "loss-when-none-can-be-played"
+      ],
+      "blind_value": "no-play-loss",
+      "key": "forty-move-limit|dependsOn|forty-move-draw|blind has edge to no-play-loss; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "forty-move-limit",
+      "field": "enabledBy",
+      "detail": "blind has edge to stronger-side-assessment; reference has no edge to what it links to",
+      "blind": "forty-move-draw",
+      "ref_value": [
+        "draw-by-agreement",
+        "draw-by-repetition"
+      ],
+      "blind_value": "stronger-side-assessment",
+      "key": "forty-move-limit|enabledBy|forty-move-draw|blind has edge to stronger-side-assessment; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "forty-move-limit",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "forty-move-draw",
+      "ref_value": 0.821,
+      "blind_value": 1.0,
+      "key": "forty-move-limit|evidence|forty-move-draw|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "fourth-position",
+      "field": "evidence",
+      "detail": "spans overlap but neither contains the other",
+      "blind": "fourth-position-worked",
+      "ref_value": 0.895,
+      "blind_value": 0.212,
+      "key": "fourth-position|evidence|fourth-position-worked|spans overlap but neither contains the other",
+      "resolution": null
+    },
+    {
+      "entry": "general-advice",
+      "field": "evidence",
+      "detail": "blind span quotes text the reference span omits",
+      "blind": "advice-2",
+      "ref_value": 1.0,
+      "blind_value": 0.628,
+      "key": "general-advice|evidence|advice-2|blind span quotes text the reference span omits",
+      "resolution": null
+    },
+    {
+      "entry": "huff-choice",
+      "field": "dependsOn",
+      "detail": "reference has edge to huff-defined; no blind edge reaches it",
+      "blind": "huff-election",
+      "ref_value": "huff-defined",
+      "blind_value": null,
+      "key": "huff-choice|dependsOn|huff-election|reference has edge to huff-defined; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "huff-defined",
+      "field": "ambiguity.fate",
+      "detail": "differs",
+      "blind": "huff-removal",
+      "ref_value": "decision",
+      "blind_value": "unresolved",
+      "key": "huff-defined|ambiguity.fate|huff-removal|differs",
+      "resolution": null
+    },
+    {
+      "entry": "huff-defined",
+      "field": "enabledBy",
+      "detail": "blind has edge to huff-election; reference has no edge to what it links to",
+      "blind": "huff-removal",
+      "ref_value": [
+        "compel-the-take",
+        "huff-choice"
+      ],
+      "blind_value": "huff-election",
+      "key": "huff-defined|enabledBy|huff-removal|blind has edge to huff-election; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "huff-defined",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "huff-removal",
+      "ref_value": 0.794,
+      "blind_value": 1.0,
+      "key": "huff-defined|evidence|huff-removal|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "huff-then-play",
+      "field": "dependsOn",
+      "detail": "reference has edge to huff-choice; no blind edge reaches it",
+      "blind": "huff-does-not-undo-other-move",
+      "ref_value": "huff-choice",
+      "blind_value": null,
+      "key": "huff-then-play|dependsOn|huff-does-not-undo-other-move|reference has edge to huff-choice; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "huff-then-play",
+      "field": "dependsOn",
+      "detail": "blind has edge to huff-removal; reference has no edge to what it links to",
+      "blind": "huff-does-not-undo-other-move",
+      "ref_value": [
+        "huff-defined"
+      ],
+      "blind_value": "huff-removal",
+      "key": "huff-then-play|dependsOn|huff-does-not-undo-other-move|blind has edge to huff-removal; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "huff-then-play",
+      "field": "dependsOn",
+      "detail": "blind has edge to huff-not-move; reference has no edge to what it links to",
+      "blind": "huff-does-not-undo-other-move",
+      "ref_value": [
+        "huff-defined"
+      ],
+      "blind_value": "huff-not-move",
+      "key": "huff-then-play|dependsOn|huff-does-not-undo-other-move|blind has edge to huff-not-move; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "huff-then-play",
+      "field": "enabledBy",
+      "detail": "blind has edge to huff-election; reference has no edge to what it links to",
+      "blind": "huff-does-not-undo-other-move",
+      "ref_value": [
+        "compel-the-take",
+        "huff-choice"
+      ],
+      "blind_value": "huff-election",
+      "key": "huff-then-play|enabledBy|huff-does-not-undo-other-move|blind has edge to huff-election; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "king-movement",
+      "field": "kind",
+      "detail": "differs",
+      "blind": "king-directions",
+      "ref_value": "operation",
+      "blind_value": "value",
+      "key": "king-movement|kind|king-directions|differs",
+      "resolution": null
+    },
+    {
+      "entry": "king-movement",
+      "field": "dependsOn",
+      "detail": "reference has edge to man-moves-forward; no blind edge reaches it",
+      "blind": "king-directions",
+      "ref_value": "man-moves-forward",
+      "blind_value": null,
+      "key": "king-movement|dependsOn|king-directions|reference has edge to man-moves-forward; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "king-movement",
+      "field": "enabledBy",
+      "detail": "reference has edge to becomes-king; no blind edge reaches it",
+      "blind": "king-directions",
+      "ref_value": "becomes-king",
+      "blind_value": null,
+      "key": "king-movement|enabledBy|king-directions|reference has edge to becomes-king; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "loss-when-none-can-be-played",
+      "field": "clarity",
+      "detail": "differs",
+      "blind": "no-play-loss",
+      "ref_value": "ambiguous",
+      "blind_value": "clear",
+      "key": "loss-when-none-can-be-played|clarity|no-play-loss|differs",
+      "resolution": null
+    },
+    {
+      "entry": "loss-when-none-can-be-played",
+      "field": "ambiguity",
+      "detail": "present in one map only",
+      "blind": "no-play-loss",
+      "ref_value": true,
+      "blind_value": false,
+      "key": "loss-when-none-can-be-played|ambiguity|no-play-loss|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "loss-when-none-can-be-played",
+      "field": "dependsOn",
+      "detail": "reference has edge to king-movement; no blind edge reaches it",
+      "blind": "no-play-loss",
+      "ref_value": "king-movement",
+      "blind_value": null,
+      "key": "loss-when-none-can-be-played|dependsOn|no-play-loss|reference has edge to king-movement; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "loss-when-none-can-be-played",
+      "field": "dependsOn",
+      "detail": "blind has edge to king-movement; reference has no edge to what it links to",
+      "blind": "no-play-loss",
+      "ref_value": [
+        "becomes-king",
+        "crowned-by-opponent"
+      ],
+      "blind_value": "king-movement",
+      "key": "loss-when-none-can-be-played|dependsOn|no-play-loss|blind has edge to king-movement; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "loss-when-none-can-be-played",
+      "field": "dependsOn",
+      "detail": "blind has edge to multiple-capture; reference has no edge to what it links to",
+      "blind": "no-play-loss",
+      "ref_value": [
+        "multiple-capture"
+      ],
+      "blind_value": "multiple-capture",
+      "key": "loss-when-none-can-be-played|dependsOn|no-play-loss|blind has edge to multiple-capture; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "lots-for-colour",
+      "field": "clarity",
+      "detail": "differs",
+      "blind": "initial-colour-lots",
+      "ref_value": "clear",
+      "blind_value": "ambiguous",
+      "key": "lots-for-colour|clarity|initial-colour-lots|differs",
+      "resolution": null
+    },
+    {
+      "entry": "lots-for-colour",
+      "field": "ambiguity",
+      "detail": "present in one map only",
+      "blind": "initial-colour-lots",
+      "ref_value": false,
+      "blind_value": true,
+      "key": "lots-for-colour|ambiguity|initial-colour-lots|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "lots-for-colour",
+      "field": "dependsOn",
+      "detail": "reference has edge to side-names; no blind edge reaches it",
+      "blind": "initial-colour-lots",
+      "ref_value": "side-names",
+      "blind_value": null,
+      "key": "lots-for-colour|dependsOn|initial-colour-lots|reference has edge to side-names; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "man-moves-forward",
+      "field": "clarity",
+      "detail": "differs",
+      "blind": "man-movement",
+      "ref_value": "clear",
+      "blind_value": "ambiguous",
+      "key": "man-moves-forward|clarity|man-movement|differs",
+      "resolution": null
+    },
+    {
+      "entry": "man-moves-forward",
+      "field": "ambiguity",
+      "detail": "present in one map only",
+      "blind": "man-movement",
+      "ref_value": false,
+      "blind_value": true,
+      "key": "man-moves-forward|ambiguity|man-movement|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "man-moves-forward",
+      "field": "dependsOn",
+      "detail": "reference has edge to moves-alternate; no blind edge reaches it",
+      "blind": "man-movement",
+      "ref_value": "moves-alternate",
+      "blind_value": null,
+      "key": "man-moves-forward|dependsOn|man-movement|reference has edge to moves-alternate; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "man-moves-forward",
+      "field": "suspendedBy",
+      "detail": "blind has edge to promotion; reference has no edge to what it links to",
+      "blind": "man-movement",
+      "ref_value": [
+        "becomes-king",
+        "crowned-by-opponent"
+      ],
+      "blind_value": "promotion",
+      "key": "man-moves-forward|suspendedBy|man-movement|blind has edge to promotion; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "men-on-black-squares",
+      "field": "kind",
+      "detail": "differs",
+      "blind": "black-square-placement",
+      "ref_value": "value",
+      "blind_value": "operation",
+      "key": "men-on-black-squares|kind|black-square-placement|differs",
+      "resolution": null
+    },
+    {
+      "entry": "men-on-black-squares",
+      "field": "dependsOn",
+      "detail": "reference has edge to board-squares; no blind edge reaches it",
+      "blind": "black-square-placement",
+      "ref_value": "board-squares",
+      "blind_value": null,
+      "key": "men-on-black-squares|dependsOn|black-square-placement|reference has edge to board-squares; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "moves-alternate",
+      "field": "dependsOn",
+      "detail": "reference has edge to starting-position; no blind edge reaches it",
+      "blind": "alternate-turns",
+      "ref_value": "starting-position",
+      "blind_value": null,
+      "key": "moves-alternate|dependsOn|alternate-turns|reference has edge to starting-position; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "moves-alternate",
+      "field": "dependsOn",
+      "detail": "blind has edge to man-movement; reference has no edge to what it links to",
+      "blind": "alternate-turns",
+      "ref_value": [
+        "man-moves-forward"
+      ],
+      "blind_value": "man-movement",
+      "key": "moves-alternate|dependsOn|alternate-turns|blind has edge to man-movement; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "moves-alternate",
+      "field": "dependsOn",
+      "detail": "blind has edge to king-movement; reference has no edge to what it links to",
+      "blind": "alternate-turns",
+      "ref_value": [
+        "becomes-king",
+        "crowned-by-opponent"
+      ],
+      "blind_value": "king-movement",
+      "key": "moves-alternate|dependsOn|alternate-turns|blind has edge to king-movement; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "moves-alternate",
+      "field": "enabledBy",
+      "detail": "blind has edge to initial-numbered-placement; reference has no edge to what it links to",
+      "blind": "alternate-turns",
+      "ref_value": [
+        "starting-position"
+      ],
+      "blind_value": "initial-numbered-placement",
+      "key": "moves-alternate|enabledBy|alternate-turns|blind has edge to initial-numbered-placement; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "multiple-capture",
+      "field": "clarity",
+      "detail": "differs",
+      "blind": "multiple-capture",
+      "ref_value": "clear",
+      "blind_value": "ambiguous",
+      "key": "multiple-capture|clarity|multiple-capture|differs",
+      "resolution": null
+    },
+    {
+      "entry": "multiple-capture",
+      "field": "ambiguity",
+      "detail": "present in one map only",
+      "blind": "multiple-capture",
+      "ref_value": false,
+      "blind_value": true,
+      "key": "multiple-capture|ambiguity|multiple-capture|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "multiple-capture",
+      "field": "dependsOn",
+      "detail": "blind has edge to capture-removal; reference has no edge to what it links to",
+      "blind": "multiple-capture",
+      "ref_value": [
+        "captured-piece-removed"
+      ],
+      "blind_value": "capture-removal",
+      "key": "multiple-capture|dependsOn|multiple-capture|blind has edge to capture-removal; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "multiple-capture",
+      "field": "dependsOn",
+      "detail": "blind has edge to huff-short-adopted-capture; reference has no edge to what it links to",
+      "blind": "multiple-capture",
+      "ref_value": [
+        "huff-footnote"
+      ],
+      "blind_value": "huff-short-adopted-capture",
+      "key": "multiple-capture|dependsOn|multiple-capture|blind has edge to huff-short-adopted-capture; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "multiple-capture",
+      "field": "dependsOn",
+      "detail": "blind has edge to huff-route-choice; reference has no edge to what it links to",
+      "blind": "multiple-capture",
+      "ref_value": [
+        "huff-footnote"
+      ],
+      "blind_value": "huff-route-choice",
+      "key": "multiple-capture|dependsOn|multiple-capture|blind has edge to huff-route-choice; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "not-taking-is-liable-to-huff",
+      "field": "scope",
+      "detail": "differs",
+      "blind": "capture-worked-example",
+      "ref_value": "in",
+      "blind_value": "out",
+      "key": "not-taking-is-liable-to-huff|scope|capture-worked-example|differs",
+      "resolution": null
+    },
+    {
+      "entry": "not-taking-is-liable-to-huff",
+      "field": "dependsOn",
+      "detail": "reference has edge to capture-by-leap; no blind edge reaches it",
+      "blind": "capture-worked-example",
+      "ref_value": "capture-by-leap",
+      "blind_value": null,
+      "key": "not-taking-is-liable-to-huff|dependsOn|capture-worked-example|reference has edge to capture-by-leap; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "not-taking-is-liable-to-huff",
+      "field": "dependsOn",
+      "detail": "reference has edge to huff-defined; no blind edge reaches it",
+      "blind": "capture-worked-example",
+      "ref_value": "huff-defined",
+      "blind_value": null,
+      "key": "not-taking-is-liable-to-huff|dependsOn|capture-worked-example|reference has edge to huff-defined; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "not-taking-is-liable-to-huff",
+      "field": "evidence",
+      "detail": "blind span quotes text the reference span omits",
+      "blind": "capture-worked-example",
+      "ref_value": 1.0,
+      "blind_value": 0.272,
+      "key": "not-taking-is-liable-to-huff|evidence|capture-worked-example|blind span quotes text the reference span omits",
+      "resolution": null
+    },
+    {
+      "entry": "opening-names",
+      "field": "scope",
+      "detail": "differs",
+      "blind": "opening-ayrshire-lassie",
+      "ref_value": "out",
+      "blind_value": "in",
+      "key": "opening-names|scope|opening-ayrshire-lassie|differs",
+      "resolution": null
+    },
+    {
+      "entry": "opening-names",
+      "field": "dependsOn",
+      "detail": "blind has edge to numbered-board; reference has no edge to what it links to",
+      "blind": "opening-ayrshire-lassie",
+      "ref_value": [
+        "square-numbering"
+      ],
+      "blind_value": "numbered-board",
+      "key": "opening-names|dependsOn|opening-ayrshire-lassie|blind has edge to numbered-board; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "opening-names",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "opening-ayrshire-lassie",
+      "ref_value": 0.604,
+      "blind_value": 1.0,
+      "key": "opening-names|evidence|opening-ayrshire-lassie|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "own-piece-removed-when-taking",
+      "field": "dependsOn",
+      "detail": "reference has edge to capture-by-leap; no blind edge reaches it",
+      "blind": "own-piece-removed",
+      "ref_value": "capture-by-leap",
+      "blind_value": null,
+      "key": "own-piece-removed-when-taking|dependsOn|own-piece-removed|reference has edge to capture-by-leap; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "own-piece-removed-when-taking",
+      "field": "dependsOn",
+      "detail": "blind has edge to own-piece-removal-election; reference has no edge to what it links to",
+      "blind": "own-piece-removed",
+      "ref_value": [
+        "own-piece-replacement-choice"
+      ],
+      "blind_value": "own-piece-removal-election",
+      "key": "own-piece-removed-when-taking|dependsOn|own-piece-removed|blind has edge to own-piece-removal-election; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "own-piece-replacement-choice",
+      "field": "dependsOn",
+      "detail": "reference has edge to own-piece-removed-when-taking; no blind edge reaches it",
+      "blind": "own-piece-removal-election",
+      "ref_value": "own-piece-removed-when-taking",
+      "blind_value": null,
+      "key": "own-piece-replacement-choice|dependsOn|own-piece-removal-election|reference has edge to own-piece-removed-when-taking; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "play-completed-on-release",
+      "field": "dependsOn",
+      "detail": "reference has edge to multiple-capture; no blind edge reaches it",
+      "blind": "play-completion",
+      "ref_value": "multiple-capture",
+      "blind_value": null,
+      "key": "play-completed-on-release|dependsOn|play-completion|reference has edge to multiple-capture; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "player-count",
+      "field": "dependsOn",
+      "detail": "blind has edge to pieces-per-side; reference has no edge to what it links to",
+      "blind": "sides-and-colours",
+      "ref_value": [
+        "board-squares",
+        "men-count"
+      ],
+      "blind_value": "pieces-per-side",
+      "key": "player-count|dependsOn|sides-and-colours|blind has edge to pieces-per-side; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "player-count",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "sides-and-colours",
+      "ref_value": 0.838,
+      "blind_value": 1.0,
+      "key": "player-count|evidence|sides-and-colours|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "second-position",
+      "field": "evidence",
+      "detail": "spans overlap but neither contains the other",
+      "blind": "second-position-worked",
+      "ref_value": 0.75,
+      "blind_value": 0.035,
+      "key": "second-position|evidence|second-position-worked|spans overlap but neither contains the other",
+      "resolution": null
+    },
+    {
+      "entry": "side-names",
+      "field": "dependsOn",
+      "detail": "reference has edge to player-count; no blind edge reaches it",
+      "blind": "sides-and-colours",
+      "ref_value": "player-count",
+      "blind_value": null,
+      "key": "side-names|dependsOn|sides-and-colours|reference has edge to player-count; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "side-names",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "sides-and-colours",
+      "ref_value": 0.838,
+      "blind_value": 1.0,
+      "key": "side-names|evidence|sides-and-colours|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "square-numbering",
+      "field": "dependsOn",
+      "detail": "reference has edge to board-squares; no blind edge reaches it",
+      "blind": "numbered-board",
+      "ref_value": "board-squares",
+      "blind_value": null,
+      "key": "square-numbering|dependsOn|numbered-board|reference has edge to board-squares; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "square-numbering",
+      "field": "dependsOn",
+      "detail": "reference has edge to men-on-black-squares; no blind edge reaches it",
+      "blind": "numbered-board",
+      "ref_value": "men-on-black-squares",
+      "blind_value": null,
+      "key": "square-numbering|dependsOn|numbered-board|reference has edge to men-on-black-squares; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "square-numbering",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "numbered-board",
+      "ref_value": 0.735,
+      "blind_value": 1.0,
+      "key": "square-numbering|evidence|numbered-board|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "starting-position",
+      "field": "kind",
+      "detail": "differs",
+      "blind": "initial-numbered-placement",
+      "ref_value": "value",
+      "blind_value": "operation",
+      "key": "starting-position|kind|initial-numbered-placement|differs",
+      "resolution": null
+    },
+    {
+      "entry": "third-position",
+      "field": "evidence",
+      "detail": "spans overlap but neither contains the other",
+      "blind": "third-position-worked",
+      "ref_value": 0.857,
+      "blind_value": 0.05,
+      "key": "third-position|evidence|third-position-worked|spans overlap but neither contains the other",
+      "resolution": null
+    },
+    {
+      "entry": "three-kings-to-two",
+      "field": "evidence",
+      "detail": "blind span quotes text the reference span omits",
+      "blind": "three-kings-example",
+      "ref_value": 1.0,
+      "blind_value": 0.207,
+      "key": "three-kings-to-two|evidence|three-kings-example|blind span quotes text the reference span omits",
+      "resolution": null
+    },
+    {
+      "entry": "time-limit",
+      "field": "kind",
+      "detail": "differs",
+      "blind": "time-grace-period",
+      "ref_value": "operation",
+      "blind_value": "value",
+      "key": "time-limit|kind|time-grace-period|differs",
+      "resolution": null
+    },
+    {
+      "entry": "time-limit",
+      "field": "dependsOn",
+      "detail": "reference has edge to moves-alternate; no blind edge reaches it",
+      "blind": "time-grace-period",
+      "ref_value": "moves-alternate",
+      "blind_value": null,
+      "key": "time-limit|dependsOn|time-grace-period|reference has edge to moves-alternate; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "time-limit-one-way-of-taking",
+      "field": "clarity",
+      "detail": "differs",
+      "blind": "forced-take-time-forfeit",
+      "ref_value": "clear",
+      "blind_value": "ambiguous",
+      "key": "time-limit-one-way-of-taking|clarity|forced-take-time-forfeit|differs",
+      "resolution": null
+    },
+    {
+      "entry": "time-limit-one-way-of-taking",
+      "field": "ambiguity",
+      "detail": "present in one map only",
+      "blind": "forced-take-time-forfeit",
+      "ref_value": false,
+      "blind_value": true,
+      "key": "time-limit-one-way-of-taking|ambiguity|forced-take-time-forfeit|present in one map only",
+      "resolution": null
+    },
+    {
+      "entry": "time-limit-one-way-of-taking",
+      "field": "dependsOn",
+      "detail": "blind has edge to play-completion; reference has no edge to what it links to",
+      "blind": "forced-take-time-forfeit",
+      "ref_value": [
+        "play-completed-on-release"
+      ],
+      "blind_value": "play-completion",
+      "key": "time-limit-one-way-of-taking|dependsOn|forced-take-time-forfeit|blind has edge to play-completion; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "touched-piece-must-be-played",
+      "field": "dependsOn",
+      "detail": "reference has edge to arranging-without-intimation; no blind edge reaches it",
+      "blind": "touch-move",
+      "ref_value": "arranging-without-intimation",
+      "blind_value": null,
+      "key": "touched-piece-must-be-played|dependsOn|touch-move|reference has edge to arranging-without-intimation; no blind edge reaches it",
+      "resolution": null
+    },
+    {
+      "entry": "touched-piece-must-be-played",
+      "field": "dependsOn",
+      "detail": "blind has edge to initial-numbered-placement; reference has no edge to what it links to",
+      "blind": "touch-move",
+      "ref_value": [
+        "starting-position"
+      ],
+      "blind_value": "initial-numbered-placement",
+      "key": "touched-piece-must-be-played|dependsOn|touch-move|blind has edge to initial-numbered-placement; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "touched-piece-must-be-played",
+      "field": "dependsOn",
+      "detail": "blind has edge to man-movement; reference has no edge to what it links to",
+      "blind": "touch-move",
+      "ref_value": [
+        "man-moves-forward"
+      ],
+      "blind_value": "man-movement",
+      "key": "touched-piece-must-be-played|dependsOn|touch-move|blind has edge to man-movement; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "touched-piece-must-be-played",
+      "field": "dependsOn",
+      "detail": "blind has edge to king-movement; reference has no edge to what it links to",
+      "blind": "touch-move",
+      "ref_value": [
+        "becomes-king",
+        "crowned-by-opponent"
+      ],
+      "blind_value": "king-movement",
+      "key": "touched-piece-must-be-played|dependsOn|touch-move|blind has edge to king-movement; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "touched-piece-must-be-played",
+      "field": "dependsOn",
+      "detail": "blind has edge to single-capture; reference has no edge to what it links to",
+      "blind": "touch-move",
+      "ref_value": [
+        "capture-by-leap"
+      ],
+      "blind_value": "single-capture",
+      "key": "touched-piece-must-be-played|dependsOn|touch-move|blind has edge to single-capture; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "touched-piece-must-be-played",
+      "field": "dependsOn",
+      "detail": "blind has edge to multiple-capture; reference has no edge to what it links to",
+      "blind": "touch-move",
+      "ref_value": [
+        "multiple-capture"
+      ],
+      "blind_value": "multiple-capture",
+      "key": "touched-piece-must-be-played|dependsOn|touch-move|blind has edge to multiple-capture; reference has no edge to what it links to",
+      "resolution": null
+    },
+    {
+      "entry": "touched-piece-must-be-played",
+      "field": "evidence",
+      "detail": "reference span quotes text the blind span omits",
+      "blind": "touch-move",
+      "ref_value": 0.659,
+      "blind_value": 1.0,
+      "key": "touched-piece-must-be-played|evidence|touch-move|reference span quotes text the blind span omits",
+      "resolution": null
+    },
+    {
+      "entry": "two-kings-to-one",
+      "field": "evidence",
+      "detail": "blind span quotes text the reference span omits",
+      "blind": "two-kings-example",
+      "ref_value": 1.0,
+      "blind_value": 0.307,
+      "key": "two-kings-to-one|evidence|two-kings-example|blind span quotes text the reference span omits",
+      "resolution": null
+    },
+    {
+      "entry": "white-squares-custom",
+      "field": "kind",
+      "detail": "differs",
+      "blind": "diagram-square-convention",
+      "ref_value": "operation",
+      "blind_value": "value",
+      "key": "white-squares-custom|kind|diagram-square-convention|differs",
+      "resolution": null
+    },
+    {
+      "entry": "white-squares-custom",
+      "field": "evidence",
+      "detail": "blind span quotes text the reference span omits",
+      "blind": "diagram-square-convention",
+      "ref_value": 1.0,
+      "blind_value": 0.518,
+      "key": "white-squares-custom|evidence|diagram-square-convention|blind span quotes text the reference span omits",
+      "resolution": null
+    },
+    {
+      "entry": "crowned-by-opponent",
+      "field": "scope",
+      "detail": "differs (blind entry links here but is not its partner)",
+      "blind": "crowning",
+      "ref_value": "out",
+      "blind_value": "in",
+      "key": "crowned-by-opponent|scope|crowning|differs (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "forty-move-limit",
+      "field": "clarity",
+      "detail": "differs (blind entry links here but is not its partner)",
+      "blind": "draw-notice-limit",
+      "ref_value": "ambiguous",
+      "blind_value": "clear",
+      "key": "forty-move-limit|clarity|draw-notice-limit|differs (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "forty-move-limit",
+      "field": "ambiguity",
+      "detail": "present in one map only (blind entry links here but is not its partner)",
+      "blind": "draw-notice-limit",
+      "ref_value": true,
+      "blind_value": false,
+      "key": "forty-move-limit|ambiguity|draw-notice-limit|present in one map only (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "huff-defined",
+      "field": "clarity",
+      "detail": "differs (blind entry links here but is not its partner)",
+      "blind": "huff-not-move",
+      "ref_value": "ambiguous",
+      "blind_value": "clear",
+      "key": "huff-defined|clarity|huff-not-move|differs (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "huff-defined",
+      "field": "ambiguity",
+      "detail": "present in one map only (blind entry links here but is not its partner)",
+      "blind": "huff-not-move",
+      "ref_value": true,
+      "blind_value": false,
+      "key": "huff-defined|ambiguity|huff-not-move|present in one map only (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "opening-names",
+      "field": "scope",
+      "detail": "differs (blind entry links here but is not its partner)",
+      "blind": "opening-bristol",
+      "ref_value": "out",
+      "blind_value": "in",
+      "key": "opening-names|scope|opening-bristol|differs (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "opening-names",
+      "field": "scope",
+      "detail": "differs (blind entry links here but is not its partner)",
+      "blind": "opening-second-double-corner",
+      "ref_value": "out",
+      "blind_value": "in",
+      "key": "opening-names|scope|opening-second-double-corner|differs (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "time-limit",
+      "field": "clarity",
+      "detail": "differs (blind entry links here but is not its partner)",
+      "blind": "ordinary-time-forfeit",
+      "ref_value": "clear",
+      "blind_value": "ambiguous",
+      "key": "time-limit|clarity|ordinary-time-forfeit|differs (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "time-limit",
+      "field": "ambiguity",
+      "detail": "present in one map only (blind entry links here but is not its partner)",
+      "blind": "ordinary-time-forfeit",
+      "ref_value": false,
+      "blind_value": true,
+      "key": "time-limit|ambiguity|ordinary-time-forfeit|present in one map only (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "becomes-king",
+      "field": "clarity",
+      "detail": "differs (blind entry links here but is not its partner)",
+      "blind": "promotion",
+      "ref_value": "ambiguous",
+      "blind_value": "clear",
+      "key": "becomes-king|clarity|promotion|differs (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "becomes-king",
+      "field": "ambiguity",
+      "detail": "present in one map only (blind entry links here but is not its partner)",
+      "blind": "promotion",
+      "ref_value": true,
+      "blind_value": false,
+      "key": "becomes-king|ambiguity|promotion|present in one map only (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "touched-piece-must-be-played",
+      "field": "clarity",
+      "detail": "differs (blind entry links here but is not its partner)",
+      "blind": "unplayable-touch-penalty",
+      "ref_value": "clear",
+      "blind_value": "ambiguous",
+      "key": "touched-piece-must-be-played|clarity|unplayable-touch-penalty|differs (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "touched-piece-must-be-played",
+      "field": "ambiguity",
+      "detail": "present in one map only (blind entry links here but is not its partner)",
+      "blind": "unplayable-touch-penalty",
+      "ref_value": false,
+      "blind_value": true,
+      "key": "touched-piece-must-be-played|ambiguity|unplayable-touch-penalty|present in one map only (blind entry links here but is not its partner)",
+      "resolution": null
+    },
+    {
+      "entry": "board-squares,men-count,player-count,side-names,loss-when-none-can-be-played,board-placement,men-on-black-squares,starting-position,colours-alternate,lots-for-colour,colour-choice,black-moves-first,time-limit,time-limit-one-way-of-taking,arranging-without-intimation,touched-piece-must-be-played,angle-crossed-commits-direction,play-completed-on-release,own-piece-removed-when-taking,own-piece-replacement-choice,false-move-forfeits,huff-defined,huff-choice,compel-the-take,becomes-king,crowned-by-opponent,draw-defined,forty-move-limit,draw-by-agreement,draw-by-repetition,board-set-for-play,square-numbering,numbering-from-black-side,moves-alternate,man-moves-forward,king-movement,capture-by-leap,multiple-capture,captured-piece-removed,not-taking-is-liable-to-huff,huff-then-play,general-advice,opening-names,two-kings-to-one,three-kings-to-two,elementary-positions,first-position,second-position,third-position,fourth-position,white-squares-custom,huff-footnote",
+      "field": "crossReferences",
+      "detail": "'a': declared only in the blind map",
+      "blind": "third-position-worked",
+      "ref_value": null,
+      "blind_value": [
+        "third-position-worked: unmapped"
+      ],
+      "key": "board-squares,men-count,player-count,side-names,loss-when-none-can-be-played,board-placement,men-on-black-squares,starting-position,colours-alternate,lots-for-colour,colour-choice,black-moves-first,time-limit,time-limit-one-way-of-taking,arranging-without-intimation,touched-piece-must-be-played,angle-crossed-commits-direction,play-completed-on-release,own-piece-removed-when-taking,own-piece-replacement-choice,false-move-forfeits,huff-defined,huff-choice,compel-the-take,becomes-king,crowned-by-opponent,draw-defined,forty-move-limit,draw-by-agreement,draw-by-repetition,board-set-for-play,square-numbering,numbering-from-black-side,moves-alternate,man-moves-forward,king-movement,capture-by-leap,multiple-capture,captured-piece-removed,not-taking-is-liable-to-huff,huff-then-play,general-advice,opening-names,two-kings-to-one,three-kings-to-two,elementary-positions,first-position,second-position,third-position,fourth-position,white-squares-custom,huff-footnote|crossReferences|third-position-worked|'a': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "touched-piece-must-be-played",
+      "field": "crossReferences",
+      "detail": "'according to the preceding law': declared only in the blind map",
+      "blind": "unplayable-touch-penalty",
+      "ref_value": null,
+      "blind_value": [
+        "unplayable-touch-penalty: resolvedBy unannounced-arrangement-forfeit"
+      ],
+      "key": "touched-piece-must-be-played|crossReferences|unplayable-touch-penalty|'according to the preceding law': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'american draughtplayer': declared only in the blind map",
+      "blind": "further-reading",
+      "ref_value": null,
+      "blind_value": [
+        "further-reading: unmapped"
+      ],
+      "key": "None|crossReferences|further-reading|'american draughtplayer': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'as for a game': declared only in the blind map",
+      "blind": "capture-worked-example",
+      "ref_value": null,
+      "blind_value": [
+        "capture-worked-example: resolvedBy initial-numbered-placement"
+      ],
+      "key": "None|crossReferences|capture-worked-example|'as for a game': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "three-kings-to-two",
+      "field": "crossReferences",
+      "detail": "'as we have seen': declared only in the blind map",
+      "blind": "three-kings-example",
+      "ref_value": null,
+      "blind_value": [
+        "three-kings-example: resolvedBy two-kings-example"
+      ],
+      "key": "three-kings-to-two|crossReferences|three-kings-example|'as we have seen': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "player-count,side-names,board-placement,men-on-black-squares,starting-position,colours-alternate,lots-for-colour,colour-choice,black-moves-first,board-set-for-play,square-numbering,numbering-from-black-side,captured-piece-removed,not-taking-is-liable-to-huff,three-kings-to-two,first-position,second-position,third-position,fourth-position,white-squares-custom",
+      "field": "crossReferences",
+      "detail": "'black': declared only in the blind map",
+      "blind": "board-orientation",
+      "ref_value": null,
+      "blind_value": [
+        "board-orientation: resolvedBy diagram-square-convention"
+      ],
+      "key": "player-count,side-names,board-placement,men-on-black-squares,starting-position,colours-alternate,lots-for-colour,colour-choice,black-moves-first,board-set-for-play,square-numbering,numbering-from-black-side,captured-piece-removed,not-taking-is-liable-to-huff,three-kings-to-two,first-position,second-position,third-position,fourth-position,white-squares-custom|crossReferences|board-orientation|'black': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "huff-then-play",
+      "field": "crossReferences",
+      "detail": "'compelling the take': declared only in the blind map",
+      "blind": "huff-does-not-undo-other-move",
+      "ref_value": null,
+      "blind_value": [
+        "huff-does-not-undo-other-move: resolvedBy compelled-take",
+        "capture-worked-example: resolvedBy compelled-take"
+      ],
+      "key": "huff-then-play|crossReferences|huff-does-not-undo-other-move|'compelling the take': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'continue as 1 5 1 5 trunk at 21 17 14 17 s': declared only in the blind map",
+      "blind": "first-position-worked",
+      "ref_value": null,
+      "blind_value": [
+        "first-position-worked: unmapped"
+      ],
+      "key": "None|crossReferences|first-position-worked|'continue as 1 5 1 5 trunk at 21 17 14 17 s': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "man-moves-forward",
+      "field": "crossReferences",
+      "detail": "'crown head': declared only in the blind map",
+      "blind": "man-movement",
+      "ref_value": null,
+      "blind_value": [
+        "man-movement: resolvedBy crown-head"
+      ],
+      "key": "man-moves-forward|crossReferences|man-movement|'crown head': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "forty-move-limit,draw-by-agreement,draw-by-repetition",
+      "field": "crossReferences",
+      "detail": "'decided advantage': declared only in the blind map",
+      "blind": "forty-move-draw",
+      "ref_value": null,
+      "blind_value": [
+        "forty-move-draw: resolvedBy decided-advantage"
+      ],
+      "key": "forty-move-limit,draw-by-agreement,draw-by-repetition|crossReferences|forty-move-draw|'decided advantage': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "board-set-for-play,moves-alternate",
+      "field": "crossReferences",
+      "detail": "'fig 1': declared only in the blind map",
+      "blind": "setup-diagram",
+      "ref_value": null,
+      "blind_value": [
+        "setup-diagram: unmapped",
+        "diagram-purposes: resolvedBy setup-diagram"
+      ],
+      "key": "board-set-for-play,moves-alternate|crossReferences|setup-diagram|'fig 1': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "square-numbering",
+      "field": "crossReferences",
+      "detail": "'fig 2': declared only in the blind map",
+      "blind": "board-grid",
+      "ref_value": null,
+      "blind_value": [
+        "board-grid: unmapped",
+        "numbered-board: unmapped",
+        "diagram-purposes: resolvedBy numbered-board"
+      ],
+      "key": "square-numbering|crossReferences|board-grid|'fig 2': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "player-count,side-names,starting-position,black-moves-first,arranging-without-intimation,becomes-king,crowned-by-opponent,opening-names,elementary-positions",
+      "field": "crossReferences",
+      "detail": "'first': declared only in the blind map",
+      "blind": "advice-8",
+      "ref_value": null,
+      "blind_value": [
+        "advice-8: resolvedBy first-position-data"
+      ],
+      "key": "player-count,side-names,starting-position,black-moves-first,arranging-without-intimation,becomes-king,crowned-by-opponent,opening-names,elementary-positions|crossReferences|advice-8|'first': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "elementary-positions",
+      "field": "crossReferences",
+      "detail": "'fourth': declared only in the blind map",
+      "blind": "advice-8",
+      "ref_value": null,
+      "blind_value": [
+        "advice-8: resolvedBy fourth-position-data"
+      ],
+      "key": "elementary-positions|crossReferences|advice-8|'fourth': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "not-taking-is-liable-to-huff,huff-then-play,huff-footnote",
+      "field": "crossReferences",
+      "detail": "'huffed': declared only in the blind map",
+      "blind": "capture-worked-example",
+      "ref_value": null,
+      "blind_value": [
+        "capture-worked-example: resolvedBy huff-removal"
+      ],
+      "key": "not-taking-is-liable-to-huff,huff-then-play,huff-footnote|crossReferences|capture-worked-example|'huffed': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "huff-then-play",
+      "field": "crossReferences",
+      "detail": "'huffs': declared only in the blind map",
+      "blind": "huff-does-not-undo-other-move",
+      "ref_value": null,
+      "blind_value": [
+        "huff-does-not-undo-other-move: resolvedBy huff-removal",
+        "capture-worked-example: resolvedBy huff-removal"
+      ],
+      "key": "huff-then-play|crossReferences|huff-does-not-undo-other-move|'huffs': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "lots-for-colour,colour-choice,time-limit-one-way-of-taking,own-piece-removed-when-taking,own-piece-replacement-choice,false-move-forfeits,becomes-king,crowned-by-opponent,king-movement,not-taking-is-liable-to-huff,two-kings-to-one,three-kings-to-two,huff-footnote",
+      "field": "crossReferences",
+      "detail": "'king': declared only in the blind map",
+      "blind": "king-movement",
+      "ref_value": null,
+      "blind_value": [
+        "king-movement: resolvedBy promotion"
+      ],
+      "key": "lots-for-colour,colour-choice,time-limit-one-way-of-taking,own-piece-removed-when-taking,own-piece-replacement-choice,false-move-forfeits,becomes-king,crowned-by-opponent,king-movement,not-taking-is-liable-to-huff,two-kings-to-one,three-kings-to-two,huff-footnote|crossReferences|king-movement|'king': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'match games': declared only in the blind map",
+      "blind": "further-reading",
+      "ref_value": null,
+      "blind_value": [
+        "further-reading: unmapped"
+      ],
+      "key": "None|crossReferences|further-reading|'match games': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "player-count,side-names,elementary-positions",
+      "field": "crossReferences",
+      "detail": "'second': declared only in the blind map",
+      "blind": "advice-8",
+      "ref_value": null,
+      "blind_value": [
+        "advice-8: resolvedBy second-position-data"
+      ],
+      "key": "player-count,side-names,elementary-positions|crossReferences|advice-8|'second': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'see post': declared only in the blind map",
+      "blind": "advice-8",
+      "ref_value": null,
+      "blind_value": [
+        "advice-8: resolvedBy elementary-position-names"
+      ],
+      "key": "None|crossReferences|advice-8|'see post': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'see the article draughts in the book of card and table games': declared only in the blind map",
+      "blind": "further-reading",
+      "ref_value": null,
+      "blind_value": [
+        "further-reading: unmapped"
+      ],
+      "key": "None|crossReferences|further-reading|'see the article draughts in the book of card and table games': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'the game of draughts simplified': declared only in the blind map",
+      "blind": "further-reading",
+      "ref_value": null,
+      "blind_value": [
+        "further-reading: unmapped"
+      ],
+      "key": "None|crossReferences|further-reading|'the game of draughts simplified': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'the guide to the game of draughts': declared only in the blind map",
+      "blind": "further-reading",
+      "ref_value": null,
+      "blind_value": [
+        "further-reading: unmapped"
+      ],
+      "key": "None|crossReferences|further-reading|'the guide to the game of draughts': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "numbering-from-black-side",
+      "field": "crossReferences",
+      "detail": "'the position following': declared only in the blind map",
+      "blind": "numbering-from-black",
+      "ref_value": null,
+      "blind_value": [
+        "numbering-from-black: resolvedBy two-kings-example"
+      ],
+      "key": "numbering-from-black-side|crossReferences|numbering-from-black|'the position following': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "touched-piece-must-be-played",
+      "field": "crossReferences",
+      "detail": "'the preceding law': declared only in the reference map",
+      "blind": "unplayable-touch-penalty",
+      "ref_value": [
+        "touched-piece-must-be-played: resolvedBy arranging-without-intimation"
+      ],
+      "blind_value": null,
+      "key": "touched-piece-must-be-played|crossReferences|unplayable-touch-penalty|'the preceding law': declared only in the reference map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'the problem book': declared only in the blind map",
+      "blind": "further-reading",
+      "ref_value": null,
+      "blind_value": [
+        "further-reading: unmapped"
+      ],
+      "key": "None|crossReferences|further-reading|'the problem book': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "elementary-positions",
+      "field": "crossReferences",
+      "detail": "'third': declared only in the blind map",
+      "blind": "advice-8",
+      "ref_value": null,
+      "blind_value": [
+        "advice-8: resolvedBy third-position-data"
+      ],
+      "key": "elementary-positions|crossReferences|advice-8|'third': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "king-movement",
+      "field": "crossReferences",
+      "detail": "'this done': declared only in the blind map",
+      "blind": "king-directions",
+      "ref_value": null,
+      "blind_value": [
+        "king-directions: resolvedBy promotion"
+      ],
+      "key": "king-movement|crossReferences|king-directions|'this done': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": "play-completed-on-release",
+      "field": "crossReferences",
+      "detail": "'two or more pieces should have been taken': declared only in the blind map",
+      "blind": "play-completion",
+      "ref_value": null,
+      "blind_value": [
+        "play-completion: resolvedBy huff-short-adopted-capture"
+      ],
+      "key": "play-completed-on-release|crossReferences|play-completion|'two or more pieces should have been taken': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'v 1': declared only in the blind map",
+      "blind": "first-position-worked",
+      "ref_value": null,
+      "blind_value": [
+        "first-position-worked: unmapped",
+        "third-position-worked: unmapped"
+      ],
+      "key": "None|crossReferences|first-position-worked|'v 1': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'v 2': declared only in the blind map",
+      "blind": "first-position-worked",
+      "ref_value": null,
+      "blind_value": [
+        "first-position-worked: unmapped",
+        "third-position-worked: unmapped"
+      ],
+      "key": "None|crossReferences|first-position-worked|'v 2': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'v 3': declared only in the blind map",
+      "blind": "third-position-worked",
+      "ref_value": null,
+      "blind_value": [
+        "third-position-worked: unmapped"
+      ],
+      "key": "None|crossReferences|third-position-worked|'v 3': declared only in the blind map",
+      "resolution": null
+    },
+    {
+      "entry": null,
+      "field": "crossReferences",
+      "detail": "'v 4': declared only in the blind map",
+      "blind": "third-position-worked",
+      "ref_value": null,
+      "blind_value": [
+        "third-position-worked: unmapped"
+      ],
+      "key": "None|crossReferences|third-position-worked|'v 4': declared only in the blind map",
+      "resolution": null
+    }
+  ]
+}

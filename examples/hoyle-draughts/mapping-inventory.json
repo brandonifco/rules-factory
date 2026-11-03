@@ -1,0 +1,389 @@
+{
+  "inventoryVersion": 2,
+  "rejected": [
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 427 block 1",
+      "ground": "heading",
+      "note": "The article's title, alone on its line. The rules begin with the paragraph after the epigraph, which board-squares, men-count, player-count, side-names and loss-when-none-can-be-played quote."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 427 block 2",
+      "ground": "preamble",
+      "note": "The epigraph from Longfellow's Evangeline. It states nothing about the game; 'crowned' and 'king-row' in it are a poem's words, and becomes-king quotes the rule."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 427 block 4",
+      "ground": "preamble",
+      "note": "The lead-in to the rules on pp. 427-430, which states nothing of its own. Each rule under it is quoted by its own entry, from board-placement to forty-move-limit."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 432 block 2",
+      "ground": "heading",
+      "note": "A section heading, alone on its line. The passage under it is quoted or rejected unit by unit."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 432 block 3",
+      "ground": "advice",
+      "note": "GENERAL ADVICE: counsel about how to play well. It obliges nothing and forbids nothing, and general-advice records the section as declined. Where it touches a rule, the rule is quoted where it is stated: taking quickly with only one way of taking is time-limit-one-way-of-taking's subject, and the four Positions are first-position to fourth-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 433 block 1",
+      "ground": "advice",
+      "note": "GENERAL ADVICE: counsel about how to play well. It obliges nothing and forbids nothing, and general-advice records the section as declined. Where it touches a rule, the rule is quoted where it is stated: taking quickly with only one way of taking is time-limit-one-way-of-taking's subject, and the four Positions are first-position to fourth-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 433 block 2",
+      "ground": "advice",
+      "note": "GENERAL ADVICE: counsel about how to play well. It obliges nothing and forbids nothing, and general-advice records the section as declined. Where it touches a rule, the rule is quoted where it is stated: taking quickly with only one way of taking is time-limit-one-way-of-taking's subject, and the four Positions are first-position to fourth-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 433 block 3",
+      "ground": "advice",
+      "note": "GENERAL ADVICE: counsel about how to play well. It obliges nothing and forbids nothing, and general-advice records the section as declined. Where it touches a rule, the rule is quoted where it is stated: taking quickly with only one way of taking is time-limit-one-way-of-taking's subject, and the four Positions are first-position to fourth-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 433 block 4",
+      "ground": "advice",
+      "note": "GENERAL ADVICE: counsel about how to play well. It obliges nothing and forbids nothing, and general-advice records the section as declined. Where it touches a rule, the rule is quoted where it is stated: taking quickly with only one way of taking is time-limit-one-way-of-taking's subject, and the four Positions are first-position to fourth-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 433 block 5",
+      "ground": "advice",
+      "note": "GENERAL ADVICE: counsel about how to play well. It obliges nothing and forbids nothing, and general-advice records the section as declined. Where it touches a rule, the rule is quoted where it is stated: taking quickly with only one way of taking is time-limit-one-way-of-taking's subject, and the four Positions are first-position to fourth-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 433 block 6",
+      "ground": "advice",
+      "note": "GENERAL ADVICE: counsel about how to play well. It obliges nothing and forbids nothing, and general-advice records the section as declined. Where it touches a rule, the rule is quoted where it is stated: taking quickly with only one way of taking is time-limit-one-way-of-taking's subject, and the four Positions are first-position to fourth-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 433 block 7",
+      "ground": "heading",
+      "note": "A section heading, alone on its line. The passage under it is quoted or rejected unit by unit."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 434 block 2",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 434 block 3",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 434 block 4",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 434 block 5",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 434 block 6",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 434 block 7",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 434 block 8",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 435 block 1",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 435 block 2",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 435 block 3",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 435 block 4",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 435 block 5",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 435 block 6",
+      "ground": "advice",
+      "note": "One of the fifteen named openings: a name, the opening moves that form it in square-numbering's numbers, and often where the name came from. Declined with opening-names; no rule of play turns on a name."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 436 block 1",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as two-kings-to-one."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 436 block 2",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as two-kings-to-one."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 436 block 3",
+      "ground": "heading",
+      "note": "A label inside the study declined as two-kings-to-one: it names the diagram or the moves that follow."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 436 block 4",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as two-kings-to-one (Fig. 3): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 436 block 5",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as two-kings-to-one (Fig. 3): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 437 block 1",
+      "ground": "heading",
+      "note": "A label inside the study declined as two-kings-to-one: it names the diagram or the moves that follow."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 437 block 2",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as two-kings-to-one (Fig. 3): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 437 block 3",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as two-kings-to-one."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 437 block 4",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as two-kings-to-one (Fig. 3): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 438 block 1",
+      "ground": "heading",
+      "note": "A label inside the study declined as three-kings-to-two: it names the diagram or the moves that follow."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 438 block 2",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as three-kings-to-two (Fig. 4): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 438 block 3",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as three-kings-to-two (Fig. 4): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 438 block 4",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as three-kings-to-two."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 439 block 1",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as first-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 439 block 2",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as first-position (Fig. 5): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 440 block 2",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as first-position (Fig. 5): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 440 block 3",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as first-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 440 block 4",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as first-position (Fig. 5): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 440 block 5",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as first-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 440 block 6",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as first-position (Fig. 5): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 441 block 1",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as second-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 441 block 2",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as second-position (Fig. 6): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 442 block 2",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as second-position (Fig. 6): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 443 block 1",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as third-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 443 block 2",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as third-position (Fig. 7): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 444 block 2",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as third-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 444 block 3",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as third-position (Fig. 7): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 444 block 4",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as third-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 444 block 5",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as third-position (Fig. 7): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 444 block 6",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as third-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 444 block 7",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as third-position (Fig. 7): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 445 block 1",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as third-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 445 block 2",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as third-position (Fig. 7): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 445 block 3",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as third-position (Fig. 7): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 445 block 4",
+      "ground": "heading",
+      "note": "A heading of the end-game studies, alone on its line. The study it heads is declined as third-position."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 445 block 5",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as third-position (Fig. 7): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 446 block 3",
+      "ground": "advice",
+      "note": "Part of the end-game study declined as fourth-position (Fig. 8): its diagram, or the moves of its solution or a variation, which apply the rules of movement and capture and state none. The King moves in these solutions are cited by king-movement's note."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 446 block 4",
+      "ground": "out-of-extent",
+      "note": "Points the reader to other books on the game: the article this one abridges, Anderson's, McCulloch's, Spayth's and Gould's. None is admitted, and the passage states no rule."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 446 block 5",
+      "ground": "page-furniture",
+      "note": "The printer's rule that ends the article. It carries no words."
+    }
+  ]
+}
